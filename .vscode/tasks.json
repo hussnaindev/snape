@@ -1,0 +1,67 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Dev",
+      "type": "shell",
+      "command": "bun run dev",
+      "group": "build",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "label": "Next.js Dev"
+      },
+      "problemMatcher": {
+        "owner": "typescript",
+        "pattern": { "regexp": "." },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": ".*Ready.*"
+        }
+      }
+    },
+    {
+      "label": "Build",
+      "type": "shell",
+      "command": "bun run build",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": { "reveal": "always" },
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "Type Check",
+      "type": "shell",
+      "command": "bun run typecheck",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": { "reveal": "always" },
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "Lint",
+      "type": "shell",
+      "command": "bun run lint",
+      "group": "test",
+      "presentation": { "reveal": "always" }
+    },
+    {
+      "label": "Lint Fix",
+      "type": "shell",
+      "command": "bun run lint:fix",
+      "presentation": { "reveal": "always" }
+    },
+    {
+      "label": "Install Dependencies",
+      "type": "shell",
+      "command": "bun install",
+      "presentation": { "reveal": "always" }
+    }
+  ]
+}
