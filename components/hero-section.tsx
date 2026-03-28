@@ -45,7 +45,7 @@ export function HeroSection({ movies }: HeroSectionProps) {
   const year = movie.release_date?.slice(0, 4) ?? '';
 
   return (
-    <div className="relative h-[80vh] min-h-[480px] overflow-hidden">
+    <div className="relative h-[50vh] sm:h-[80vh] min-h-[480px] overflow-hidden">
       {/* Backdrop / Poster */}
       <div
         className="absolute inset-0 transition-opacity duration-300"

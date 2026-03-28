@@ -104,3 +104,16 @@ bun run lint:fix     # biome check --write (auto-fix)
 ## Biome Gotcha
 
 Biome may suggest `import type { X }` for any import used only in type positions. This is correct for most cases. The exception: if you ever add a class-based DI framework (e.g. NestJS), value imports are required for constructor injection — add a `biome-ignore` comment in that case.
+
+## Hydration Rules — Never Break These
+
+Hydration errors crash the page and are caused by server/client HTML mismatches. Strict rules:
+
+1. **Never use `typeof window !== 'undefined'` inside JSX or render logic** — use `useEffect` + state instead.
+2. **Never use `Date.now()`, `Math.random()`, or any non-deterministic value in render** — compute once in `useEffect`.
+3. **Never nest block elements inside inline elements** (e.g. `<p><div>` is invalid HTML and causes mismatches).
+4. **`'use client'` components are still SSR'd** — all hooks run with their initial state on the server. If `useState(0)` is the initial value, the server renders slot 0. Make sure the server output for initial state is correct and stable.
+5. **Semantic wrapper tags must match** — if a server component wraps a client component in `<main>`, the client component must NOT also use `<main>` as its root (duplicate semantic tags). Coordinate tag choices across the boundary.
+6. **Never conditionally render different root elements** based on client-only state — the server will always render the initial branch.
+
+**What caused the last incident:** `app/page.tsx` wrapped `<HeroSection>` in `<main>`, and a prior version of `hero-section.tsx` also used `<main>` as its root, creating a duplicate/mismatch when the component was updated.
