@@ -10,6 +10,7 @@
   /* ── Fonts (populated by next/font CSS vars) ── */
   --font-body: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-cormorant), ui-serif, Georgia, serif;
+  --font-bungee: var(--font-bungee), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* ── Keyframes ── */

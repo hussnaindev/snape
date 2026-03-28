@@ -29,7 +29,9 @@ export default async function HomePage() {
 
       <div>
         {/* Hero */}
-        <HeroSection movies={trending} />
+        <div className="relative h-[40vh] sm:h-[80vh] min-h-[340px] sm:min-h-[480px] overflow-hidden">
+          <HeroSection movies={trending} />
+        </div>
 
         {/* Rails */}
         <div className="mt-6 flex flex-col gap-6">

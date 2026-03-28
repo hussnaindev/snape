@@ -1,6 +1,13 @@
 import type { Metadata } from 'next';
-import { Cormorant_Garamond, DM_Sans } from 'next/font/google';
+import { Bungee, Cormorant_Garamond, DM_Sans } from 'next/font/google';
 import './globals.css';
+
+const bungee = Bungee({
+  subsets: ['latin'],
+  weight: ['400'],
+  variable: '--font-bungee',
+  display: 'swap',
+});
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -27,7 +34,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${cormorantGaramond.variable}`}>
+    <html lang="en" className={`${dmSans.variable} ${cormorantGaramond.variable} ${bungee.variable}`}>
       <body className="min-h-screen bg-black text-white antialiased">{children}</body>
     </html>
   );
