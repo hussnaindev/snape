@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Swan</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600&family=Archivo+Narrow:wght@400;500;600;700;900&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --black: #070b08;
+      --fern: #2d5a3d;
+      --sage: #a8d5b5;
+      --gold: #d4af6e;
+    }
+
+    html,
+    body {
+      background: var(--black);
+      color: #fff;
+      font-family: 'Archivo Narrow', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* HERO */
+    .hero {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/11;
+      overflow: hidden;
+      background: #0a100b;
+    }
+
+    .hero-video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* SECTION DIVIDER */
+    .section-divider {
+      display: flex;
+      align-items: center;
+      margin: 0;
+    }
+
+    .section-divider.transparent {
+      margin-top: -28px;
+      position: relative;
+      z-index: 10;
+    }
+
+    .divider-line {
+      flex: 1;
+      height: 1.5px;
+      background: rgba(255, 255, 255, 0.85);
+    }
+
+    .section-divider.transparent .divider-line {
+      background: transparent;
+    }
+
+    .divider-pill {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 14px;
+      background: var(--black);
+    }
+
+    .section-divider.transparent .divider-pill {
+      background: transparent;
+    }
+
+    .divider-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      color: #fff;
+    }
+
+    /* REEL GRID */
+    .reel-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0px;
+    }
+
+    .reel-tile {
+      position: relative;
+      aspect-ratio: 620/960;
+      overflow: hidden;
+      background: #0a100b;
+      cursor: pointer;
+      display: block;
+      text-decoration: none;
+    }
+
+    .reel-tile img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+
+    .reel-tile:hover img {
+      transform: scale(1.03);
+    }
+
+    .reel-tile-border {
+      position: absolute;
+      inset: 0;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      pointer-events: none;
+    }
+
+    /* FEATURED MODELS */
+    .models-scroll-wrap {
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      padding: 18px 14px;
+    }
+
+    .models-scroll-wrap::-webkit-scrollbar {
+      display: none;
+    }
+
+    .models-track {
+      display: flex;
+      gap: 0;
+      width: max-content;
+    }
+
+    .model-item {
+      display: flex;
+      align-items: flex-end;
+      margin-right: 4px;
+      flex-shrink: 0;
+    }
+
+    .model-card {
+      position: relative;
+      width: 120px;
+      height: calc(120px * 1.71);
+      border-radius: 14px;
+      overflow: hidden;
+      background: #0a100b;
+      z-index: 1;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .model-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .model-card-border {
+      position: absolute;
+      inset: 0;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      pointer-events: none;
+    }
+
+    .model-name-pill {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0, 0, 0, 0.65);
+      padding: 5px 7px 6px;
+    }
+
+    .model-name-text {
+      font-size: 7px;
+      font-weight: 600;
+      letter-spacing: 1.8px;
+      color: #fff;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    /* TAG CLOUD */
+    .tags-section {
+      padding: 12px 16px 40px;
+    }
+
+    .tags-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag-chip {
+      padding: 6px 13px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.60);
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.18s, color 0.18s;
+      white-space: nowrap;
+    }
+
+    .tag-chip:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    /* TOPBAR */
+    .topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      background: linear-gradient(to bottom, rgba(7, 11, 8, 0.88) 0%, transparent 100%);
+      pointer-events: none;
+    }
+
+    .topbar svg {
+      flex-shrink: 0;
+    }
+
+    .wordmark {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 3px;
+      color: #fff;
+      text-transform: uppercase;
+    }
+
+    /* SKELETON SHIMMER */
+    @keyframes shimmer {
+      0% {
+        background-position: -200% center;
+      }
+
+      100% {
+        background-position: 200% center;
+      }
+    }
+
+    .skeleton {
+      background: linear-gradient(90deg, #111 25%, #222 50%, #111 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.6s ease-in-out infinite;
+    }
+
+    .hero-skeleton {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      transition: opacity 0.5s ease;
+    }
+
+    .hero-skeleton.loaded {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .reel-tile .tile-skeleton {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      transition: opacity 0.4s ease;
+    }
+
+    .reel-tile .tile-skeleton.loaded {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .model-card .card-skeleton {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      border-radius: 14px;
+      transition: opacity 0.4s ease;
+    }
+
+    .model-card .card-skeleton.loaded {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* REEL TILE PREVIEW VIDEO */
+    .reel-tile .tile-preview {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .reel-tile .tile-preview.playing {
+      opacity: 1;
+    }
+
+    @media (min-width: 640px) {
+      .hero {
+        aspect-ratio: 16/9;
+        max-height: 600px;
+      }
+
+      .reel-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header class="topbar">
+    <svg width="20" height="20" viewBox="0 0 512 512" fill="none">
+      <g transform="matrix(-1,0,0,1,512,0)">
+        <path fill="#fff"
+          d="M372.67 44.934c-50.275.005-92.476 43.57-38.934 163.87 29.137 16.804 41.594 46.767 33.48 74.848-9.168 31.735-42.353 59.517-96.597 68.084-45.02 7.11-88.46 2.42-122.915-22.218-14.895-10.65-27.867-24.905-38.502-43.088-26.314-8.87-48.678-17.086-61.224-23.25-.197 10.192 1.916 21.786 6.594 33.963l-35.842-4.432L70.87 332.49 43.92 344.385l53.35 11.676c10.984 9.717 23.94 18.99 39.07 27.38l-.002.007c26.098 14.475 195.407 11.62 218.51.578 67.333-32.17 71.596-90.7 28.552-167.472-57.378-102.34-31.747-134.085 3.034-133.07.93 10.53 6.27 21.943 15.593 31.288 5.74 5.757 12.266 9.993 18.886 12.623 19.37 11.416 38.896 19.675 62.072 20.81 5.712.08 9.144-9.696 3.487-10.238-11.602-2.262-21.402-8.37-29.352-15.912 11.712-12.976 7.85-36.605-8.994-53.49-11.038-11.06-24.963-16.53-36.898-15.692-12.41-5.107-25.747-7.938-38.562-7.936zm56.598 37.433c6.16 0 10.95 4.793 10.95 10.953 0 6.157-4.79 10.95-10.95 10.95-6.16 0-10.954-4.793-10.954-10.95 0-6.156 4.795-10.953 10.954-10.953zm-208.653 118.95c-6.108.034-12.128.27-18.18.607-29.242 1.63-59.597 5.87-101.03 1.365 28.59 40.045 73.354 51.978 116.91 49.04-32.74 15.03-75.678 8.755-108.41-10.848.475 1.48.96 2.94 1.454 4.38 17.087 33.357 62.417 42.17 88.845 42.066-16.554 11.997-42.21 12.406-65.994 2.386 7.334 9.737 15.51 17.67 24.366 24.002 29.323 20.968 67.166 25.59 109.127 18.96 49.298-7.785 74.954-31.945 81.56-54.81 6.607-22.867-3.598-45.977-34.556-58.134-36.452-14.313-63.225-18.523-87.95-18.975-2.06-.037-4.106-.05-6.142-.04zM64.14 378.278c-29.424 5.99-46.933 13.47-46.933 21.588 0 19.668 102.56 35.612 229.072 35.612s229.072-15.944 229.072-35.612c0-8.098-17.424-15.562-46.72-21.545 12.117 3.613 18.923 7.643 18.923 11.895 0 15.515-90.098 28.092-201.24 28.092-111.14 0-201.24-12.577-201.24-28.092 0-4.27 6.858-8.314 19.064-11.938z" />
+      </g>
+    </svg>
+    <span class="wordmark">Swan</span>
+  </header>
+
+  <main>
+
+    <div class="hero">
+      <div class="hero-skeleton skeleton" id="sk-hero-brand-new"></div>
+      <video class="hero-video" id="hero-brand-new" autoplay muted loop playsinline></video>
+    </div>
+    <div class="section-divider transparent">
+      <div class="divider-line"></div>
+      <div class="divider-pill">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke="#fff" stroke-width="2" stroke-linecap="round" />
+          <path d="M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="#fff"
+            stroke-width="1.4" stroke-linecap="round" opacity=".55" />
+          <circle cx="12" cy="12" r="2.5" fill="#fff" />
+        </svg>
+        <span class="divider-label">Brand New</span>
+      </div>
+      <div class="divider-line"></div>
+    </div>
+    <div class="reel-grid" id="brand-new-grid"></div>
+
+    <div class="hero">
+      <div class="hero-skeleton skeleton" id="sk-hero-hottest"></div>
+      <video class="hero-video" id="hero-hottest" autoplay muted loop playsinline></video>
+    </div>
+    <div class="section-divider transparent">
+      <div class="divider-line"></div>
+      <div class="divider-pill">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2c-1.5 3-4 5-4 9a5 5 0 0010 0c0-2.5-1-4-2.5-5-.5 1.5-1 2.5-1.5 2.5A3 3 0 0112 6c0-1.5 0-3-1-4z"
+            fill="#fff" />
+        </svg>
+        <span class="divider-label">Hottest</span>
+      </div>
+      <div class="divider-line"></div>
+    </div>
+    <div class="reel-grid" id="hottest-grid"></div>
+
+    <div class="hero">
+      <div class="hero-skeleton skeleton" id="sk-hero-bts"></div>
+      <video class="hero-video" id="hero-bts" autoplay muted loop playsinline></video>
+    </div>
+    <div class="section-divider transparent">
+      <div class="divider-line"></div>
+      <div class="divider-pill">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M15 10l4.553-2.277A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.9L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"
+            stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span class="divider-label">BTS</span>
+      </div>
+      <div class="divider-line"></div>
+    </div>
+
+    <div class="section-divider" style="margin-top:4px;">
+      <div class="divider-line"></div>
+      <div class="divider-pill">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+          <circle cx="9" cy="7" r="3" stroke="#fff" stroke-width="1.6" />
+          <circle cx="17" cy="8" r="2.5" stroke="#fff" stroke-width="1.4" />
+          <path d="M2 21c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="#fff" stroke-width="1.6" stroke-linecap="round" />
+          <path d="M19 21c0-2.5-1.8-4.6-4-5.4" stroke="#fff" stroke-width="1.4" stroke-linecap="round" />
+        </svg>
+        <span class="divider-label">Featured Models</span>
+      </div>
+      <div class="divider-line"></div>
+    </div>
+    <div class="models-scroll-wrap">
+      <div class="models-track" id="models-track"></div>
+    </div>
+
+    <div class="hero">
+      <div class="hero-skeleton skeleton" id="sk-hero-upcoming"></div>
+      <video class="hero-video" id="hero-upcoming" autoplay muted loop playsinline></video>
+    </div>
+    <div class="section-divider transparent">
+      <div class="divider-line"></div>
+      <div class="divider-pill">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+          <path d="M8 2v3M16 2v3M3 8h18M5 4h14a2 2 0 012 2v13a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" stroke="#fff"
+            stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01" stroke="#fff" stroke-width="2"
+            stroke-linecap="round" />
+        </svg>
+        <span class="divider-label">Upcoming Scenes</span>
+      </div>
+      <div class="divider-line"></div>
+    </div>
+
+    <div class="section-divider" style="margin-top:4px;">
+      <div class="divider-line"></div>
+      <div class="divider-pill">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+          <path d="M4 9h16M4 15h16M10 3l-2 18M16 3l-2 18" stroke="#fff" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+        <span class="divider-label">Browse by Tag</span>
+      </div>
+      <div class="divider-line"></div>
+    </div>
+    <div class="tags-section">
+      <div class="tags-wrap" id="tags-wrap"></div>
+    </div>
+
+  </main>
+
+  <script src="config.js"></script>
+  <script src="hero-urls.js"></script>
+  <script src="reels-data.js"></script>
+  <script src="performers-data.js"></script>
+  <script>
+    // Hero videos
+    function setHero(videoId, skeletonId, src) {
+      var v = document.getElementById(videoId);
+      var sk = document.getElementById(skeletonId);
+      v.src = src;
+      v.addEventListener('canplay', function () { sk.classList.add('loaded'); }, { once: true });
+    }
+    setHero('hero-brand-new', 'sk-hero-brand-new', pickFrom(HERO_URLS.brandNew));
+    setHero('hero-hottest', 'sk-hero-hottest', pickFrom(HERO_URLS.hottest));
+    setHero('hero-bts', 'sk-hero-bts', pickFrom(HERO_URLS.bts));
+    setHero('hero-upcoming', 'sk-hero-upcoming', pickFrom(HERO_URLS.upcoming));
+
+    function shuffle(arr) {
+      var a = arr.slice();
+      for (var i = a.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+      }
+      return a;
+    }
+
+    var shuffled = shuffle(REELS_DATA);
+
+    // === UPDATED: Make reel tiles link to reels.html with ID ===
+    function makeReelTile(reel) {
+      var a = document.createElement('a');
+      a.href = `reels.html?id=${reel.id}`;
+      a.className = 'reel-tile';
+      a.setAttribute('data-preview-src', proxy(reel.sd || reel.hd));
+      a.setAttribute('data-preview-state', 'idle');
+
+      // Skeleton
+      var sk = document.createElement('div');
+      sk.className = 'tile-skeleton skeleton';
+
+      // Poster image
+      var img = document.createElement('img');
+      img.src = proxy(reel.poster);
+      img.alt = '';
+      img.loading = 'lazy';
+      img.addEventListener('load', function () { sk.classList.add('loaded'); }, { once: true });
+      img.addEventListener('error', function () { sk.classList.add('loaded'); }, { once: true });
+
+      // Preview video
+      var vid = document.createElement('video');
+      vid.className = 'tile-preview';
+      vid.muted = true;
+      vid.loop = true;
+      vid.playsInline = true;
+      vid.preload = 'none';
+      vid.setAttribute('playsinline', '');
+      vid.setAttribute('webkit-playsinline', '');
+      vid.setAttribute('loop', '');
+
+      var border = document.createElement('div');
+      border.className = 'reel-tile-border';
+
+      a.appendChild(sk);
+      a.appendChild(img);
+      a.appendChild(vid);
+      a.appendChild(border);
+      return a;
+    }
+
+    shuffled.slice(0, 4).forEach(function (r) {
+      document.getElementById('brand-new-grid').appendChild(makeReelTile(r));
+    });
+    shuffled.slice(4, 8).forEach(function (r) {
+      document.getElementById('hottest-grid').appendChild(makeReelTile(r));
+    });
+
+    // Preview logic (unchanged)
+    var PREVIEW_SECONDS = 3;
+    var previewObserver = null;
+    var autoplayQueue = new Set();
+
+    function bufferedSecondsFromStart(video) {
+      if (!video || !video.buffered || video.buffered.length === 0) return 0;
+      try {
+        var end = video.buffered.end(video.buffered.length - 1);
+        return Math.max(0, end - video.currentTime);
+      } catch (e) { return 0; }
+    }
+
+    function hasEnoughPreviewBuffered(video) {
+      if (!video) return false;
+      if (video.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) return false;
+      var buffered = bufferedSecondsFromStart(video);
+      if (video.duration && isFinite(video.duration)) {
+        return buffered >= Math.min(PREVIEW_SECONDS, video.duration);
+      }
+      return buffered >= PREVIEW_SECONDS;
+    }
+
+    function clearPreviewMonitor(tile) {
+      if (tile.__previewMonitor) { clearInterval(tile.__previewMonitor); tile.__previewMonitor = null; }
+      if (tile.__previewTimer) { clearTimeout(tile.__previewTimer); tile.__previewTimer = null; }
+    }
+
+    function startTilePreview(tile) {
+      var vid = tile.querySelector('.tile-preview');
+      if (!vid) return;
+      var src = tile.getAttribute('data-preview-src');
+      if (!src) return;
+
+      if (!vid.src) {
+        vid.src = src;
+        vid.preload = 'auto';
+        vid.loop = true;
+        vid.load();
+      }
+
+      if (tile.getAttribute('data-preview-state') === 'playing') return;
+
+      tile.setAttribute('data-preview-state', 'loading');
+      clearPreviewMonitor(tile);
+
+      var tryPlay = function () {
+        if (!autoplayQueue.has(tile)) return;
+        if (!hasEnoughPreviewBuffered(vid)) return;
+
+        clearPreviewMonitor(tile);
+        try { vid.currentTime = 0; } catch (e) { }
+
+        var onStarted = function () {
+          if (!autoplayQueue.has(tile)) return;
+          vid.classList.add('playing');
+          tile.setAttribute('data-preview-state', 'playing');
+        };
+
+        var playPromise = vid.play();
+        if (playPromise && typeof playPromise.then === 'function') {
+          playPromise.then(onStarted).catch(() => { tile.setAttribute('data-preview-state', 'idle'); });
+        } else {
+          onStarted();
+        }
+      };
+
+      if (hasEnoughPreviewBuffered(vid)) {
+        tryPlay();
+        return;
+      }
+
+      tile.__previewMonitor = setInterval(tryPlay, 120);
+      tryPlay();
+    }
+
+    function stopTilePreview(tile) {
+      autoplayQueue.delete(tile);
+      clearPreviewMonitor(tile);
+      var vid = tile.querySelector('.tile-preview');
+      if (!vid) return;
+      vid.classList.remove('playing');
+      try { vid.pause(); } catch (e) { }
+      try { vid.currentTime = 0; } catch (e) { }
+      tile.setAttribute('data-preview-state', 'idle');
+    }
+
+    function observeReelTiles() {
+      if (!('IntersectionObserver' in window)) {
+        document.querySelectorAll('.reel-tile').forEach(function (tile) {
+          autoplayQueue.add(tile);
+          startTilePreview(tile);
+        });
+        return;
+      }
+
+      previewObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          var tile = entry.target;
+          if (entry.isIntersecting && entry.intersectionRatio > 0.45) {
+            autoplayQueue.add(tile);
+            startTilePreview(tile);
+          } else {
+            stopTilePreview(tile);
+          }
+        });
+      }, {
+        root: null,
+        rootMargin: '120px 0px',
+        threshold: [0, 0.25, 0.45, 0.75, 1]
+      });
+
+      document.querySelectorAll('.reel-tile').forEach(function (tile) {
+        previewObserver.observe(tile);
+      });
+    }
+
+    observeReelTiles();
+
+    // Featured Models & Tags (unchanged)
+    var track = document.getElementById('models-track');
+    PERFORMERS_DATA.forEach(function (p, i) {
+      var rank = i + 1;
+      var rankW = rank === 1 ? 48 : rank < 10 ? 78 : 88;
+      var bleed = 8;
+      var fs = rank < 10 ? 90 : 74;
+      var item = document.createElement('div');
+      item.className = 'model-item';
+
+      var rankEl = document.createElement('div');
+      rankEl.style.cssText = `font-family:'Archivo Narrow',sans-serif;font-weight:900;font-size:${fs}px;line-height:1;color:transparent;-webkit-text-stroke:1.5px rgba(255,255,255,0.55);letter-spacing:-4px;padding-bottom:4px;width:${rankW}px;margin-right:-${bleed}px;flex-shrink:0;z-index:0;display:flex;align-items:flex-end;justify-content:flex-end;`;
+      rankEl.textContent = rank;
+
+      var card = document.createElement('div');
+      card.className = 'model-card';
+
+      var sk = document.createElement('div');
+      sk.className = 'card-skeleton skeleton';
+
+      var img = document.createElement('img');
+      img.src = proxy(p.url);
+      img.alt = p.name;
+      img.loading = 'lazy';
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+      img.addEventListener('load', function () { sk.classList.add('loaded'); }, { once: true });
+      img.addEventListener('error', function () { sk.classList.add('loaded'); }, { once: true });
+
+      var cardBorder = document.createElement('div');
+      cardBorder.className = 'model-card-border';
+
+      var namePill = document.createElement('div');
+      namePill.className = 'model-name-pill';
+      var nameText = document.createElement('div');
+      nameText.className = 'model-name-text';
+      nameText.textContent = p.name.toUpperCase();
+      namePill.appendChild(nameText);
+
+      card.appendChild(sk);
+      card.appendChild(img);
+      card.appendChild(cardBorder);
+      card.appendChild(namePill);
+      item.appendChild(rankEl);
+      item.appendChild(card);
+      track.appendChild(item);
+    });
+
+    var tagCounts = {};
+    REELS_DATA.forEach(function (r) { r.tags.forEach(function (t) { tagCounts[t] = (tagCounts[t] || 0) + 1; }); });
+    var topTags = Object.entries(tagCounts).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 24).map(function (x) { return x[0]; });
+    var wrap = document.getElementById('tags-wrap');
+    topTags.forEach(function (tag) {
+      var c = document.createElement('a');
+      c.href = '#'; c.className = 'tag-chip'; c.textContent = '#' + tag;
+      wrap.appendChild(c);
+    });
+  </script>
+</body>
+
+</html>

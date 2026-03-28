@@ -5,10 +5,7 @@ import type { ApiResponse } from '@/types';
  * For client components, pass the full path (e.g. '/api/health').
  * Set NEXT_PUBLIC_API_URL for cross-origin API calls.
  */
-export async function apiFetch<T>(
-  path: string,
-  options?: RequestInit,
-): Promise<ApiResponse<T>> {
+export async function apiFetch<T>(path: string, options?: RequestInit): Promise<ApiResponse<T>> {
   const base = process.env.NEXT_PUBLIC_API_URL ?? '';
 
   try {

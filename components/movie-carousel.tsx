@@ -1,0 +1,23 @@
+import type { TMDBMovie } from '@/types/tmdb';
+import { MovieCard } from './movie-card';
+import { SectionDivider } from './ui/section-divider';
+
+interface MovieCarouselProps {
+  title: string;
+  movies: TMDBMovie[];
+}
+
+export function MovieCarousel({ title, movies }: MovieCarouselProps) {
+  return (
+    <section className="px-4 md:px-8">
+      <SectionDivider label={title} className="mb-4" />
+      <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+        {movies.map((movie) => (
+          <div key={movie.id} className="flex-none w-[220px] md:w-[260px]">
+            <MovieCard movie={movie} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
