@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getMovieEmbedUrl } from '@/lib/vsembed';
 import { WatchControls } from './watch-controls';
@@ -45,20 +44,9 @@ export default async function WatchPage({ params }: Props) {
         />
       </div>
 
-      {/* Back — top-left, clears notch/status-bar via CSS max() */}
-      <Link
-        href={`/movie/${movieId}`}
-        className="absolute z-10 w-10 h-10 flex items-center justify-center rounded-full bg-black/60 text-white text-lg"
-        style={{
-          top: 'max(12px, env(safe-area-inset-top))',
-          left: 'max(12px, env(safe-area-inset-left))',
-        }}
-        aria-label="Back"
-      >
-        ←
-      </Link>
-
-      {/* Fullscreen + landscape toggle — top-right, mobile only */}
+      {/* Back button (top-left) + fullscreen toggle (top-right, mobile only).
+          Both live in WatchControls so they share orientation/fullscreen state
+          and the back button can call router.back() to pop history correctly. */}
       <WatchControls />
     </div>
   );
