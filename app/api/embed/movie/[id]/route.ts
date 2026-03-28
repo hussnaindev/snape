@@ -1,5 +1,33 @@
 import type { NextRequest } from 'next/server';
 
+// Edge runtime runs on Cloudflare's global network — IPs are far less likely
+// to be blocked by streaming providers than Vercel's serverless (AWS) IPs.
+export const runtime = 'edge';
+
+type Provider = { url: string; referer: string };
+
+function getProviders(movieId: number): Provider[] {
+  return [
+    { url: `https://vidsrc.icu/embed/movie/${movieId}`,  referer: 'https://vidsrc.icu/' },
+    { url: `https://embed.su/embed/movie/${movieId}`,     referer: 'https://embed.su/' },
+    { url: `https://moviesapi.club/movie/${movieId}`,     referer: 'https://moviesapi.club/' },
+  ];
+}
+
+// Headers that mimic a real Chrome browser navigation request.
+const BROWSER_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  Accept:
+    'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'cross-site',
+  'Sec-Fetch-User': '?1',
+  'Upgrade-Insecure-Requests': '1',
+} as const;
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -8,53 +36,49 @@ export async function GET(
   const movieId = Number(id);
   if (Number.isNaN(movieId)) return errorPage(404, 'Not found');
 
-  // Fetch the outer vidsrc embed page server-side.
-  // The outer page contains the ad-triggering JS; we strip it entirely.
-  let outerHtml: string;
-  try {
-    const res = await fetch(`https://vidsrc.icu/embed/movie/${movieId}`, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        Referer: 'https://vidsrc.icu/',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-      },
-      cache: 'no-store',
-    });
-    if (!res.ok) return errorPage(res.status, `Provider returned ${res.status}`);
-    outerHtml = await res.text();
-  } catch {
-    return errorPage(502, 'Could not reach video provider');
+  for (const provider of getProviders(movieId)) {
+    const res = await tryProvider(provider);
+    if (res) return res;
   }
 
-  // Extract the inner iframe src — the real player (e.g. whisperingauroras.com).
-  // It has no ads; popups only originate from the outer vidsrc wrapper we just discarded.
-  const iframeMatch = outerHtml.match(/<iframe[^>]+src=["']([^"']+)["']/i);
-  const rawSrc = iframeMatch?.[1];
-  if (!rawSrc) return errorPage(502, 'Player not found');
+  return errorPage(502, 'All video providers are currently unavailable');
+}
 
-  // Normalise and validate the URL before inserting into HTML.
+async function tryProvider(provider: Provider): Promise<Response | null> {
+  let html: string;
+  try {
+    const res = await fetch(provider.url, {
+      headers: { ...BROWSER_HEADERS, Referer: provider.referer },
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    html = await res.text();
+  } catch {
+    return null;
+  }
+
+  // Extract the inner iframe src — the real ad-free player embedded by the outer page.
+  const iframeMatch = html.match(/<iframe[^>]+src=["']([^"']+)["']/i);
+  const rawSrc = iframeMatch?.[1];
+  if (!rawSrc) return null;
+
   let playerUrl: URL;
   try {
+    const base = new URL(provider.url);
     playerUrl = new URL(
-      rawSrc.startsWith('http')
-        ? rawSrc
-        : `https://vidsrc.icu${rawSrc.startsWith('/') ? '' : '/'}${rawSrc}`,
+      rawSrc.startsWith('http') ? rawSrc : `${base.origin}${rawSrc.startsWith('/') ? '' : '/'}${rawSrc}`,
     );
-    if (playerUrl.protocol !== 'https:' && playerUrl.protocol !== 'http:') {
-      return errorPage(502, 'Invalid player URL');
-    }
+    if (playerUrl.protocol !== 'https:' && playerUrl.protocol !== 'http:') return null;
   } catch {
-    return errorPage(502, 'Invalid player URL');
+    return null;
   }
 
   const safeUrl = playerUrl.toString().replace(/"/g, '%22');
 
-  // Serve a minimal shell that embeds ONLY the inner player.
-  // sandbox WITHOUT allow-popups: player JS runs normally but can't open new windows/tabs.
-  // referrerpolicy="no-referrer": avoids referer mismatch that could break the player load.
-  const html = `<!doctype html>
+  // Minimal shell embedding only the inner player.
+  // sandbox WITHOUT allow-popups: JS runs, video plays, popups silently blocked.
+  // referrerpolicy="no-referrer": prevents referer-mismatch from breaking the player.
+  const playerHtml = `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -73,7 +97,7 @@ export async function GET(
 </body>
 </html>`;
 
-  return new Response(html, {
+  return new Response(playerHtml, {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
