@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getMovieEmbedUrl } from '@/lib/vsembed';
+import { WatchControls } from './watch-controls';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -14,11 +15,11 @@ export default async function WatchPage({ params }: Props) {
   const embedUrl = getMovieEmbedUrl(movieId);
 
   return (
-    <div className="fixed inset-0 bg-black overflow-hidden">
+    <div className="fixed inset-0 bg-black">
       {/*
-        Iframe fills the entire viewport. Bottom padding keeps the player's
-        own control bar above the iOS home indicator. Top/sides use insets
-        so content isn't hidden behind notches or camera cutouts.
+        Iframe fills the entire viewport. Safe-area insets push it away from
+        notches, camera cutouts, and the iOS home indicator so the player's
+        own control bar is never hidden behind system UI.
       */}
       <div
         className="absolute inset-0"
@@ -29,21 +30,22 @@ export default async function WatchPage({ params }: Props) {
           paddingRight: 'env(safe-area-inset-right)',
         }}
       >
+        {/*
+          No sandbox: vidsrc.icu's play button calls window.open() internally
+          (ad + video start in one gesture). Sandboxing without allow-popups
+          blocks that call and breaks playback entirely. The browser's built-in
+          popup blocker (especially strong in Firefox) handles unwanted windows.
+        */}
         <iframe
           src={embedUrl}
           className="w-full h-full"
           allowFullScreen
           allow="autoplay; fullscreen; accelerometer; gyroscope; picture-in-picture"
-          sandbox="allow-scripts allow-same-origin allow-presentation allow-fullscreen"
           title="Video player"
         />
       </div>
 
-      {/*
-        Back button sits above the iframe using z-index.
-        CSS max() ensures it clears the status bar on notched devices
-        without blocking anything when there is no notch (falls back to 12px).
-      */}
+      {/* Back — top-left, clears notch/status-bar via CSS max() */}
       <Link
         href={`/movie/${movieId}`}
         className="absolute z-10 w-10 h-10 flex items-center justify-center rounded-full bg-black/60 text-white text-lg"
@@ -55,6 +57,9 @@ export default async function WatchPage({ params }: Props) {
       >
         ←
       </Link>
+
+      {/* Fullscreen + landscape toggle — top-right, mobile only */}
+      <WatchControls />
     </div>
   );
 }
