@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
+import { APP_NAME } from '@/lib/config';
+import { Logo } from '@/components/ui/logo';
 
 export function Topbar() {
   const router = useRouter();
@@ -33,9 +35,12 @@ export function Topbar() {
         {/* Wordmark */}
         <Link
           href="/"
-          className="font-display text-lg md:text-xl font-semibold tracking-widest text-white uppercase"
+          className="flex items-center gap-2 text-white"
         >
-          Heroflix
+          <Logo className="w-6 h-6 md:w-7 md:h-7 text-white" />
+          <span className="font-display text-lg md:text-xl font-semibold tracking-widest uppercase">
+            {APP_NAME}
+          </span>
         </Link>
 
         {/* Search */}

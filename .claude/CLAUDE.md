@@ -41,10 +41,11 @@ bun run lint:fix
 6. Never conditionally render different root element types based on client-only state.
 7. Coordinate wrapper tags across server/client boundaries — no duplicated semantic elements.
 8. No numeric values in inline `style` props driven by state (e.g. `style={{ opacity: x }}`). React SSR serializes numbers to strings; on hydration the server DOM has `"1"` (string) but the client vdom has `1` (number) → mismatch. Use Tailwind classes instead (`opacity-0` / `opacity-100`).
-9. **Never give a Client Component a root wrapper div whose className also appears on its Server Component parent.** The RSC payload serializes Server Component elements; Turbopack incremental compilation can desync them, causing React to match the RSC div against the wrong DOM node. Fix: own the structural container in the Server Component; have the Client Component return a `<>fragment</>`.
+9. **Never wrap a Client Component in a structural container div inside a Server Component page file.** Turbopack desyncs the RSC payload for any `<div>` that directly wraps a Client Component in a page file, regardless of whether classNames overlap. Fix: Client Component owns its own outermost container div entirely; the Server Component page renders `<ClientComponent />` with no wrapper.
 
 **Incidents:**
 - `app/page.tsx` had `<main>` wrapping `<HeroSection>` + `hero-section.tsx` also used `<main>` → duplicate semantic tags.
 - `app/page.tsx` `<main>` wrapper → Turbopack hot-reload desync → replaced with `<div>`.
 - `hero-section.tsx` `style={{ opacity: fading ? 0 : 1 }}` → SSR string/number mismatch → replaced with `opacity-0`/`opacity-100`.
-- `hero-section.tsx` had `<div className="relative h-[40vh]...">` as root; `page.tsx` wrapper was a plain `<div>`. Turbopack desynced RSC payload, placing the class on the wrong div persistently. Fixed: moved container div to `page.tsx`; `HeroSection` returns a fragment.
+- `hero-section.tsx` had `<div className="relative h-[40vh]...">` as root; `page.tsx` wrapper was a plain `<div>`. Turbopack desynced RSC payload, placing the class on the wrong div persistently. Attempted fix: moved container div to `page.tsx`; `HeroSection` returns a fragment — desync persisted.
+- Definitive fix: removed wrapper div from `page.tsx` entirely; `HeroSection` owns its `relative h-[40vh]...` container as its root element.

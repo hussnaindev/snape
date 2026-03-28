@@ -1,6 +1,7 @@
 import { MovieGrid } from '@/components/movie-grid';
 import { Topbar } from '@/components/topbar';
 import { searchMovies } from '@/lib/tmdb';
+import { APP_NAME } from '@/lib/config';
 import type { Metadata } from 'next';
 
 interface Props {
@@ -9,7 +10,7 @@ interface Props {
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const { q } = await searchParams;
-  return { title: q ? `"${q}" — Heroflix` : 'Search — Heroflix' };
+  return { title: q ? `"${q}" — ${APP_NAME}` : `Search — ${APP_NAME}` };
 }
 
 export default async function SearchPage({ searchParams }: Props) {

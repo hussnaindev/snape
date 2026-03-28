@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Bungee, Cormorant_Garamond, DM_Sans } from 'next/font/google';
+import { APP_NAME } from '@/lib/config';
 import './globals.css';
 
 const bungee = Bungee({
@@ -26,8 +27,8 @@ const cormorantGaramond = Cormorant_Garamond({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Heroflix',
-    template: '%s | Heroflix',
+    default: APP_NAME,
+    template: `%s | ${APP_NAME}`,
   },
   description: 'Stream movies instantly. No sign-up required.',
 };

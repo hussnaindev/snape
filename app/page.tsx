@@ -9,10 +9,11 @@ import {
   getTopRatedMovies,
   getTrendingMovies,
 } from '@/lib/tmdb';
+import { APP_NAME } from '@/lib/config';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Heroflix — Stream Movies Instantly',
+  title: `${APP_NAME} — Stream Movies Instantly`,
 };
 
 export default async function HomePage() {
@@ -29,9 +30,7 @@ export default async function HomePage() {
 
       <div>
         {/* Hero */}
-        <div className="relative h-[40vh] sm:h-[80vh] min-h-[340px] sm:min-h-[480px] overflow-hidden">
-          <HeroSection movies={trending} />
-        </div>
+        <HeroSection movies={trending} />
 
         {/* Rails */}
         <div className="mt-6 flex flex-col gap-6">
@@ -43,7 +42,7 @@ export default async function HomePage() {
         {/* Popular grid */}
         <div className="mt-6 mb-10">
           <div className="px-4 md:px-8 mb-4">
-            <SectionDivider label="Popular on Heroflix" />
+            <SectionDivider label={`Popular on ${APP_NAME}`} />
           </div>
           <MovieGrid movies={popular.results} />
         </div>

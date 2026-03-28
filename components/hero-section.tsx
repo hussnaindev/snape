@@ -14,11 +14,13 @@ interface HeroSectionProps {
 export function HeroSection({ movies }: HeroSectionProps) {
   const [active, setActive] = useState(0);
   const [fading, setFading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const featured = movies.slice(0, 5);
 
   function goTo(index: number) {
     if (index === active) return;
     setFading(true);
+    setExpanded(false);
     setTimeout(() => {
       setActive(index);
       setFading(false);
@@ -29,6 +31,7 @@ export function HeroSection({ movies }: HeroSectionProps) {
   useEffect(() => {
     const id = setInterval(() => {
       setFading(true);
+      setExpanded(false);
       setTimeout(() => {
         setActive((prev) => (prev + 1) % featured.length);
         setFading(false);
@@ -45,7 +48,7 @@ export function HeroSection({ movies }: HeroSectionProps) {
   const year = movie.release_date?.slice(0, 4) ?? '';
 
   return (
-    <>
+    <div className="relative h-[40vh] sm:h-[80vh] min-h-[340px] sm:min-h-[480px] overflow-hidden">
       {/* Backdrop / Poster */}
       <div
         className={`absolute inset-0 transition-opacity duration-300 ${fading ? 'opacity-0' : 'opacity-100'}`}
@@ -88,25 +91,34 @@ export function HeroSection({ movies }: HeroSectionProps) {
           <h1 className="font-bungee text-xl sm:text-4xl md:text-6xl text-white leading-tight">
             {movie.title}
           </h1>
-          <div className="flex items-center gap-2 sm:gap-3 mt-1 sm:mt-3">
+          <div className="flex items-center gap-2 sm:gap-3 mt-2 sm:mt-3">
             {year && <span className="text-white/60 text-xs sm:text-sm">{year}</span>}
             {movie.vote_average > 0 && <RatingBadge rating={movie.vote_average} />}
           </div>
           {movie.overview && (
-            <p className="hidden sm:block mt-3 text-white/70 text-sm leading-relaxed line-clamp-3 max-w-md">
-              {movie.overview}
-            </p>
+            <div className="hidden sm:block mt-3 max-w-md">
+              <p className={`text-white/70 text-sm leading-relaxed ${expanded ? '' : 'line-clamp-3'}`}>
+                {movie.overview}
+              </p>
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                className="mt-1 text-white/50 hover:text-white text-xs transition-colors"
+              >
+                {expanded ? 'See less' : 'See more'}
+              </button>
+            </div>
           )}
-          <div className="flex gap-2 sm:gap-3 mt-2 sm:mt-5">
+          <div className="flex gap-2 sm:gap-3 mt-3 sm:mt-5">
             <Link
               href={`/movie/${movie.id}`}
-              className="inline-flex items-center gap-1.5 sm:gap-2 bg-white text-black font-semibold text-xs sm:text-sm px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-lg hover:bg-gray-200 transition-colors"
+              className="inline-flex items-center gap-1 sm:gap-2 bg-white text-black font-semibold text-[11px] sm:text-sm px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-md sm:rounded-lg hover:bg-gray-200 transition-colors"
             >
               <span>▶</span> Watch
             </Link>
             <Link
               href={`/movie/${movie.id}`}
-              className="inline-flex items-center gap-1.5 sm:gap-2 bg-white/10 text-white font-semibold text-xs sm:text-sm px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-lg border border-white/20 hover:bg-white/20 transition-colors"
+              className="inline-flex items-center gap-1 sm:gap-2 bg-white/10 text-white font-semibold text-[11px] sm:text-sm px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-md sm:rounded-lg border border-white/20 hover:bg-white/20 transition-colors"
             >
               More Info
             </Link>
@@ -128,6 +140,6 @@ export function HeroSection({ movies }: HeroSectionProps) {
           />
         ))}
       </div>
-    </>
+    </div>
   );
 }
