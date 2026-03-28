@@ -86,7 +86,7 @@ export default async function MoviePage({ params }: Props) {
 
         {/* Info block */}
         <div className="px-4 md:px-8 -mt-24 relative z-10">
-          <div className="flex gap-5 md:gap-8">
+          <div className="flex gap-5 md:gap-8 items-end">
             {/* Poster + mobile watch button */}
             <div className="flex-none flex flex-col">
               {poster && (
@@ -108,7 +108,7 @@ export default async function MoviePage({ params }: Props) {
             </div>
 
             {/* Details */}
-            <div className="flex-1 min-w-0 pt-4 md:pt-16">
+            <div className="flex-1 min-w-0">
               <h1 className="font-syne text-3xl md:text-5xl font-bold text-white leading-tight">
                 {movie.title}
               </h1>
