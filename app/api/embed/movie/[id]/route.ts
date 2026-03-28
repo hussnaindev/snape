@@ -28,23 +28,33 @@ const BROWSER_HEADERS = {
   'Upgrade-Insecure-Requests': '1',
 } as const;
 
+// Chrome enforces sandbox restrictions more aggressively than other browsers,
+// preventing the player's internal window.open() calls needed to start video.
+// Non-Chrome browsers work fine with a sandbox that blocks ad popups.
+function isChrome(req: NextRequest): boolean {
+  const ua = req.headers.get('user-agent') ?? '';
+  return /Chrome\//.test(ua) && !/Edg\/|OPR\//.test(ua);
+}
+
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   const movieId = Number(id);
   if (Number.isNaN(movieId)) return errorPage(404, 'Not found');
 
+  const chrome = isChrome(req);
+
   for (const provider of getProviders(movieId)) {
-    const res = await tryProvider(provider);
+    const res = await tryProvider(provider, chrome);
     if (res) return res;
   }
 
   return errorPage(502, 'All video providers are currently unavailable');
 }
 
-async function tryProvider(provider: Provider): Promise<Response | null> {
+async function tryProvider(provider: Provider, chrome: boolean): Promise<Response | null> {
   let html: string;
   try {
     const res = await fetch(provider.url, {
@@ -73,11 +83,13 @@ async function tryProvider(provider: Provider): Promise<Response | null> {
     return null;
   }
 
-  const safeUrl = playerUrl.toString().replace(/"/g, '%22');
+  if (chrome) {
+    return buildChromeResponse(playerUrl, provider.referer);
+  }
 
-  // Minimal shell embedding only the inner player.
-  // sandbox WITHOUT allow-popups: JS runs, video plays, popups silently blocked.
-  // referrerpolicy="no-referrer": prevents referer-mismatch from breaking the player.
+  // Non-Chrome: minimal sandbox without allow-popups blocks ad popups entirely.
+  // referrerpolicy="no-referrer": prevents referer-mismatch from blocking the player.
+  const safeUrl = playerUrl.toString().replace(/"/g, '%22');
   const playerHtml = `<!doctype html>
 <html>
 <head>
@@ -98,6 +110,61 @@ async function tryProvider(provider: Provider): Promise<Response | null> {
 </html>`;
 
   return new Response(playerHtml, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store',
+    },
+  });
+}
+
+// Chrome cannot sandbox the player iframe without breaking video (the player's
+// window.open() calls are needed for playback). Instead, fetch the player HTML
+// server-side, inject window.open blocker before any scripts run, and serve the
+// modified HTML from our origin — giving our injected code full same-origin access.
+// Relative fetch/XHR URLs are rewritten to the player's origin so API calls still work.
+async function buildChromeResponse(playerUrl: URL, referer: string): Promise<Response | null> {
+  let playerHtml: string;
+  try {
+    const res = await fetch(playerUrl.toString(), {
+      headers: { ...BROWSER_HEADERS, Referer: referer },
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    playerHtml = await res.text();
+  } catch {
+    return null;
+  }
+
+  const origin = playerUrl.origin.replace(/'/g, "\\'");
+
+  // Strip CSP meta tags so they don't block our injected script.
+  playerHtml = playerHtml.replace(
+    /<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*\/?>/gi,
+    '',
+  );
+
+  // Injected at the very top of <head> — order matters:
+  // 1. <base href> must come first so all subsequent relative HTML resource URLs
+  //    (script src, link href, img src) resolve to the player's origin, not ours.
+  // 2. <style> forces full-viewport layout.
+  // 3. <script> blocks window.open and rewrites relative fetch/XHR URLs (JS ignores
+  //    <base href>, so these need a runtime override).
+  const blocker =
+    `<base href="${playerUrl.origin}/">` +
+    `<style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;overflow:hidden;background:#000}body>div,body>section,body>main{width:100%!important;height:100%!important}iframe{width:100%!important;height:100%!important;border:0;display:block}</style>` +
+    `<script>(function(){` +
+    `window.open=function(){return null;};` +
+    `var o='${origin}';` +
+    `var _f=window.fetch;window.fetch=function(u,a){if(typeof u==='string'&&u.startsWith('/'))u=o+u;return _f.call(this,u,a);};` +
+    `var _x=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(m,u){if(typeof u==='string'&&u.startsWith('/'))u=o+u;return _x.apply(this,arguments);};` +
+    `})();<\/script>`;
+
+  const modified = /<head/i.test(playerHtml)
+    ? playerHtml.replace(/(<head[^>]*>)/i, `$1${blocker}`)
+    : blocker + playerHtml;
+
+  return new Response(modified, {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
