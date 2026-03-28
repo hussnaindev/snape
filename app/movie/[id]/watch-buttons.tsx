@@ -8,9 +8,10 @@ import { useState } from 'react';
 interface WatchButtonsProps {
   streams: ParsedStream[];
   streamGroups: Partial<Record<StreamQuality, ParsedStream[]>>;
+  fullWidth?: boolean;
 }
 
-export function WatchButtons({ streams, streamGroups }: WatchButtonsProps) {
+export function WatchButtons({ streams, streamGroups, fullWidth }: WatchButtonsProps) {
   const [showQuality, setShowQuality] = useState(false);
   const [selectedQuality, setSelectedQuality] = useState<StreamQuality | null>(null);
   const [activeStream, setActiveStream] = useState<ParsedStream | null>(null);
@@ -39,12 +40,12 @@ export function WatchButtons({ streams, streamGroups }: WatchButtonsProps) {
             <button
               type="button"
               onClick={handleWatchClick}
-              className="inline-flex items-center gap-2 bg-white text-black font-semibold text-sm px-6 py-2.5 rounded-lg hover:bg-gray-200 transition-colors"
+              className={`inline-flex items-center gap-2 bg-white text-black font-semibold text-sm px-6 py-2.5 rounded-lg hover:bg-gray-200 transition-colors${fullWidth ? ' w-full justify-center' : ''}`}
             >
               <span>▶</span> Watch
             </button>
           ) : (
-            <span className="inline-flex items-center gap-2 bg-white/5 text-white/30 font-semibold text-sm px-6 py-2.5 rounded-lg border border-white/10 cursor-not-allowed">
+            <span className={`inline-flex items-center gap-2 bg-white/5 text-white/30 font-semibold text-sm px-6 py-2.5 rounded-lg border border-white/10 cursor-not-allowed${fullWidth ? ' w-full justify-center' : ''}`}>
               Streaming Unavailable
             </span>
           )}

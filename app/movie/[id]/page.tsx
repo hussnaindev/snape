@@ -90,20 +90,29 @@ export default async function MoviePage({ params }: Props) {
         {/* Info block */}
         <div className="px-4 md:px-8 -mt-24 relative z-10">
           <div className="flex gap-5 md:gap-8">
-            {/* Poster */}
-            {poster && (
-              <div className="flex-none w-28 md:w-40 rounded overflow-hidden shadow-2xl">
-                <div className="relative aspect-[2/3]">
-                  <Image
-                    src={poster}
-                    alt={movie.title}
-                    fill
-                    sizes="(max-width: 768px) 112px, 160px"
-                    className="object-cover"
-                  />
+            {/* Poster + mobile watch button */}
+            <div className="flex-none flex flex-col">
+              {poster && (
+                <div className="w-28 md:w-40 rounded overflow-hidden shadow-2xl">
+                  <div className="relative aspect-[2/3]">
+                    <Image
+                      src={poster}
+                      alt={movie.title}
+                      fill
+                      sizes="(max-width: 768px) 112px, 160px"
+                      className="object-cover"
+                    />
+                  </div>
                 </div>
+              )}
+              <div className="md:hidden mt-4 w-28">
+                <WatchButtons
+                  streams={streams}
+                  streamGroups={streamGroups}
+                  fullWidth
+                />
               </div>
-            )}
+            </div>
 
             {/* Details */}
             <div className="flex-1 min-w-0 pt-4 md:pt-16">
@@ -140,8 +149,8 @@ export default async function MoviePage({ params }: Props) {
                 </div>
               )}
 
-              {/* Action buttons (client) */}
-              <div className="mt-5">
+              {/* Action buttons — desktop only */}
+              <div className="hidden md:block mt-5">
                 <WatchButtons
                   streams={streams}
                   streamGroups={streamGroups}
