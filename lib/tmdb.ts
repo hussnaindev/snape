@@ -79,6 +79,15 @@ export async function getPersonMovieCredits(id: number): Promise<TMDBPersonMovie
   return tmdbFetch<TMDBPersonMovieCredits>(`/person/${id}/movie_credits`);
 }
 
+export async function getMoviesByGenre(genreId: number, page = 1): Promise<TMDBMovie[]> {
+  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>('/discover/movie', {
+    with_genres: String(genreId),
+    sort_by: 'popularity.desc',
+    page: String(page),
+  });
+  return data.results;
+}
+
 export async function searchMovies(query: string, page = 1): Promise<TMDBListResult<TMDBMovie>> {
   return tmdbFetch<TMDBListResult<TMDBMovie>>('/search/movie', {
     query,
