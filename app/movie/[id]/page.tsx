@@ -109,7 +109,7 @@ export default async function MoviePage({ params }: Props) {
 
             {/* Details */}
             <div className="flex-1 min-w-0 pt-4 md:pt-16">
-              <h1 className="font-display text-3xl md:text-5xl font-semibold text-white leading-tight">
+              <h1 className="font-syne text-3xl md:text-5xl font-bold text-white leading-tight">
                 {movie.title}
               </h1>
               {movie.tagline && (

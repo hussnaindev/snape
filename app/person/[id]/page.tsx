@@ -78,7 +78,7 @@ export default async function PersonPage({ params }: Props) {
           )}
 
           <div className="flex-1 min-w-0">
-            <h1 className="font-display text-4xl md:text-5xl font-semibold text-white">
+            <h1 className="font-syne text-4xl md:text-5xl font-bold text-white">
               {person.name}
             </h1>
             {person.known_for_department && (

@@ -37,8 +37,8 @@ export function Topbar() {
           href="/"
           className="flex items-center gap-2 text-white"
         >
-          <Logo className="w-6 h-6 md:w-7 md:h-7 text-white" />
-          <span className="font-display text-lg md:text-xl font-semibold tracking-widest uppercase">
+          <Logo className="w-5 h-5 md:w-7 md:h-7 text-white" />
+          <span className="font-syne text-sm md:text-xl font-bold tracking-widest uppercase">
             {APP_NAME}
           </span>
         </Link>

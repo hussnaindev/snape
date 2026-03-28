@@ -88,7 +88,7 @@ export function HeroSection({ movies }: HeroSectionProps) {
         className={`absolute bottom-0 left-0 right-0 p-3 sm:p-4 md:p-12 pb-8 sm:pb-20 transition-opacity duration-300 ${fading ? 'opacity-0' : 'opacity-100'}`}
       >
         <div className="max-w-xl">
-          <h1 className="font-bungee text-xl sm:text-4xl md:text-6xl text-white leading-tight">
+          <h1 className="font-syne font-bold text-xl sm:text-4xl md:text-6xl text-white leading-tight">
             {movie.title}
           </h1>
           <div className="flex items-center gap-2 sm:gap-3 mt-2 sm:mt-3">
