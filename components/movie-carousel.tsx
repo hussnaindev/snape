@@ -13,7 +13,7 @@ export function MovieCarousel({ title, movies }: MovieCarouselProps) {
       <SectionDivider label={title} className="mb-4" />
       <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
         {movies.map((movie) => (
-          <div key={movie.id} className="flex-none w-[220px] md:w-[260px]">
+          <div key={movie.id} className="flex-none w-[130px] sm:w-[220px] md:w-[260px]">
             <MovieCard movie={movie} />
           </div>
         ))}

@@ -41,28 +41,40 @@ export function HeroSection({ movies }: HeroSectionProps) {
   if (!movie) return null;
 
   const backdrop = tmdbImage(movie.backdrop_path, 'original');
+  const poster = tmdbImage(movie.poster_path, 'w500');
   const year = movie.release_date?.slice(0, 4) ?? '';
 
   return (
     <div className="relative h-[80vh] min-h-[480px] overflow-hidden">
-      {/* Backdrop */}
+      {/* Backdrop / Poster */}
       <div
         className="absolute inset-0 transition-opacity duration-300"
         style={{ opacity: fading ? 0 : 1 }}
       >
-        {/* Static backdrop image — always shown as fallback / while trailer loads */}
-        {backdrop && (
+        {/* Mobile: poster (portrait) */}
+        {(poster || backdrop) && (
           <Image
-            src={backdrop}
+            src={poster || backdrop!}
             alt={movie.title}
             fill
             priority
             sizes="100vw"
-            className="object-cover"
+            className="object-cover object-top sm:hidden"
+          />
+        )}
+        {/* Desktop: backdrop (landscape) */}
+        {(backdrop || poster) && (
+          <Image
+            src={backdrop || poster!}
+            alt={movie.title}
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover hidden sm:block"
           />
         )}
 
-        {!backdrop && <div className="absolute inset-0 bg-white/5" />}
+        {!backdrop && !poster && <div className="absolute inset-0 bg-white/5" />}
 
         {/* Gradient overlays */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />

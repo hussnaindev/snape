@@ -13,6 +13,7 @@ interface MovieCardProps {
 
 export function MovieCard({ movie, qualityBadge, imageSize = 'w780', className }: MovieCardProps) {
   const backdrop = tmdbImage(movie.backdrop_path, imageSize);
+  const poster = tmdbImage(movie.poster_path, 'w342');
   const year = movie.release_date?.slice(0, 4) ?? '';
 
   return (
@@ -20,14 +21,31 @@ export function MovieCard({ movie, qualityBadge, imageSize = 'w780', className }
       href={`/movie/${movie.id}`}
       className={`group relative block overflow-hidden rounded-md bg-white/5 ${className ?? ''}`}
     >
-      {/* Backdrop */}
-      <div className="aspect-video overflow-hidden">
+      {/* Mobile: Poster (portrait) */}
+      <div className="aspect-[2/3] overflow-hidden sm:hidden">
+        {poster ? (
+          <Image
+            src={poster}
+            alt={movie.title}
+            fill
+            sizes="50vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/5 text-white/20 text-sm">
+            No Image
+          </div>
+        )}
+      </div>
+
+      {/* Desktop: Backdrop (landscape) */}
+      <div className="hidden sm:block aspect-video overflow-hidden">
         {backdrop ? (
           <Image
             src={backdrop}
             alt={movie.title}
             fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            sizes="(max-width: 1024px) 33vw, 25vw"
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
