@@ -1,68 +1,59 @@
 'use client';
 
-import { PlayerModal } from '@/components/player-modal';
-import { QualitySelector } from '@/components/quality-selector';
-import type { ParsedStream, StreamQuality } from '@/types/torrentio';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface WatchButtonsProps {
-  streams: ParsedStream[];
-  streamGroups: Partial<Record<StreamQuality, ParsedStream[]>>;
+  embedUrl: string;
   fullWidth?: boolean;
 }
 
-export function WatchButtons({ streams, streamGroups, fullWidth }: WatchButtonsProps) {
-  const [showQuality, setShowQuality] = useState(false);
-  const [selectedQuality, setSelectedQuality] = useState<StreamQuality | null>(null);
-  const [activeStream, setActiveStream] = useState<ParsedStream | null>(null);
+export function WatchButtons({ embedUrl, fullWidth }: WatchButtonsProps) {
+  const [active, setActive] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const hasStreams = streams.length > 0;
-
-  function handleWatchClick() {
-    if (!hasStreams) return;
-    setShowQuality((prev) => !prev);
+  function handleWatch() {
+    const el = containerRef.current;
+    if (!el) return;
+    el.requestFullscreen().catch(() => {
+      window.open(embedUrl, '_blank');
+    });
   }
 
-  function handleQualitySelect(quality: StreamQuality) {
-    setSelectedQuality(quality);
-    const best = streamGroups[quality]?.[0];
-    if (best) {
-      setActiveStream(best);
-      setShowQuality(false);
+  useEffect(() => {
+    function onFullscreenChange() {
+      setActive(!!document.fullscreenElement);
     }
-  }
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
 
   return (
     <>
-      <div className="flex flex-col gap-3">
-        <div className="flex gap-3 flex-wrap">
-          {hasStreams ? (
-            <button
-              type="button"
-              onClick={handleWatchClick}
-              className={`inline-flex items-center gap-2 bg-white text-black font-semibold text-sm px-6 py-2.5 rounded-lg hover:bg-gray-200 transition-colors${fullWidth ? ' w-full justify-center' : ''}`}
-            >
-              <span>▶</span> Watch
-            </button>
-          ) : (
-            <span className={`inline-flex items-center gap-2 bg-white/5 text-white/30 font-semibold text-sm px-6 py-2.5 rounded-lg border border-white/10 cursor-not-allowed${fullWidth ? ' w-full justify-center' : ''}`}>
-              Streaming Unavailable
-            </span>
-          )}
-        </div>
-
-        {showQuality && (
-          <div className="animate-fade-in">
-            <QualitySelector
-              groups={streamGroups}
-              selected={selectedQuality}
-              onSelect={handleQualitySelect}
-            />
-          </div>
-        )}
+      <div className="flex gap-3 flex-wrap">
+        <button
+          type="button"
+          onClick={handleWatch}
+          className={`inline-flex items-center gap-2 bg-white text-black font-semibold text-sm px-6 py-2.5 rounded-lg hover:bg-gray-200 transition-colors${fullWidth ? ' w-full justify-center' : ''}`}
+        >
+          <span>▶</span> Watch
+        </button>
       </div>
 
-      {activeStream && <PlayerModal stream={activeStream} onClose={() => setActiveStream(null)} />}
+      <div
+        ref={containerRef}
+        className={`fixed inset-0 bg-black ${active ? 'z-50' : '-z-10 invisible'}`}
+      >
+        {active && (
+          <iframe
+            src={embedUrl}
+            className="w-full h-full"
+            allowFullScreen
+            allow="autoplay; fullscreen"
+            sandbox="allow-scripts allow-same-origin allow-presentation allow-fullscreen"
+            title="Video player"
+          />
+        )}
+      </div>
     </>
   );
 }

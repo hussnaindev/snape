@@ -14,7 +14,7 @@ import {
   getMovieRecommendations,
 } from '@/lib/tmdb';
 import { tmdbImage } from '@/lib/tmdb-image';
-import { getTorrentStreams, groupStreamsByQuality } from '@/lib/torrentio';
+import { getMovieEmbedUrl } from '@/lib/vsembed';
 
 import { WatchButtons } from './watch-buttons';
 
@@ -47,9 +47,7 @@ export default async function MoviePage({ params }: Props) {
 
   if (!movie) notFound();
 
-  // Torrentio — only if we have an IMDB ID
-  const streams = movie.imdb_id ? await getTorrentStreams(movie.imdb_id) : [];
-  const streamGroups = groupStreamsByQuality(streams);
+  const embedUrl = getMovieEmbedUrl(movieId);
 
   const backdrop = tmdbImage(movie.backdrop_path, 'original');
   const poster = tmdbImage(movie.poster_path, 'w342');
@@ -107,8 +105,7 @@ export default async function MoviePage({ params }: Props) {
               )}
               <div className="md:hidden mt-4 w-28">
                 <WatchButtons
-                  streams={streams}
-                  streamGroups={streamGroups}
+                  embedUrl={embedUrl}
                   fullWidth
                 />
               </div>
@@ -152,8 +149,7 @@ export default async function MoviePage({ params }: Props) {
               {/* Action buttons — desktop only */}
               <div className="hidden md:block mt-5">
                 <WatchButtons
-                  streams={streams}
-                  streamGroups={streamGroups}
+                  embedUrl={embedUrl}
                 />
               </div>
             </div>
