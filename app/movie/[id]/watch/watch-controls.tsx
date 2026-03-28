@@ -19,6 +19,15 @@ export function WatchControls() {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
+    // Auto-enter fullscreen the moment the watch page mounts — the user just clicked
+    // "Watch" so a transient user activation is still live on this navigation.
+    document.documentElement.requestFullscreen().then(() => {
+      // Lock to landscape on mobile (portrait viewport = phone held upright)
+      if (window.innerHeight > window.innerWidth) {
+        (screen.orientation as ExtendedOrientation).lock?.('landscape').catch(() => {});
+      }
+    }).catch(() => {});
+
     function onFsChange() {
       const inFs = !!document.fullscreenElement;
       setIsFullscreen(inFs);
