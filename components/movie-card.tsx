@@ -57,7 +57,7 @@ export function MovieCard({ movie, qualityBadge, imageSize = 'w780', className }
 
       {/* Quality badge */}
       {qualityBadge && (
-        <span className="absolute top-2 left-2 bg-black/70 border border-sage/40 text-sage text-[10px] font-bold px-1.5 py-0.5 rounded">
+        <span className="absolute top-2 left-2 bg-black/70 border border-white/30 text-white/80 text-[10px] font-bold px-1.5 py-0.5 rounded">
           {qualityBadge}
         </span>
       )}

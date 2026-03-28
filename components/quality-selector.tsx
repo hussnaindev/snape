@@ -23,10 +23,10 @@ export function QualitySelector({ groups, selected, onSelect }: QualitySelectorP
           type="button"
           onClick={() => onSelect(q)}
           className={cn(
-            'px-4 py-1.5 rounded-full text-sm font-semibold border transition-colors',
+            'px-4 py-1.5 rounded-lg text-sm font-semibold border transition-colors',
             selected === q
-              ? 'bg-sage text-black border-sage'
-              : 'bg-white/5 text-white/70 border-white/15 hover:border-sage hover:text-sage',
+              ? 'bg-white text-black border-white'
+              : 'bg-white/5 text-white/70 border-white/15 hover:border-white/60 hover:text-white',
           )}
         >
           {q}

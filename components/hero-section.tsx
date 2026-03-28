@@ -45,7 +45,7 @@ export function HeroSection({ movies }: HeroSectionProps) {
   const year = movie.release_date?.slice(0, 4) ?? '';
 
   return (
-    <div className="relative h-[50vh] sm:h-[80vh] min-h-[480px] overflow-hidden">
+    <div className="relative h-[40vh] sm:h-[80vh] min-h-[340px] sm:min-h-[480px] overflow-hidden">
       {/* Backdrop / Poster */}
       <div
         className="absolute inset-0 transition-opacity duration-300"
@@ -83,32 +83,32 @@ export function HeroSection({ movies }: HeroSectionProps) {
 
       {/* Content */}
       <div
-        className="absolute bottom-0 left-0 right-0 p-6 md:p-12 pb-20 transition-opacity duration-300"
+        className="absolute bottom-0 left-0 right-0 p-4 md:p-12 pb-14 sm:pb-20 transition-opacity duration-300"
         style={{ opacity: fading ? 0 : 1 }}
       >
         <div className="max-w-xl">
-          <h1 className="font-display text-4xl md:text-6xl font-semibold text-white leading-tight">
+          <h1 className="font-display text-2xl sm:text-4xl md:text-6xl font-semibold text-white leading-tight">
             {movie.title}
           </h1>
-          <div className="flex items-center gap-3 mt-3">
+          <div className="flex items-center gap-3 mt-1.5 sm:mt-3">
             {year && <span className="text-white/60 text-sm">{year}</span>}
             {movie.vote_average > 0 && <RatingBadge rating={movie.vote_average} />}
           </div>
           {movie.overview && (
-            <p className="mt-3 text-white/70 text-sm leading-relaxed line-clamp-3 max-w-md">
+            <p className="hidden sm:block mt-3 text-white/70 text-sm leading-relaxed line-clamp-3 max-w-md">
               {movie.overview}
             </p>
           )}
-          <div className="flex gap-3 mt-5">
+          <div className="flex gap-3 mt-3 sm:mt-5">
             <Link
               href={`/movie/${movie.id}`}
-              className="inline-flex items-center gap-2 bg-sage text-black font-semibold text-sm px-5 py-2.5 rounded-full hover:bg-sage/90 transition-colors"
+              className="inline-flex items-center gap-2 bg-white text-black font-semibold text-sm px-5 py-2.5 rounded-lg hover:bg-gray-200 transition-colors"
             >
               <span>▶</span> Watch
             </Link>
             <Link
               href={`/movie/${movie.id}`}
-              className="inline-flex items-center gap-2 bg-white/10 text-white font-semibold text-sm px-5 py-2.5 rounded-full border border-white/20 hover:bg-white/20 transition-colors"
+              className="inline-flex items-center gap-2 bg-white/10 text-white font-semibold text-sm px-5 py-2.5 rounded-lg border border-white/20 hover:bg-white/20 transition-colors"
             >
               More Info
             </Link>
@@ -125,7 +125,7 @@ export function HeroSection({ movies }: HeroSectionProps) {
             onClick={() => goTo(i)}
             aria-label={`Go to slide ${i + 1}`}
             className={`w-2 h-2 rounded-full transition-all ${
-              i === active ? 'bg-sage w-6' : 'bg-white/30 hover:bg-white/60'
+              i === active ? 'bg-white w-6' : 'bg-white/30 hover:bg-white/60'
             }`}
           />
         ))}

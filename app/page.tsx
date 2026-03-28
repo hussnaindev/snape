@@ -27,7 +27,7 @@ export default async function HomePage() {
     <>
       <Topbar />
 
-      <main>
+      <div>
         {/* Hero */}
         <HeroSection movies={trending} />
 
@@ -45,7 +45,7 @@ export default async function HomePage() {
           </div>
           <MovieGrid movies={popular.results} />
         </div>
-      </main>
+      </div>
     </>
   );
 }

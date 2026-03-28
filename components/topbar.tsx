@@ -33,7 +33,7 @@ export function Topbar() {
         {/* Wordmark */}
         <Link
           href="/"
-          className="font-display text-2xl font-semibold tracking-widest text-white uppercase"
+          className="font-display text-lg md:text-xl font-semibold tracking-widest text-white uppercase"
         >
           Heroflix
         </Link>
@@ -48,7 +48,7 @@ export function Topbar() {
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Escape' && setSearchOpen(false)}
                 placeholder="Search movies…"
-                className="bg-black/60 border border-white/20 rounded px-3 py-1.5 text-sm text-white placeholder-white/40 outline-none focus:border-sage w-44 md:w-64"
+                className="bg-black/60 border border-white/20 rounded px-3 py-1.5 text-sm text-white placeholder-white/40 outline-none focus:border-white/60 w-44 md:w-64"
               />
               <button
                 type="button"

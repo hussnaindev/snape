@@ -9,7 +9,7 @@ export function RatingBadge({ rating, className }: RatingBadgeProps) {
   const score = rating.toFixed(1);
   const color =
     rating >= 7.5
-      ? 'text-sage border-sage/40'
+      ? 'text-white border-white/40'
       : rating >= 6
         ? 'text-white border-white/40'
         : 'text-white/60 border-white/20';

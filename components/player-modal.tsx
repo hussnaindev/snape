@@ -111,7 +111,7 @@ export function PlayerModal({ stream, onClose }: PlayerModalProps) {
 
           {(status === 'connecting' || status === 'buffering') && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black">
-              <div className="w-10 h-10 rounded-full border-2 border-sage border-t-transparent animate-spin" />
+              <div className="w-10 h-10 rounded-full border-2 border-white/70 border-t-transparent animate-spin" />
               <p className="text-white/70 text-sm">
                 {status === 'connecting' ? 'Connecting to peers…' : `Buffering… ${progress}%`}
               </p>
@@ -138,7 +138,7 @@ export function PlayerModal({ stream, onClose }: PlayerModalProps) {
           <div className="flex items-center gap-2 mt-2">
             <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
               <div
-                className="h-full bg-sage rounded-full transition-all"
+                className="h-full bg-white rounded-full transition-all"
                 style={{ width: `${progress}%` }}
               />
             </div>
