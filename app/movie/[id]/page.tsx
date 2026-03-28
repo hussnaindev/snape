@@ -14,7 +14,6 @@ import {
   getMovieRecommendations,
 } from '@/lib/tmdb';
 import { tmdbImage } from '@/lib/tmdb-image';
-import { getMovieEmbedUrl } from '@/lib/vsembed';
 
 import { WatchButtons } from './watch-buttons';
 
@@ -47,7 +46,7 @@ export default async function MoviePage({ params }: Props) {
 
   if (!movie) notFound();
 
-  const embedUrl = getMovieEmbedUrl(movieId);
+  const watchHref = `/movie/${movieId}/watch`;
 
   const backdrop = tmdbImage(movie.backdrop_path, 'original');
   const poster = tmdbImage(movie.poster_path, 'w342');
@@ -59,7 +58,7 @@ export default async function MoviePage({ params }: Props) {
   return (
     <>
       <Topbar />
-      <main>
+      <div>
         {/* Backdrop hero */}
         <div className="relative h-[55vh] min-h-[320px] overflow-hidden">
           {backdrop ? (
@@ -104,10 +103,7 @@ export default async function MoviePage({ params }: Props) {
                 </div>
               )}
               <div className="md:hidden mt-4 w-28">
-                <WatchButtons
-                  embedUrl={embedUrl}
-                  fullWidth
-                />
+                <WatchButtons href={watchHref} fullWidth />
               </div>
             </div>
 
@@ -148,9 +144,7 @@ export default async function MoviePage({ params }: Props) {
 
               {/* Action buttons — desktop only */}
               <div className="hidden md:block mt-5">
-                <WatchButtons
-                  embedUrl={embedUrl}
-                />
+                <WatchButtons href={watchHref} />
               </div>
             </div>
           </div>
@@ -174,7 +168,7 @@ export default async function MoviePage({ params }: Props) {
             <MovieCarousel title="More Like This" movies={recommendations} />
           </div>
         )}
-      </main>
+      </div>
     </>
   );
 }
