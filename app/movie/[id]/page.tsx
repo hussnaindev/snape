@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { CastRail } from '@/components/cast-rail';
@@ -12,12 +11,41 @@ import {
   getMovieCredits,
   getMovieDetail,
   getMovieRecommendations,
+  getMovieVideos,
 } from '@/lib/tmdb';
 import { tmdbImage } from '@/lib/tmdb-image';
+import type { TMDBVideosResult } from '@/types/tmdb';
 
 import { ExpandableText } from '@/components/ui/expandable-text';
 
 import { WatchButtons } from './watch-buttons';
+import { BackdropPlayer } from './backdrop-player';
+
+/** Returns the YouTube key of the first embeddable trailer/teaser, or null. */
+async function getEmbeddableTrailerKey(videos: TMDBVideosResult): Promise<string | null> {
+  const candidates = videos.results.filter(
+    (v) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser'),
+  );
+  // Official trailers first, then by type priority
+  candidates.sort((a, b) => {
+    if (a.official !== b.official) return a.official ? -1 : 1;
+    if (a.type !== b.type) return a.type === 'Trailer' ? -1 : 1;
+    return 0;
+  });
+
+  for (const v of candidates) {
+    try {
+      const res = await fetch(
+        `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${v.key}&format=json`,
+        { next: { revalidate: 86400 } },
+      );
+      if (res.ok) return v.key;
+    } catch {
+      // network error, skip
+    }
+  }
+  return null;
+}
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -40,10 +68,11 @@ export default async function MoviePage({ params }: Props) {
   const movieId = Number(id);
   if (Number.isNaN(movieId)) notFound();
 
-  const [movie, credits, recommendations] = await Promise.all([
+  const [movie, credits, recommendations, videos] = await Promise.all([
     getMovieDetail(movieId).catch(() => null),
     getMovieCredits(movieId).catch(() => ({ cast: [], crew: [] })),
     getMovieRecommendations(movieId).catch(() => []),
+    getMovieVideos(movieId).catch(() => ({ results: [] })),
   ]);
 
   if (!movie) notFound();
@@ -51,6 +80,7 @@ export default async function MoviePage({ params }: Props) {
   const watchHref = `/movie/${movieId}/watch`;
 
   const backdrop = tmdbImage(movie.backdrop_path, 'original');
+  const trailerKey = await getEmbeddableTrailerKey(videos);
   const poster = tmdbImage(movie.poster_path, 'w342');
   const year = movie.release_date?.slice(0, 4) ?? '';
   const runtime = movie.runtime
@@ -62,29 +92,11 @@ export default async function MoviePage({ params }: Props) {
       <Topbar />
       <div>
         {/* Backdrop hero */}
-        <div className="relative h-[calc(45vh+4rem)] md:h-[calc(55vh+9rem)] min-h-[200px] md:min-h-[320px] overflow-hidden">
-          {backdrop ? (
-            <Image
-              src={backdrop}
-              alt={movie.title}
-              fill
-              priority
-              sizes="100vw"
-              className="object-cover object-top"
-            />
-          ) : (
-            <div className="absolute inset-0 bg-white/5" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-
-          {/* Back button — desktop only */}
-          <Link
-            href="/"
-            className="absolute top-20 left-4 md:left-8 text-white/70 hover:text-white text-sm hidden md:flex items-center gap-1 transition-colors"
-          >
-            ← Back
-          </Link>
-        </div>
+        <BackdropPlayer
+          backdropUrl={backdrop}
+          trailerKey={trailerKey}
+          alt={movie.title}
+        />
 
         {/* Info block */}
         <div className="px-4 md:px-8 -mt-36 md:-mt-60 relative z-10">
