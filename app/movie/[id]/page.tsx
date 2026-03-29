@@ -60,7 +60,7 @@ export default async function MoviePage({ params }: Props) {
       <Topbar />
       <div>
         {/* Backdrop hero */}
-        <div className="relative h-[55vh] min-h-[320px] overflow-hidden">
+        <div className="relative h-[35vh] md:h-[55vh] min-h-[200px] md:min-h-[320px] overflow-hidden">
           {backdrop ? (
             <Image
               src={backdrop}
@@ -75,49 +75,44 @@ export default async function MoviePage({ params }: Props) {
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
 
-          {/* Back button */}
+          {/* Back button — desktop only */}
           <Link
             href="/"
-            className="absolute top-20 left-4 md:left-8 text-white/70 hover:text-white text-sm flex items-center gap-1 transition-colors"
+            className="absolute top-20 left-4 md:left-8 text-white/70 hover:text-white text-sm hidden md:flex items-center gap-1 transition-colors"
           >
             ← Back
           </Link>
         </div>
 
         {/* Info block */}
-        <div className="px-4 md:px-8 -mt-24 relative z-10">
-          <div className="flex gap-5 md:gap-8 items-end">
-            {/* Poster + mobile watch button */}
-            <div className="flex-none flex flex-col">
+        <div className="px-4 md:px-8 -mt-20 md:-mt-24 relative z-10">
+          <div className="flex gap-4 md:gap-8 h-36 md:h-60">
+            {/* Poster */}
+            <div className="flex-none w-24 md:w-40 rounded overflow-hidden shadow-2xl">
               {poster && (
-                <div className="w-28 md:w-40 rounded overflow-hidden shadow-2xl">
-                  <div className="relative aspect-[2/3]">
-                    <Image
-                      src={poster}
-                      alt={movie.title}
-                      fill
-                      sizes="(max-width: 768px) 112px, 160px"
-                      className="object-cover"
-                    />
-                  </div>
+                <div className="relative aspect-[2/3]">
+                  <Image
+                    src={poster}
+                    alt={movie.title}
+                    fill
+                    sizes="(max-width: 768px) 96px, 160px"
+                    className="object-cover"
+                  />
                 </div>
               )}
-              <div className="md:hidden mt-4 w-28">
-                <WatchButtons href={watchHref} fullWidth />
-              </div>
             </div>
 
             {/* Details */}
-            <div className="flex-1 min-w-0">
-              <h1 className="font-syne text-3xl md:text-5xl font-bold text-white leading-tight">
+            <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
+              <h1 className="font-syne text-sm md:text-4xl font-bold text-white leading-tight line-clamp-2">
                 {movie.title}
               </h1>
               {movie.tagline && (
-                <p className="mt-1 text-white/50 italic text-sm">{movie.tagline}</p>
+                <p className="mt-0.5 md:mt-1 text-white/50 italic text-[10px] md:text-xs truncate">{movie.tagline}</p>
               )}
 
               {/* Metadata row */}
-              <div className="flex flex-wrap items-center gap-2 mt-3 text-sm text-white/60">
+              <div className="flex flex-wrap items-center gap-1 md:gap-2 mt-0.5 md:mt-2 text-[10px] md:text-sm text-white/60">
                 {year && <span>{year}</span>}
                 {runtime && (
                   <>
@@ -128,22 +123,25 @@ export default async function MoviePage({ params }: Props) {
                 {movie.vote_average > 0 && (
                   <>
                     <span className="text-white/20">·</span>
-                    <RatingBadge rating={movie.vote_average} />
+                    <RatingBadge rating={movie.vote_average} className="text-[10px] md:text-xs px-1 md:px-1.5 py-px md:py-0.5" />
                   </>
                 )}
               </div>
 
               {/* Genre chips */}
               {movie.genres.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3">
+                <div className="flex flex-wrap gap-1 md:gap-2 mt-0.5 md:mt-2">
                   {movie.genres.map((g) => (
-                    <TagChip key={g.id} label={g.name} />
+                    <TagChip key={g.id} label={g.name} className="text-[9px] md:text-xs px-1.5 md:px-3 py-px md:py-1" />
                   ))}
                 </div>
               )}
 
-              {/* Action buttons — desktop only */}
-              <div className="hidden md:block mt-5">
+              {/* Watch button — pinned to bottom of column */}
+              <div className="md:hidden mt-auto pt-1 w-full">
+                <WatchButtons href={watchHref} fullWidth />
+              </div>
+              <div className="hidden md:block mt-auto pt-4">
                 <WatchButtons href={watchHref} />
               </div>
             </div>
@@ -151,8 +149,8 @@ export default async function MoviePage({ params }: Props) {
 
           {/* Synopsis */}
           {movie.overview && (
-            <div className="mt-8 max-w-2xl">
-              <p className="text-white/70 text-sm leading-relaxed">{movie.overview}</p>
+            <div className="mt-5 md:mt-8 max-w-2xl">
+              <p className="text-white/70 text-xs md:text-sm leading-relaxed overflow-hidden [display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical]">{movie.overview}</p>
             </div>
           )}
         </div>
