@@ -8,8 +8,8 @@ type Provider = { url: string; referer: string };
 
 function getProviders(movieId: number): Provider[] {
   return [
-    { url: `https://vidsrc.icu/embed/movie?tmdb=${movieId}?autoplay=1`,  referer: 'https://vidsrc.icu/' },
-    { url: `https://embed.su/embed/movie?tmdb=${movieId}?autoplay=1`,     referer: 'https://embed.su/' },
+    { url: `https://vidsrc.icu/embed/movie?tmdb=${movieId}&autoplay=1`,  referer: 'https://vidsrc.icu/' },
+    { url: `https://embed.su/embed/movie?tmdb=${movieId}&autoplay=1`,     referer: 'https://embed.su/' },
     { url: `https://moviesapi.club/movie/${movieId}`,     referer: 'https://moviesapi.club/' },
   ];
 }
