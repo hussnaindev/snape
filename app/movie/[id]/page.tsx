@@ -8,44 +8,19 @@ import { Topbar } from '@/components/topbar';
 import { RatingBadge } from '@/components/ui/rating-badge';
 import { TagChip } from '@/components/ui/tag-chip';
 import {
+  getEmbeddableTrailerKey,
   getMovieCredits,
   getMovieDetail,
   getMovieRecommendations,
   getMovieVideos,
 } from '@/lib/tmdb';
 import { tmdbImage } from '@/lib/tmdb-image';
-import type { TMDBVideosResult } from '@/types/tmdb';
 
 import { ExpandableText } from '@/components/ui/expandable-text';
 
 import { WatchButtons } from './watch-buttons';
 import { BackdropPlayer } from './backdrop-player';
 
-/** Returns the YouTube key of the first embeddable trailer/teaser, or null. */
-async function getEmbeddableTrailerKey(videos: TMDBVideosResult): Promise<string | null> {
-  const candidates = videos.results.filter(
-    (v) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser'),
-  );
-  // Official trailers first, then by type priority
-  candidates.sort((a, b) => {
-    if (a.official !== b.official) return a.official ? -1 : 1;
-    if (a.type !== b.type) return a.type === 'Trailer' ? -1 : 1;
-    return 0;
-  });
-
-  for (const v of candidates) {
-    try {
-      const res = await fetch(
-        `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${v.key}&format=json`,
-        { next: { revalidate: 86400 } },
-      );
-      if (res.ok) return v.key;
-    } catch {
-      // network error, skip
-    }
-  }
-  return null;
-}
 
 interface Props {
   params: Promise<{ id: string }>;

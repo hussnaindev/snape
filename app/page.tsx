@@ -10,6 +10,8 @@ import {
   getTrendingMovies,
   getMoviesByGenre,
   getBollywoodMovies,
+  getMovieVideos,
+  getEmbeddableTrailerKey,
 } from '@/lib/tmdb';
 import { APP_NAME } from '@/lib/config';
 import type { Metadata } from 'next';
@@ -65,13 +67,25 @@ export default async function HomePage() {
   const scifi = dedupe(hasImages(scifiRaw));
   const bollywood = dedupe(hasImages(bollywoodRaw));
 
+  // Fetch trailer keys for the 5 featured hero movies in parallel
+  const featuredMovies = trendingFiltered.slice(0, 5);
+  const trailerKeys = Object.fromEntries(
+    await Promise.all(
+      featuredMovies.map(async (m) => {
+        const videos = await getMovieVideos(m.id).catch(() => ({ results: [] }));
+        const key = await getEmbeddableTrailerKey(videos);
+        return [m.id, key] as const;
+      }),
+    ),
+  );
+
   return (
     <>
       <Topbar />
 
       <div>
         {/* Hero */}
-        <HeroSection movies={trendingFiltered} />
+        <HeroSection movies={trendingFiltered} trailerKeys={trailerKeys} />
 
         {/* Rails */}
         <div className="mt-6 flex flex-col gap-3">

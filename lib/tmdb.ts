@@ -104,3 +104,28 @@ export async function searchMovies(query: string, page = 1): Promise<TMDBListRes
     page: String(page),
   });
 }
+
+/** Returns the YouTube key of the first embeddable trailer/teaser, or null. */
+export async function getEmbeddableTrailerKey(videos: TMDBVideosResult): Promise<string | null> {
+  const candidates = videos.results.filter(
+    (v) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser'),
+  );
+  candidates.sort((a, b) => {
+    if (a.official !== b.official) return a.official ? -1 : 1;
+    if (a.type !== b.type) return a.type === 'Trailer' ? -1 : 1;
+    return 0;
+  });
+
+  for (const v of candidates) {
+    try {
+      const res = await fetch(
+        `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${v.key}&format=json`,
+        { next: { revalidate: 86400 } },
+      );
+      if (res.ok) return v.key;
+    } catch {
+      // network error, skip
+    }
+  }
+  return null;
+}

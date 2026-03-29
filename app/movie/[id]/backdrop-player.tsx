@@ -16,7 +16,12 @@ export function BackdropPlayer({ backdropUrl, trailerKey, alt }: Props) {
   const [showVideo, setShowVideo] = useState(false);
   const [videoVisible, setVideoVisible] = useState(false);
   const [muted, setMuted] = useState(true);
+  const [pageOrigin, setPageOrigin] = useState('');
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    setPageOrigin(window.location.origin);
+  }, []);
 
   // Step 1 — mount the iframe after a short delay
   useEffect(() => {
@@ -77,7 +82,7 @@ export function BackdropPlayer({ backdropUrl, trailerKey, alt }: Props) {
   }, [showVideo, trailerKey]);
 
   const embedUrl = trailerKey
-    ? `https://www.youtube-nocookie.com/embed/${trailerKey}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&loop=1&playlist=${trailerKey}&iv_load_policy=3&enablejsapi=1`
+    ? `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&loop=1&playlist=${trailerKey}&iv_load_policy=3&enablejsapi=1${pageOrigin ? `&origin=${pageOrigin}` : ''}`
     : null;
 
   function handleMuteToggle() {
@@ -101,7 +106,7 @@ export function BackdropPlayer({ backdropUrl, trailerKey, alt }: Props) {
           fill
           priority
           sizes="100vw"
-          className={`object-cover object-top transition-opacity duration-1000 ${videoVisible ? 'opacity-0' : 'opacity-100'}`}
+          className={`object-cover object-top transition-opacity duration-1000 ${videoVisible ? 'sm:opacity-0' : ''}`}
         />
       ) : (
         <div className="absolute inset-0 bg-white/5" />
@@ -112,9 +117,9 @@ export function BackdropPlayer({ backdropUrl, trailerKey, alt }: Props) {
         <iframe
           ref={iframeRef}
           src={embedUrl}
-          allow="autoplay; fullscreen"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           title={`${alt} trailer`}
-          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[177.78vh] h-[56.25vw] min-w-full min-h-full pointer-events-none transition-opacity duration-1000 ${videoVisible ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[177.78vh] h-[56.25vw] min-w-[130%] min-h-[130%] scale-[1.3] pointer-events-none transition-opacity duration-1000 hidden sm:block ${videoVisible ? 'opacity-100' : 'opacity-0'}`}
         />
       )}
 
@@ -134,7 +139,7 @@ export function BackdropPlayer({ backdropUrl, trailerKey, alt }: Props) {
         <button
           type="button"
           onClick={handleMuteToggle}
-          className="absolute bottom-4 right-4 z-10 flex items-center justify-center w-8 h-8 rounded-full border border-white/40 bg-black/50 text-white/80 hover:text-white hover:border-white/70 transition-colors"
+          className="absolute bottom-4 right-4 z-10 hidden sm:flex items-center justify-center w-8 h-8 rounded-full border border-white/40 bg-black/50 text-white/80 hover:text-white hover:border-white/70 transition-colors"
           aria-label={muted ? 'Unmute trailer' : 'Mute trailer'}
         >
           {muted ? (
