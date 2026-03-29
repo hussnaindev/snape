@@ -1,13 +1,17 @@
+import type { CSSProperties } from 'react';
+
 interface LogoProps {
   className?: string;
+  style?: CSSProperties;
 }
 
-export function Logo({ className = 'w-6 h-6' }: LogoProps) {
+export function Logo({ className = 'w-6 h-6', style }: LogoProps) {
   return (
     <svg
       viewBox="0 0 512 512"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
+      style={style}
       aria-hidden="true"
       fill="currentColor"
     >
