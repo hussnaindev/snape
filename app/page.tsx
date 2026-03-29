@@ -32,11 +32,23 @@ export default async function HomePage() {
       getBollywoodMovies(),   // Bollywood
     ]);
 
+  // Filter out movies missing both backdrop and poster images
+  function hasImages<T extends { backdrop_path: string | null; poster_path: string | null }>(movies: T[]): T[] {
+    return movies.filter((m) => m.backdrop_path !== null || m.poster_path !== null);
+  }
+
+  const [trendingFiltered, nowPlayingFiltered, topRatedFiltered, popularFiltered] = [
+    hasImages(trending),
+    hasImages(nowPlaying),
+    hasImages(topRated),
+    hasImages(popular.results),
+  ];
+
   // Deduplicate genre rails — exclude movies already shown in earlier sections
   const seen = new Set<number>([
-    ...trending.map((m) => m.id),
-    ...nowPlaying.map((m) => m.id),
-    ...topRated.map((m) => m.id),
+    ...trendingFiltered.map((m) => m.id),
+    ...nowPlayingFiltered.map((m) => m.id),
+    ...topRatedFiltered.map((m) => m.id),
   ]);
 
   function dedupe<T extends { id: number }>(movies: T[]): T[] {
@@ -47,11 +59,11 @@ export default async function HomePage() {
     });
   }
 
-  const action = dedupe(actionRaw);
-  const adventure = dedupe(adventureRaw);
-  const thriller = dedupe(thrillerRaw);
-  const scifi = dedupe(scifiRaw);
-  const bollywood = dedupe(bollywoodRaw);
+  const action = dedupe(hasImages(actionRaw));
+  const adventure = dedupe(hasImages(adventureRaw));
+  const thriller = dedupe(hasImages(thrillerRaw));
+  const scifi = dedupe(hasImages(scifiRaw));
+  const bollywood = dedupe(hasImages(bollywoodRaw));
 
   return (
     <>
@@ -59,13 +71,13 @@ export default async function HomePage() {
 
       <div>
         {/* Hero */}
-        <HeroSection movies={trending} />
+        <HeroSection movies={trendingFiltered} />
 
         {/* Rails */}
         <div className="mt-6 flex flex-col gap-3">
-          <MovieCarousel title="Trending This Week" movies={trending} />
-          <MovieCarousel title="Now Playing" movies={nowPlaying} />
-          <MovieCarousel title="Top Rated" movies={topRated} />
+          <MovieCarousel title="Trending This Week" movies={trendingFiltered} />
+          <MovieCarousel title="Now Playing" movies={nowPlayingFiltered} />
+          <MovieCarousel title="Top Rated" movies={topRatedFiltered} />
           <MovieCarousel title="Action" movies={action} />
           <MovieCarousel title="Adventure" movies={adventure} />
           <MovieCarousel title="Thriller" movies={thriller} />
@@ -78,7 +90,7 @@ export default async function HomePage() {
           <div className="px-4 md:px-8 mb-4">
             <SectionDivider label={`Popular on ${APP_NAME}`} />
           </div>
-          <MovieGrid movies={popular.results} />
+          <MovieGrid movies={popularFiltered} />
         </div>
       </div>
     </>
