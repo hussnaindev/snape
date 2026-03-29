@@ -4,7 +4,7 @@ import { tmdbImage } from '@/lib/tmdb-image';
 import type { TMDBMovie } from '@/types/tmdb';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { RatingBadge } from './ui/rating-badge';
 
 interface HeroSectionProps {
@@ -40,6 +40,21 @@ export function HeroSection({ movies }: HeroSectionProps) {
     return () => clearInterval(id);
   }, [featured.length]);
 
+  const touchStartX = useRef<number | null>(null);
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0]?.clientX ?? null;
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null) return;
+    const dx = touchStartX.current - (e.changedTouches[0]?.clientX ?? touchStartX.current);
+    if (Math.abs(dx) > 50) {
+      goTo(dx > 0 ? (active + 1) % featured.length : (active - 1 + featured.length) % featured.length);
+    }
+    touchStartX.current = null;
+  }
+
   const movie = featured[active];
   if (!movie) return null;
 
@@ -48,7 +63,11 @@ export function HeroSection({ movies }: HeroSectionProps) {
   const year = movie.release_date?.slice(0, 4) ?? '';
 
   return (
-    <div className="relative h-[40vh] sm:h-[80vh] min-h-[340px] sm:min-h-[480px] overflow-hidden">
+    <div
+      className="relative h-[30vh] sm:h-[80vh] min-h-[260px] sm:min-h-[480px] overflow-hidden"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Backdrop / Poster */}
       <div
         className={`absolute inset-0 transition-opacity duration-300 ${fading ? 'opacity-0' : 'opacity-100'}`}

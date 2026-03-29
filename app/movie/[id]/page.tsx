@@ -60,7 +60,7 @@ export default async function MoviePage({ params }: Props) {
       <Topbar />
       <div>
         {/* Backdrop hero */}
-        <div className="relative h-[35vh] md:h-[55vh] min-h-[200px] md:min-h-[320px] overflow-hidden">
+        <div className="relative h-[calc(45vh+4rem)] md:h-[calc(55vh+9rem)] min-h-[200px] md:min-h-[320px] overflow-hidden">
           {backdrop ? (
             <Image
               src={backdrop}
@@ -85,7 +85,7 @@ export default async function MoviePage({ params }: Props) {
         </div>
 
         {/* Info block */}
-        <div className="px-4 md:px-8 -mt-20 md:-mt-24 relative z-10">
+        <div className="px-4 md:px-8 -mt-36 md:-mt-60 relative z-10">
           <div className="flex gap-4 md:gap-8 h-36 md:h-60">
             {/* Poster */}
             <div className="flex-none w-24 md:w-40 rounded overflow-hidden shadow-2xl">
@@ -123,7 +123,7 @@ export default async function MoviePage({ params }: Props) {
                 {movie.vote_average > 0 && (
                   <>
                     <span className="text-white/20">·</span>
-                    <RatingBadge rating={movie.vote_average} className="text-[10px] md:text-xs px-1 md:px-1.5 py-px md:py-0.5" />
+                    <RatingBadge rating={movie.vote_average} className="text-[10px] leading-none md:text-xs px-1 md:px-1.5 py-[1px] md:py-0.5" />
                   </>
                 )}
               </div>
