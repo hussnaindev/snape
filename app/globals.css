@@ -102,6 +102,15 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Chrome Android mobile fullscreen fix: when the document is in fullscreen,
+   remove safe-area inset padding so the video fills edge-to-edge (the system
+   status bar becomes a thin overlay on top of the video, not a gap below it).
+   :-webkit-full-screen covers Chrome/WebKit; :fullscreen covers the standard. */
+html:-webkit-full-screen .player-safe-area,
+html:fullscreen .player-safe-area {
+  padding: 0 !important;
+}
+
 body {
   background-color: #070b08;
   color: white;

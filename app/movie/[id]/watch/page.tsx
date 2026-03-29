@@ -1,6 +1,15 @@
+import type { Viewport } from 'next';
 import { notFound } from 'next/navigation';
 import { getMovieEmbedUrl } from '@/lib/vsembed';
 import { WatchControls } from './watch-controls';
+
+// Extend the viewport to the full screen (including under the status bar) so
+// that Chrome Android fullscreen mode fills edge-to-edge. The safe-area insets
+// in the iframe container then account for the status-bar overlay height;
+// those insets are zeroed in CSS when the document is actually in fullscreen.
+export const viewport: Viewport = {
+  viewportFit: 'cover',
+};
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -21,7 +30,7 @@ export default async function WatchPage({ params }: Props) {
         own control bar is never hidden behind system UI.
       */}
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 player-safe-area"
         style={{
           paddingTop: 'env(safe-area-inset-top)',
           paddingBottom: 'env(safe-area-inset-bottom)',
