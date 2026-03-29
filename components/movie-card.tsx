@@ -64,7 +64,7 @@ export function MovieCard({ movie, qualityBadge, imageSize = 'w780', className }
 
       {/* Always-visible title strip */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end px-2 py-1.5 sm:px-3 sm:py-2.5">
-        <p className="text-white text-[11px] sm:text-sm font-medium leading-tight line-clamp-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+        <p className="text-white text-xs sm:text-sm font-medium leading-tight line-clamp-2 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
           {movie.title}
         </p>
         <div className="flex items-center gap-1.5 mt-0.5">

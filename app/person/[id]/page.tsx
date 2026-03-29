@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import { ExpandableText } from '@/components/ui/expandable-text';
 import { PersonCard } from '@/components/person-card';
 import { Topbar } from '@/components/topbar';
 import { SectionDivider } from '@/components/ui/section-divider';
@@ -53,63 +54,91 @@ export default async function PersonPage({ params }: Props) {
   return (
     <>
       <Topbar />
-      <main className="pt-20 pb-16">
-        {/* Back */}
-        <div className="px-4 md:px-8 mb-6">
-          <Link href="/" className="text-white/50 hover:text-white text-sm transition-colors">
-            ← Home
+      <div>
+        {/* Backdrop hero */}
+        <div className="relative h-[calc(45vh+4rem)] md:h-[calc(55vh+9rem)] min-h-[200px] md:min-h-[320px] overflow-hidden">
+          {photo ? (
+            <Image
+              src={photo}
+              alt={person.name}
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover object-top scale-110 blur-3xl"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-white/5" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/50" />
+
+          {/* Back button — desktop only */}
+          <Link
+            href="/"
+            className="absolute top-20 left-4 md:left-8 text-white/70 hover:text-white text-sm hidden md:flex items-center gap-1 transition-colors"
+          >
+            ← Back
           </Link>
         </div>
 
-        {/* Profile hero */}
-        <div className="px-4 md:px-8 flex flex-col sm:flex-row gap-6 mb-8">
-          {photo && (
-            <div className="flex-none w-36 md:w-48 rounded-lg overflow-hidden shadow-2xl">
-              <div className="relative aspect-[2/3]">
-                <Image
-                  src={photo}
-                  alt={person.name}
-                  fill
-                  sizes="(max-width: 768px) 144px, 192px"
-                  className="object-cover"
-                />
+        {/* Info block */}
+        <div className="px-4 md:px-8 -mt-36 md:-mt-60 relative z-10">
+          <div className="flex gap-4 md:gap-8 h-36 md:h-60">
+            {/* Photo */}
+            <div className="flex-none w-24 md:w-40 rounded overflow-hidden shadow-2xl">
+              {photo && (
+                <div className="relative aspect-[2/3]">
+                  <Image
+                    src={photo}
+                    alt={person.name}
+                    fill
+                    sizes="(max-width: 768px) 96px, 160px"
+                    className="object-cover"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Details */}
+            <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
+              <h1 className="font-syne text-xl md:text-4xl font-bold text-white leading-tight line-clamp-2">
+                {person.name}
+              </h1>
+              {person.known_for_department && (
+                <p className="text-gold text-[10px] md:text-xs mt-0.5 uppercase tracking-widest truncate">
+                  {person.known_for_department}
+                </p>
+              )}
+              <div className="flex flex-wrap items-center gap-1 md:gap-2 mt-0.5 md:mt-2 text-[10px] md:text-sm text-white/60">
+                {person.birthday && (
+                  <span>
+                    {new Date(person.birthday).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </span>
+                )}
+                {person.place_of_birth && (
+                  <>
+                    {person.birthday && <span className="text-white/20">·</span>}
+                    <span className="truncate">{person.place_of_birth}</span>
+                  </>
+                )}
               </div>
             </div>
-          )}
-
-          <div className="flex-1 min-w-0">
-            <h1 className="font-syne text-4xl md:text-5xl font-bold text-white">
-              {person.name}
-            </h1>
-            {person.known_for_department && (
-              <p className="text-gold text-sm mt-1 uppercase tracking-widest">
-                {person.known_for_department}
-              </p>
-            )}
-            <div className="mt-3 flex flex-col gap-1 text-sm text-white/50">
-              {person.birthday && (
-                <span>
-                  Born:{' '}
-                  {new Date(person.birthday).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </span>
-              )}
-              {person.place_of_birth && <span>{person.place_of_birth}</span>}
-            </div>
-            {person.biography && (
-              <p className="mt-4 text-white/70 text-sm leading-relaxed max-w-2xl line-clamp-6">
-                {person.biography}
-              </p>
-            )}
           </div>
+
+          {/* Biography */}
+          {person.biography && (
+            <div className="mt-5 md:mt-8 max-w-2xl">
+              <ExpandableText text={person.biography} />
+            </div>
+          )}
         </div>
 
         {/* Known for */}
         {knownFor.length > 0 && (
-          <section className="px-4 md:px-8 mb-10">
+          <section className="px-4 md:px-8 mt-10 mb-10">
             <SectionDivider label="Known For" className="mb-4" />
             <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
               {knownFor.map((credit) => (
@@ -121,7 +150,7 @@ export default async function PersonPage({ params }: Props) {
 
         {/* Full filmography */}
         {filmography.length > 0 && (
-          <section className="px-4 md:px-8">
+          <section className="px-4 md:px-8 pb-16">
             <SectionDivider label="Filmography" className="mb-4" />
             <div className="flex flex-col divide-y divide-white/5">
               {filmography.map((credit) => (
@@ -157,7 +186,7 @@ export default async function PersonPage({ params }: Props) {
             </div>
           </section>
         )}
-      </main>
+      </div>
     </>
   );
 }

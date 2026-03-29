@@ -88,6 +88,15 @@ export async function getMoviesByGenre(genreId: number, page = 1): Promise<TMDBM
   return data.results;
 }
 
+export async function getBollywoodMovies(page = 1): Promise<TMDBMovie[]> {
+  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>('/discover/movie', {
+    with_original_language: 'hi',
+    sort_by: 'popularity.desc',
+    page: String(page),
+  });
+  return data.results;
+}
+
 export async function searchMovies(query: string, page = 1): Promise<TMDBListResult<TMDBMovie>> {
   return tmdbFetch<TMDBListResult<TMDBMovie>>('/search/movie', {
     query,

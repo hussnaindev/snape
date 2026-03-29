@@ -15,6 +15,8 @@ import {
 } from '@/lib/tmdb';
 import { tmdbImage } from '@/lib/tmdb-image';
 
+import { ExpandableText } from '@/components/ui/expandable-text';
+
 import { WatchButtons } from './watch-buttons';
 
 interface Props {
@@ -104,7 +106,7 @@ export default async function MoviePage({ params }: Props) {
 
             {/* Details */}
             <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
-              <h1 className="font-syne text-sm md:text-4xl font-bold text-white leading-tight line-clamp-2">
+              <h1 className="font-syne text-xl md:text-4xl font-bold text-white leading-tight line-clamp-2">
                 {movie.title}
               </h1>
               {movie.tagline && (
@@ -150,7 +152,7 @@ export default async function MoviePage({ params }: Props) {
           {/* Synopsis */}
           {movie.overview && (
             <div className="mt-5 md:mt-8 max-w-2xl">
-              <p className="text-white/70 text-xs md:text-sm leading-relaxed overflow-hidden [display:-webkit-box] [-webkit-line-clamp:3] [-webkit-box-orient:vertical]">{movie.overview}</p>
+              <ExpandableText text={movie.overview} />
             </div>
           )}
         </div>

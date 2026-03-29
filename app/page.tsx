@@ -9,6 +9,7 @@ import {
   getTopRatedMovies,
   getTrendingMovies,
   getMoviesByGenre,
+  getBollywoodMovies,
 } from '@/lib/tmdb';
 import { APP_NAME } from '@/lib/config';
 import type { Metadata } from 'next';
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const [trending, nowPlaying, topRated, popular, actionRaw, adventureRaw, thrillerRaw, scifiRaw] =
+  const [trending, nowPlaying, topRated, popular, actionRaw, adventureRaw, thrillerRaw, scifiRaw, bollywoodRaw] =
     await Promise.all([
       getTrendingMovies(),
       getNowPlayingMovies(),
@@ -28,6 +29,7 @@ export default async function HomePage() {
       getMoviesByGenre(12),   // Adventure
       getMoviesByGenre(53),   // Thriller
       getMoviesByGenre(878),  // Sci-Fi
+      getBollywoodMovies(),   // Bollywood
     ]);
 
   // Deduplicate genre rails — exclude movies already shown in earlier sections
@@ -49,6 +51,7 @@ export default async function HomePage() {
   const adventure = dedupe(adventureRaw);
   const thriller = dedupe(thrillerRaw);
   const scifi = dedupe(scifiRaw);
+  const bollywood = dedupe(bollywoodRaw);
 
   return (
     <>
@@ -67,6 +70,7 @@ export default async function HomePage() {
           <MovieCarousel title="Adventure" movies={adventure} />
           <MovieCarousel title="Thriller" movies={thriller} />
           <MovieCarousel title="Sci-Fi" movies={scifi} />
+          <MovieCarousel title="Bollywood" movies={bollywood} />
         </div>
 
         {/* Popular grid */}
