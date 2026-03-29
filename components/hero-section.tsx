@@ -15,7 +15,7 @@ export function HeroSection({ movies }: HeroSectionProps) {
   const [active, setActive] = useState(0);
   const [fading, setFading] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const featured = movies.slice(0, 5);
+  const featured = movies.slice(0, 5).reverse();
 
   function goTo(index: number) {
     if (index === active) return;
