@@ -133,7 +133,8 @@ export default async function MoviePage({ params }: Props) {
               {/* Genre chips */}
               {movie.genres.length > 0 && (
                 <div className="flex flex-wrap gap-1 md:gap-2 mt-0.5 md:mt-2">
-                  {movie.genres.map((g) => (
+                  {/* Show Max 3 Genres */}
+                  {movie.genres.slice(0, 3).map((g) => (
                     <TagChip key={g.id} label={g.name} className="text-[9px] md:text-xs px-1.5 md:px-3 py-px md:py-1" />
                   ))}
                 </div>
