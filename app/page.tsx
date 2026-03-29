@@ -59,7 +59,7 @@ export default async function HomePage() {
         <HeroSection movies={trending} />
 
         {/* Rails */}
-        <div className="mt-6 flex flex-col gap-6">
+        <div className="mt-6 flex flex-col gap-3">
           <MovieCarousel title="Trending This Week" movies={trending} />
           <MovieCarousel title="Now Playing" movies={nowPlaying} />
           <MovieCarousel title="Top Rated" movies={topRated} />

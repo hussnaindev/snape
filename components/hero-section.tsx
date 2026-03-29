@@ -64,13 +64,13 @@ export function HeroSection({ movies }: HeroSectionProps) {
 
   return (
     <div
-      className="relative h-[30vh] sm:h-[80vh] min-h-[260px] sm:min-h-[480px] overflow-hidden"
+      className="relative h-[30vh] sm:h-[80vh] min-h-[260px] sm:min-h-[480px]"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Backdrop / Poster */}
+      {/* Backdrop / Poster — extends below hero bounds so backdrop bleeds into carousel */}
       <div
-        className={`absolute inset-0 transition-opacity duration-300 ${fading ? 'opacity-0' : 'opacity-100'}`}
+        className={`absolute top-0 left-0 right-0 bottom-[-6rem] overflow-hidden -z-10 transition-opacity duration-300 ${fading ? 'opacity-0' : 'opacity-100'}`}
       >
         {/* Mobile: poster (portrait) */}
         {(poster || backdrop) && (
@@ -104,7 +104,7 @@ export function HeroSection({ movies }: HeroSectionProps) {
 
       {/* Content */}
       <div
-        className={`absolute bottom-0 left-0 right-0 p-3 sm:p-4 md:p-12 pb-8 sm:pb-20 transition-opacity duration-300 ${fading ? 'opacity-0' : 'opacity-100'}`}
+        className={`absolute -bottom-3 sm:bottom-0 left-0 right-0 px-3 sm:px-4 md:px-12 pb-0 sm:pb-2 transition-opacity duration-300 ${fading ? 'opacity-0' : 'opacity-100'}`}
       >
         <div className="max-w-xl">
           <h1 className="font-syne font-bold text-xl sm:text-4xl md:text-6xl text-white leading-tight">
@@ -146,7 +146,7 @@ export function HeroSection({ movies }: HeroSectionProps) {
       </div>
 
       {/* Dot indicators */}
-      <div className="absolute bottom-6 right-6 flex gap-2">
+      <div className="absolute -bottom-3 sm:bottom-2 right-3 sm:right-6 flex gap-2">
         {featured.map((_, i) => (
           <button
             key={i}
