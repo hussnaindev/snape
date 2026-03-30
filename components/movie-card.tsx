@@ -19,6 +19,7 @@ export function MovieCard({ movie, qualityBadge, imageSize = 'w780', className }
   return (
     <Link
       href={`/movie/${movie.id}`}
+      prefetch={false}
       className={`group relative block overflow-hidden rounded-md bg-white/5 transition-all duration-300 ease-out sm:hover:scale-105 sm:hover:shadow-[0_8px_30px_rgba(0,0,0,0.6)] sm:hover:brightness-110 sm:hover:z-10 ${className ?? ''}`}
     >
       {/* Mobile: Poster (portrait) */}

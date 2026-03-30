@@ -14,6 +14,7 @@ export function middleware(_request: NextRequest) {
 }
 
 export const config = {
-  // Matches all routes except static files and API health check
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/health).*)'],
+  // No routes matched — middleware is a no-op until auth is needed.
+  // An empty matcher prevents the edge function from running on every request.
+  matcher: [],
 };

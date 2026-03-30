@@ -113,7 +113,9 @@ async function tryProvider(provider: Provider, chrome: boolean): Promise<Respons
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'no-store',
+      // Cache at CDN for 1h, serve stale for up to 24h while revalidating.
+      // Provider URLs for a given movie ID are stable; no user-specific content.
+      'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
     },
   });
 }
@@ -168,7 +170,7 @@ async function buildChromeResponse(playerUrl: URL, referer: string): Promise<Res
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'no-store',
+      'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
     },
   });
 }

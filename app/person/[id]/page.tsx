@@ -11,6 +11,8 @@ import { RatingBadge } from '@/components/ui/rating-badge';
 import { getPerson, getPersonMovieCredits } from '@/lib/tmdb';
 import { tmdbImage } from '@/lib/tmdb-image';
 
+export const revalidate = 3600;
+
 interface Props {
   params: Promise<{ id: string }>;
 }
@@ -138,6 +140,7 @@ export default async function PersonPage({ params }: Props) {
                   <Link
                     key={`${credit.id}-${credit.character}`}
                     href={`/movie/${credit.id}`}
+                    prefetch={false}
                     className="group relative block overflow-hidden rounded-md bg-white/5 transition-all duration-300 ease-out sm:hover:scale-105 sm:hover:shadow-[0_8px_30px_rgba(0,0,0,0.6)] sm:hover:brightness-110 sm:hover:z-10"
                   >
                     <div className="aspect-video overflow-hidden relative">
