@@ -11,6 +11,7 @@ import { RatingBadge } from '@/components/ui/rating-badge';
 import { getPerson, getPersonMovieCredits } from '@/lib/tmdb';
 import { tmdbImage } from '@/lib/tmdb-image';
 
+export const runtime = 'edge';
 export const revalidate = 3600;
 
 interface Props {

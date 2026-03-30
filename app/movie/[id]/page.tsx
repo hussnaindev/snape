@@ -22,6 +22,8 @@ import { WatchButtons } from './watch-buttons';
 import { BackdropPlayer } from './backdrop-player';
 
 
+export const runtime = 'edge';
+
 // Cache the rendered page at the edge for 1 hour.
 // Without this, every bot/crawler hit triggers a full SSR function invocation
 // even though the underlying TMDB fetch responses are already data-cached.

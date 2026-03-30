@@ -38,6 +38,7 @@ export const metadata: Metadata = {
     template: `%s | ${APP_NAME}`,
   },
   description: 'Stream movies instantly. No sign-up required.',
+  icons: { icon: '/icon.svg' },
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

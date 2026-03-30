@@ -4,6 +4,8 @@ import { searchMovies } from '@/lib/tmdb';
 import { APP_NAME } from '@/lib/config';
 import type { Metadata } from 'next';
 
+export const runtime = 'edge';
+
 interface Props {
   searchParams: Promise<{ q?: string }>;
 }

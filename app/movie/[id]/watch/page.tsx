@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { getMovieEmbedUrl } from '@/lib/vsembed';
 import { WatchControls } from './watch-controls';
 
+export const runtime = 'edge';
+
 // Extend the viewport to the full screen (including under the status bar) so
 // that Chrome Android fullscreen mode fills edge-to-edge. The safe-area insets
 // in the iframe container then account for the status-bar overlay height;
