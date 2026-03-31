@@ -45,32 +45,36 @@ export async function GET(
   if (Number.isNaN(movieId)) return errorPage(404, 'Not found');
 
   const chrome = isChrome(req);
+  const errors: string[] = [];
 
   for (const provider of getProviders(movieId)) {
-    const res = await tryProvider(provider, chrome);
-    if (res) return res;
+    const result = await tryProvider(provider, chrome);
+    if (result.res) return result.res;
+    errors.push(`${new URL(provider.url).hostname}: ${result.error}`);
   }
 
-  return errorPage(502, 'All video providers are currently unavailable');
+  return errorPage(502, 'All video providers are currently unavailable', errors);
 }
 
-async function tryProvider(provider: Provider, chrome: boolean): Promise<Response | null> {
+type ProviderResult = { res: Response; error?: never } | { res: null; error: string };
+
+async function tryProvider(provider: Provider, chrome: boolean): Promise<ProviderResult> {
   let html: string;
   try {
     const res = await fetch(provider.url, {
       headers: { ...BROWSER_HEADERS, Referer: provider.referer },
       cache: 'no-store',
     });
-    if (!res.ok) return null;
+    if (!res.ok) return { res: null, error: `HTTP ${res.status}` };
     html = await res.text();
-  } catch {
-    return null;
+  } catch (e) {
+    return { res: null, error: e instanceof Error ? e.message : 'fetch failed' };
   }
 
   // Extract the inner iframe src — the real ad-free player embedded by the outer page.
   const iframeMatch = html.match(/<iframe[^>]+src=["']([^"']+)["']/i);
   const rawSrc = iframeMatch?.[1];
-  if (!rawSrc) return null;
+  if (!rawSrc) return { res: null, error: 'no iframe found in response' };
 
   let playerUrl: URL;
   try {
@@ -78,9 +82,9 @@ async function tryProvider(provider: Provider, chrome: boolean): Promise<Respons
     playerUrl = new URL(
       rawSrc.startsWith('http') ? rawSrc : `${base.origin}${rawSrc.startsWith('/') ? '' : '/'}${rawSrc}`,
     );
-    if (playerUrl.protocol !== 'https:' && playerUrl.protocol !== 'http:') return null;
+    if (playerUrl.protocol !== 'https:' && playerUrl.protocol !== 'http:') return { res: null, error: 'invalid player URL protocol' };
   } catch {
-    return null;
+    return { res: null, error: 'could not parse player URL' };
   }
 
   if (chrome) {
@@ -109,7 +113,7 @@ async function tryProvider(provider: Provider, chrome: boolean): Promise<Respons
 </body>
 </html>`;
 
-  return new Response(playerHtml, {
+  return { res: new Response(playerHtml, {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
@@ -117,7 +121,7 @@ async function tryProvider(provider: Provider, chrome: boolean): Promise<Respons
       // Provider URLs for a given movie ID are stable; no user-specific content.
       'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
     },
-  });
+  }) };
 }
 
 // Chrome cannot sandbox the player iframe without breaking video (the player's
@@ -125,17 +129,17 @@ async function tryProvider(provider: Provider, chrome: boolean): Promise<Respons
 // server-side, inject window.open blocker before any scripts run, and serve the
 // modified HTML from our origin — giving our injected code full same-origin access.
 // Relative fetch/XHR URLs are rewritten to the player's origin so API calls still work.
-async function buildChromeResponse(playerUrl: URL, referer: string): Promise<Response | null> {
+async function buildChromeResponse(playerUrl: URL, referer: string): Promise<ProviderResult> {
   let playerHtml: string;
   try {
     const res = await fetch(playerUrl.toString(), {
       headers: { ...BROWSER_HEADERS, Referer: referer },
       cache: 'no-store',
     });
-    if (!res.ok) return null;
+    if (!res.ok) return { res: null, error: `player fetch HTTP ${res.status}` };
     playerHtml = await res.text();
-  } catch {
-    return null;
+  } catch (e) {
+    return { res: null, error: e instanceof Error ? e.message : 'player fetch failed' };
   }
 
   const origin = playerUrl.origin.replace(/'/g, "\\'");
@@ -166,17 +170,20 @@ async function buildChromeResponse(playerUrl: URL, referer: string): Promise<Res
     ? playerHtml.replace(/(<head[^>]*>)/i, `$1${blocker}`)
     : blocker + playerHtml;
 
-  return new Response(modified, {
+  return { res: new Response(modified, {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
     },
-  });
+  }) };
 }
 
-function errorPage(status: number, message: string): Response {
-  const html = `<!doctype html><html><body style="background:#000;color:rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font:14px/1 sans-serif"><span>${message}</span></body></html>`;
+function errorPage(status: number, message: string, errors?: string[]): Response {
+  const detail = errors?.length
+    ? `<ul style="margin:.5rem 0 0;padding:0;list-style:none;font-size:11px;opacity:.6">${errors.map(e => `<li>${e}</li>`).join('')}</ul>`
+    : '';
+  const html = `<!doctype html><html><body style="background:#000;color:rgba(255,255,255,.5);display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font:14px/1 sans-serif;text-align:center"><span>${message}</span>${detail}</body></html>`;
   return new Response(html, {
     status,
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
