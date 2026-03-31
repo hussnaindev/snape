@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Bungee, Cormorant_Garamond, DM_Sans, Syne } from 'next/font/google';
 import { APP_NAME } from '@/lib/config';
+import { FullStoryInit } from '@/components/fullstory-init';
 import './globals.css';
 
 const bungee = Bungee({
@@ -53,7 +54,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <meta name="theme-color" content="#000000" />
       </head>
-      <body className="min-h-screen bg-black text-white antialiased">{children}</body>
+      <body className="min-h-screen bg-black text-white antialiased">
+        <FullStoryInit />
+        {children}
+      </body>
     </html>
   );
 }

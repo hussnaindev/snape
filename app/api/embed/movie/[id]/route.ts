@@ -8,9 +8,9 @@ type Provider = { url: string; referer: string };
 
 function getProviders(movieId: number): Provider[] {
   return [
-    { url: `https://swan.hussnain444all.workers.dev/https://vidsrc.icu/embed/movie/${movieId}`,  referer: 'https://vidsrc.icu/' },
-    { url: `https://swan.hussnain444all.workers.dev/https://embed.su/embed/movie/${movieId}`,     referer: 'https://embed.su/' },
-    { url: `https://swan.hussnain444all.workers.dev/https://moviesapi.club/movie/${movieId}`,     referer: 'https://moviesapi.club/' },
+    { url: `https://vidsrc.icu/embed/movie/${movieId}`,  referer: 'https://vidsrc.icu/' },
+    { url: `https://embed.su/embed/movie/${movieId}`,     referer: 'https://embed.su/' },
+    { url: `https://moviesapi.club/movie/${movieId}`,     referer: 'https://moviesapi.club/' },
   ];
 }
 
