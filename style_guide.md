@@ -1,4 +1,4 @@
-# 🚀 TypeScript Coding Style Guide (Enterprise + AI Enforced)
+<!-- # 🚀 TypeScript Coding Style Guide (Enterprise + AI Enforced)
 
 This document defines a strict, scalable, and AI-optimized TypeScript coding standard.
 It is designed for **predictability, maintainability, and automated code generation**.
@@ -248,4 +248,4 @@ If needed, next step:
 
 * ESLint config (strict enforcement)
 * Prettier config (4 spaces)
-* AI prompt enforcement layer
+* AI prompt enforcement layer -->
