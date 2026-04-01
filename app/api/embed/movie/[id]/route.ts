@@ -63,7 +63,7 @@ async function tryProvider(provider: Provider, chrome: boolean): Promise<Provide
   try {
     const res = await fetch(provider.url, {
       headers: { ...BROWSER_HEADERS, Referer: provider.referer },
-      cache: 'no-store',
+      // cache: 'no-store',
     });
     if (!res.ok) return { res: null, error: `HTTP ${res.status}` };
     html = await res.text();
@@ -134,7 +134,7 @@ async function buildChromeResponse(playerUrl: URL, referer: string): Promise<Pro
   try {
     const res = await fetch(playerUrl.toString(), {
       headers: { ...BROWSER_HEADERS, Referer: referer },
-      cache: 'no-store',
+      // cache: 'no-store',
     });
     if (!res.ok) return { res: null, error: `player fetch HTTP ${res.status}` };
     playerHtml = await res.text();
