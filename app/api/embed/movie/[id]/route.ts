@@ -182,7 +182,7 @@ async function buildChromeResponse(playerUrl: URL, referer: string): Promise<Pro
 function errorPage(status: number, message: string, errors?: string[]): Response {
   const detail = errors?.length
     ? `<ul style="margin:.5rem 0 0;padding:0;list-style:none;font-size:11px;opacity:.6">${errors.map(e => `<li>${e}</li>`).join('')}</ul>`
-    : '';
+    : '<div>No errors found</div>';
   const html = `<!doctype html><html><body style="background:#000;color:rgba(255,255,255,.5);display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font:14px/1 sans-serif;text-align:center"><span>${message}</span>${detail}</body></html>`;
   return new Response(html, {
     status,
