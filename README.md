@@ -1,4 +1,4 @@
-# [App Name]
+# Snape
 
 > Short description of what this app does.
 
