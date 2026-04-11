@@ -29,15 +29,17 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Commands
 
-| Command             | Description                         |
-| ------------------- | ----------------------------------- |
-| `bun run dev`       | Start dev server with Turbopack     |
-| `bun run build`     | Production build                    |
-| `bun run start`     | Start production server             |
-| `bun run typecheck` | Type-check without emitting         |
-| `bun run lint`      | Lint with Biome                     |
-| `bun run lint:fix`  | Lint + auto-fix with Biome          |
-| `bun run format`    | Format all files with Biome         |
+
+| Command             | Description                     |
+| ------------------- | ------------------------------- |
+| `bun run dev`       | Start dev server with Turbopack |
+| `bun run build`     | Production build                |
+| `bun run start`     | Start production server         |
+| `bun run typecheck` | Type-check without emitting     |
+| `bun run lint`      | Lint with Biome                 |
+| `bun run lint:fix`  | Lint + auto-fix with Biome      |
+| `bun run format`    | Format all files with Biome     |
+
 
 ## Project Structure
 
@@ -74,16 +76,19 @@ Use `apiFetch<T>(path)` from `@/lib/api` to call your own routes with this shape
 ## Adding Things
 
 ### New page
+
 ```
 app/<route>/page.tsx   — export default component
 ```
 
 ### New API route
+
 ```
 app/api/<resource>/route.ts   — export GET, POST, etc.
 ```
 
 ### New component
+
 ```
 components/<name>.tsx   — named export, accepts className prop, use cn() for class merging
 ```
@@ -104,3 +109,4 @@ These aren't included to keep the template minimal, but are common next steps:
 Copy `.env.example` to `.env.local`. See `.env.example` for all available vars.
 
 > Never commit `.env.local` — it's in `.gitignore`.
+

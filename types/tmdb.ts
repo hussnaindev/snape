@@ -106,3 +106,89 @@ export interface TMDBListResult<T> {
   total_pages: number;
   total_results: number;
 }
+
+// ── TV Series ────────────────────────────────────────────────────────────────
+
+export interface TMDBSeries {
+  id: number;
+  name: string;
+  overview: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  first_air_date: string;
+  vote_average: number;
+  vote_count: number;
+  genre_ids: number[];
+  popularity: number;
+  origin_country: string[];
+}
+
+export interface TMDBNetwork {
+  id: number;
+  name: string;
+  logo_path: string | null;
+  origin_country: string;
+}
+
+export interface TMDBCreator {
+  id: number;
+  name: string;
+  profile_path: string | null;
+}
+
+export interface TMDBEpisode {
+  id: number;
+  episode_number: number;
+  season_number: number;
+  name: string;
+  overview: string;
+  still_path: string | null;
+  air_date: string | null;
+  runtime: number | null;
+  vote_average: number;
+  vote_count: number;
+}
+
+export interface TMDBSeasonSummary {
+  id: number;
+  season_number: number;
+  episode_count: number;
+  name: string;
+  overview: string;
+  poster_path: string | null;
+  air_date: string | null;
+}
+
+export interface TMDBSeason {
+  id: number;
+  season_number: number;
+  name: string;
+  overview: string;
+  poster_path: string | null;
+  air_date: string | null;
+  episodes: TMDBEpisode[];
+}
+
+export interface TMDBSeriesDetail {
+  id: number;
+  name: string;
+  overview: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  first_air_date: string;
+  vote_average: number;
+  vote_count: number;
+  genres: TMDBGenre[];
+  tagline: string;
+  status: string;
+  number_of_seasons: number;
+  number_of_episodes: number;
+  episode_run_time: number[];
+  last_air_date: string | null;
+  networks: TMDBNetwork[];
+  created_by: TMDBCreator[];
+  seasons: TMDBSeasonSummary[];
+  last_episode_to_air: TMDBEpisode | null;
+  next_episode_to_air: TMDBEpisode | null;
+  popularity: number;
+}

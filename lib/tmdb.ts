@@ -9,6 +9,9 @@ import type {
   TMDBMovieDetail,
   TMDBPerson,
   TMDBPersonMovieCredits,
+  TMDBSeason,
+  TMDBSeries,
+  TMDBSeriesDetail,
   TMDBVideosResult,
 } from '@/types/tmdb';
 
@@ -103,6 +106,52 @@ export async function searchMovies(query: string, page = 1): Promise<TMDBListRes
     query,
     page: String(page),
   });
+}
+
+// ── TV Series ────────────────────────────────────────────────────────────────
+
+export async function getTrendingSeries(): Promise<TMDBSeries[]> {
+  const data = await tmdbFetch<TMDBListResult<TMDBSeries>>('/trending/tv/week');
+  return data.results;
+}
+
+export async function getPopularSeries(page = 1): Promise<TMDBListResult<TMDBSeries>> {
+  return tmdbFetch<TMDBListResult<TMDBSeries>>('/tv/popular', { page: String(page) });
+}
+
+export async function getTopRatedSeries(): Promise<TMDBSeries[]> {
+  const data = await tmdbFetch<TMDBListResult<TMDBSeries>>('/tv/top_rated');
+  return data.results;
+}
+
+export async function getSeriesByGenre(genreId: number, page = 1): Promise<TMDBSeries[]> {
+  const data = await tmdbFetch<TMDBListResult<TMDBSeries>>('/discover/tv', {
+    with_genres: String(genreId),
+    sort_by: 'popularity.desc',
+    page: String(page),
+  });
+  return data.results;
+}
+
+export async function getSeriesDetail(id: number): Promise<TMDBSeriesDetail> {
+  return tmdbFetch<TMDBSeriesDetail>(`/tv/${id}`);
+}
+
+export async function getSeriesCredits(id: number): Promise<TMDBCredits> {
+  return tmdbFetch<TMDBCredits>(`/tv/${id}/credits`);
+}
+
+export async function getSeriesVideos(id: number): Promise<TMDBVideosResult> {
+  return tmdbFetch<TMDBVideosResult>(`/tv/${id}/videos`);
+}
+
+export async function getSeriesRecommendations(id: number): Promise<TMDBSeries[]> {
+  const data = await tmdbFetch<TMDBListResult<TMDBSeries>>(`/tv/${id}/recommendations`);
+  return data.results;
+}
+
+export async function getSeriesSeason(seriesId: number, seasonNumber: number): Promise<TMDBSeason> {
+  return tmdbFetch<TMDBSeason>(`/tv/${seriesId}/season/${seasonNumber}`);
 }
 
 /** Returns the YouTube key of the first embeddable trailer/teaser, or null. */
