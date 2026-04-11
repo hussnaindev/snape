@@ -6,6 +6,8 @@ import { Topbar } from '@/components/topbar';
 import { SectionDivider } from '@/components/ui/section-divider';
 import { getMoviesByGenre } from '@/lib/tmdb';
 
+export const runtime = 'edge';
+
 interface Props {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ name?: string }>;

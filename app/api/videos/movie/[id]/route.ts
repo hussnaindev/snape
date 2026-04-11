@@ -1,5 +1,7 @@
 import { getMovieVideos, getEmbeddableTrailerKey } from '@/lib/tmdb';
 
+export const runtime = 'edge';
+
 export async function GET(
   _: Request,
   { params }: { params: Promise<{ id: string }> },
