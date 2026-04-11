@@ -55,7 +55,6 @@
   }
 }
 
-
 /* ── Custom utilities ── */
 @utility no-scrollbar {
   scrollbar-width: none;
@@ -89,7 +88,6 @@
   transform-box: fill-box;
   transform-origin: center;
 }
-
 
 /* ── Base ── */
 *,

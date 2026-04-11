@@ -4,20 +4,20 @@ import { MovieGrid } from '@/components/movie-grid';
 import { SeriesCarousel } from '@/components/series-carousel';
 import { Topbar } from '@/components/topbar';
 import { SectionDivider } from '@/components/ui/section-divider';
+import { APP_NAME } from '@/lib/config';
 import {
+  getBollywoodMovies,
+  getEmbeddableTrailerKey,
+  getMovieVideos,
+  getMoviesByGenre,
   getNowPlayingMovies,
   getPopularMovies,
-  getTopRatedMovies,
-  getTrendingMovies,
-  getMoviesByGenre,
-  getBollywoodMovies,
-  getMovieVideos,
-  getEmbeddableTrailerKey,
-  getTrendingSeries,
   getPopularSeries,
+  getTopRatedMovies,
   getTopRatedSeries,
+  getTrendingMovies,
+  getTrendingSeries,
 } from '@/lib/tmdb';
-import { APP_NAME } from '@/lib/config';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -43,18 +43,20 @@ export default async function HomePage() {
     getNowPlayingMovies(),
     getTopRatedMovies(),
     getPopularMovies(1),
-    getMoviesByGenre(28),   // Action
-    getMoviesByGenre(12),   // Adventure
-    getMoviesByGenre(53),   // Thriller
-    getMoviesByGenre(878),  // Sci-Fi
-    getBollywoodMovies(),   // Bollywood
+    getMoviesByGenre(28), // Action
+    getMoviesByGenre(12), // Adventure
+    getMoviesByGenre(53), // Thriller
+    getMoviesByGenre(878), // Sci-Fi
+    getBollywoodMovies(), // Bollywood
     getTrendingSeries(),
     getPopularSeries(1),
     getTopRatedSeries(),
   ]);
 
   // Filter out movies missing both backdrop and poster images
-  function hasImages<T extends { backdrop_path: string | null; poster_path: string | null }>(movies: T[]): T[] {
+  function hasImages<T extends { backdrop_path: string | null; poster_path: string | null }>(
+    movies: T[],
+  ): T[] {
     return movies.filter((m) => m.backdrop_path !== null || m.poster_path !== null);
   }
 
@@ -115,23 +117,28 @@ export default async function HomePage() {
         <div className="mt-6 flex flex-col gap-3">
           <MovieCarousel title="Trending This Week" movies={trendingFiltered} />
           <MovieCarousel title="Now Playing" movies={nowPlayingFiltered} />
-          <MovieCarousel title="Top Rated" movies={topRatedFiltered} />
-          <MovieCarousel title="Action" movies={action} />
-          <MovieCarousel title="Adventure" movies={adventure} />
-          <MovieCarousel title="Thriller" movies={thriller} />
-          <MovieCarousel title="Sci-Fi" movies={scifi} />
-          <MovieCarousel title="Bollywood" movies={bollywood} />
 
-          {/* Series sections */}
+          {/* Series sections interleaved with movies */}
           {trendingSeries.length > 0 && (
             <SeriesCarousel title="Trending Series" series={trendingSeries} />
           )}
+
+          <MovieCarousel title="Top Rated" movies={topRatedFiltered} />
+          <MovieCarousel title="Action" movies={action} />
+
           {popularSeries.length > 0 && (
             <SeriesCarousel title="Popular Series" series={popularSeries} />
           )}
+
+          <MovieCarousel title="Adventure" movies={adventure} />
+          <MovieCarousel title="Thriller" movies={thriller} />
+
           {topRatedSeries.length > 0 && (
             <SeriesCarousel title="Top Rated Series" series={topRatedSeries} />
           )}
+
+          <MovieCarousel title="Sci-Fi" movies={scifi} />
+          <MovieCarousel title="Bollywood" movies={bollywood} />
         </div>
 
         {/* Popular grid */}

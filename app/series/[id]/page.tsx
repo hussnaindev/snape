@@ -3,20 +3,20 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import { BackdropPlayer } from '@/app/movie/[id]/backdrop-player';
 import { CastRail } from '@/components/cast-rail';
 import { SeriesCarousel } from '@/components/series-carousel';
 import { Topbar } from '@/components/topbar';
+import { ExpandableText } from '@/components/ui/expandable-text';
 import { RatingBadge } from '@/components/ui/rating-badge';
 import { TagChip } from '@/components/ui/tag-chip';
-import { ExpandableText } from '@/components/ui/expandable-text';
-import { BackdropPlayer } from '@/app/movie/[id]/backdrop-player';
 import {
   getEmbeddableTrailerKey,
   getSeriesCredits,
   getSeriesDetail,
   getSeriesRecommendations,
-  getSeriesVideos,
   getSeriesSeason,
+  getSeriesVideos,
 } from '@/lib/tmdb';
 import { tmdbImage } from '@/lib/tmdb-image';
 import { cn } from '@/lib/utils';
@@ -87,9 +87,10 @@ export default async function SeriesPage({ params }: Props) {
     : null;
 
   // First watchable episode
-  const firstEpisode = initialSeason?.episodes.find(
-    (e) => e.air_date !== null && e.air_date <= new Date().toISOString().slice(0, 10),
-  ) ?? initialSeason?.episodes[0];
+  const firstEpisode =
+    initialSeason?.episodes.find(
+      (e) => e.air_date !== null && e.air_date <= new Date().toISOString().slice(0, 10),
+    ) ?? initialSeason?.episodes[0];
 
   const watchHref = firstEpisode
     ? `/series/${seriesId}/watch?s=${firstEpisode.season_number}&e=${firstEpisode.episode_number}`
@@ -97,7 +98,10 @@ export default async function SeriesPage({ params }: Props) {
 
   const statusColor = STATUS_COLORS[series.status] ?? 'text-white/40 border-white/20 bg-white/5';
 
-  const creators = series.created_by.slice(0, 3).map((c) => c.name).join(', ');
+  const creators = series.created_by
+    .slice(0, 3)
+    .map((c) => c.name)
+    .join(', ');
 
   return (
     <>

@@ -66,9 +66,7 @@ export function EpisodePanel({
 
   function handleEpisodeClick(ep: TMDBEpisode) {
     setOpen(false);
-    router.replace(
-      `/series/${seriesId}/watch?s=${ep.season_number}&e=${ep.episode_number}`,
-    );
+    router.replace(`/series/${seriesId}/watch?s=${ep.season_number}&e=${ep.episode_number}`);
   }
 
   const currentEp = seasonData.episodes.find(
@@ -88,7 +86,14 @@ export function EpisodePanel({
         }}
         aria-label="Episode list"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <line x1="8" y1="6" x2="21" y2="6" />
           <line x1="8" y1="12" x2="21" y2="12" />
           <line x1="8" y1="18" x2="21" y2="18" />
@@ -99,32 +104,9 @@ export function EpisodePanel({
         <span className="hidden sm:inline">Episodes</span>
       </button>
 
-      {/* Episode info overlay (bottom of screen) */}
-      {!open && currentEp && (
-        <div
-          className="absolute z-10 left-0 right-0 pointer-events-none"
-          style={{ bottom: 'max(16px, env(safe-area-inset-bottom))' }}
-        >
-          <div className="mx-auto max-w-lg px-4">
-            <div className="bg-black/60 rounded-lg px-3 py-2 backdrop-blur-sm">
-              <p className="text-white/50 text-[10px] font-medium uppercase tracking-wider">
-                {seriesName}
-              </p>
-              <p className="text-white text-xs mt-0.5">
-                S{String(currentSeasonNum).padStart(2, '0')} E{String(currentEpisodeNum).padStart(2, '0')}
-                {currentEp.name ? ` · ${currentEp.name}` : ''}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Panel */}
       {open && (
-        <div
-          className="absolute inset-0 z-30 flex"
-          onClick={() => setOpen(false)}
-        >
+        <div className="absolute inset-0 z-30 flex" onClick={() => setOpen(false)}>
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/60" />
 
@@ -138,9 +120,7 @@ export function EpisodePanel({
               <div>
                 <p className="text-white font-semibold text-sm line-clamp-1">{seriesName}</p>
                 <p className="text-white/40 text-xs mt-0.5">
-                  {allVisibleSeasons.length > 1
-                    ? `Season ${selectedSeason}`
-                    : seasonData.name}
+                  {allVisibleSeasons.length > 1 ? `Season ${selectedSeason}` : seasonData.name}
                 </p>
               </div>
               <button
@@ -149,7 +129,14 @@ export function EpisodePanel({
                 className="text-white/50 hover:text-white transition-colors p-1"
                 aria-label="Close"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
@@ -210,10 +197,22 @@ export function EpisodePanel({
                         {/* Thumbnail */}
                         <div className="flex-none w-20 aspect-video rounded overflow-hidden bg-white/5 relative">
                           {still ? (
-                            <Image src={still} alt={ep.name} fill sizes="80px" className="object-cover" />
+                            <Image
+                              src={still}
+                              alt={ep.name}
+                              fill
+                              sizes="80px"
+                              className="object-cover"
+                            />
                           ) : (
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-white/20">
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                                className="text-white/20"
+                              >
                                 <polygon points="5 3 19 12 5 21 5 3" />
                               </svg>
                             </div>
@@ -235,7 +234,9 @@ export function EpisodePanel({
                               <span className="text-white text-[10px] font-medium">▶ Playing</span>
                             )}
                           </div>
-                          <p className={`text-xs leading-tight line-clamp-1 ${isCurrent ? 'text-white font-medium' : 'text-white/70'}`}>
+                          <p
+                            className={`text-xs leading-tight line-clamp-1 ${isCurrent ? 'text-white font-medium' : 'text-white/70'}`}
+                          >
                             {ep.name}
                           </p>
                           {ep.runtime && (

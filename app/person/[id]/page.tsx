@@ -3,11 +3,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { ExpandableText } from '@/components/ui/expandable-text';
 import { PersonCard } from '@/components/person-card';
 import { Topbar } from '@/components/topbar';
-import { SectionDivider } from '@/components/ui/section-divider';
+import { ExpandableText } from '@/components/ui/expandable-text';
 import { RatingBadge } from '@/components/ui/rating-badge';
+import { SectionDivider } from '@/components/ui/section-divider';
 import { getPerson, getPersonMovieCredits } from '@/lib/tmdb';
 import { tmdbImage } from '@/lib/tmdb-image';
 
@@ -134,8 +134,7 @@ export default async function PersonPage({ params }: Props) {
             <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {filmography.map((credit) => {
                 const img =
-                  tmdbImage(credit.backdrop_path, 'w780') ??
-                  tmdbImage(credit.poster_path, 'w780');
+                  tmdbImage(credit.backdrop_path, 'w780') ?? tmdbImage(credit.poster_path, 'w780');
                 const year = credit.release_date?.slice(0, 4);
                 return (
                   <Link
@@ -164,8 +163,17 @@ export default async function PersonPage({ params }: Props) {
                         {credit.title}
                       </p>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        {year && <span className="text-white/50 text-[10px] sm:text-xs drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">{year}</span>}
-                        {credit.vote_average > 0 && <RatingBadge rating={credit.vote_average} className="text-[9px] px-1 py-0 sm:text-[11px] sm:px-1.5" />}
+                        {year && (
+                          <span className="text-white/50 text-[10px] sm:text-xs drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+                            {year}
+                          </span>
+                        )}
+                        {credit.vote_average > 0 && (
+                          <RatingBadge
+                            rating={credit.vote_average}
+                            className="text-[9px] px-1 py-0 sm:text-[11px] sm:px-1.5"
+                          />
+                        )}
                       </div>
                     </div>
                   </Link>

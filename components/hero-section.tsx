@@ -60,10 +60,10 @@ export function HeroSection({ movies, trailerKeys }: HeroSectionProps) {
   const movie = featured[active];
   const trailerKey = movie && trailerKeys ? (trailerKeys[movie.id] ?? null) : null;
 
-  // Step 1 — mount the iframe after a short delay
+  // Step 1 — mount the iframe immediately to start loading ASAP
   useEffect(() => {
     if (!trailerKey) return;
-    const t = setTimeout(() => setShowVideo(true), 1500);
+    const t = setTimeout(() => setShowVideo(true), 100);
     return () => clearTimeout(t);
   }, [trailerKey]);
 
@@ -78,19 +78,27 @@ export function HeroSection({ movies, trailerKeys }: HeroSectionProps) {
     if (!iframe) return;
 
     function initPlayer() {
-      iframe?.contentWindow?.postMessage(JSON.stringify({ event: 'listening' }), 'https://www.youtube.com');
+      iframe?.contentWindow?.postMessage(
+        JSON.stringify({ event: 'listening' }),
+        'https://www.youtube.com',
+      );
     }
 
     const fallback = setTimeout(() => setVideoVisible(true), 8000);
 
     function onMessage(e: MessageEvent) {
       try {
-        const data: unknown =
-          typeof e.data === 'string' ? (JSON.parse(e.data) as unknown) : e.data;
+        const data: unknown = typeof e.data === 'string' ? (JSON.parse(e.data) as unknown) : e.data;
         if (!data || typeof data !== 'object') return;
         const { event, info } = data as { event?: unknown; info?: unknown };
 
-        if (event === 'onStateChange' && info === 1) {
+        if (event === 'onReady') {
+          // Player is ready — try to set quality to 720p
+          iframe?.contentWindow?.postMessage(
+            JSON.stringify({ event: 'command', func: 'setPlaybackQuality', args: ['hd720'] }),
+            'https://www.youtube.com',
+          );
+        } else if (event === 'onStateChange' && info === 1) {
           clearTimeout(fallback);
           setVideoVisible(true);
         } else if (event === 'onError' && (info === 101 || info === 150)) {
@@ -138,7 +146,9 @@ export function HeroSection({ movies, trailerKeys }: HeroSectionProps) {
     if (touchStartX.current === null) return;
     const dx = touchStartX.current - (e.changedTouches[0]?.clientX ?? touchStartX.current);
     if (Math.abs(dx) > 50) {
-      goTo(dx > 0 ? (active + 1) % featured.length : (active - 1 + featured.length) % featured.length);
+      goTo(
+        dx > 0 ? (active + 1) % featured.length : (active - 1 + featured.length) % featured.length,
+      );
     }
     touchStartX.current = null;
   }
@@ -214,7 +224,9 @@ export function HeroSection({ movies, trailerKeys }: HeroSectionProps) {
           </div>
           {movie.overview && (
             <div className="hidden sm:block mt-3 max-w-md">
-              <p className={`text-white/70 text-sm leading-relaxed ${expanded ? '' : 'line-clamp-3'}`}>
+              <p
+                className={`text-white/70 text-sm leading-relaxed ${expanded ? '' : 'line-clamp-3'}`}
+              >
                 {movie.overview}
               </p>
               <button

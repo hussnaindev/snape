@@ -18,9 +18,8 @@ import { tmdbImage } from '@/lib/tmdb-image';
 
 import { ExpandableText } from '@/components/ui/expandable-text';
 
-import { WatchButtons } from './watch-buttons';
 import { BackdropPlayer } from './backdrop-player';
-
+import { WatchButtons } from './watch-buttons';
 
 export const runtime = 'edge';
 
@@ -74,11 +73,7 @@ export default async function MoviePage({ params }: Props) {
       <Topbar />
       <div>
         {/* Backdrop hero */}
-        <BackdropPlayer
-          backdropUrl={backdrop}
-          trailerKey={trailerKey}
-          alt={movie.title}
-        />
+        <BackdropPlayer backdropUrl={backdrop} trailerKey={trailerKey} alt={movie.title} />
 
         {/* Info block */}
         <div className="px-4 md:px-8 -mt-36 md:-mt-60 relative z-10">
@@ -104,7 +99,9 @@ export default async function MoviePage({ params }: Props) {
                 {movie.title}
               </h1>
               {movie.tagline && (
-                <p className="mt-0.5 md:mt-1 text-white/50 italic text-[10px] md:text-xs truncate">{movie.tagline}</p>
+                <p className="mt-0.5 md:mt-1 text-white/50 italic text-[10px] md:text-xs truncate">
+                  {movie.tagline}
+                </p>
               )}
 
               {/* Metadata row */}
@@ -119,7 +116,10 @@ export default async function MoviePage({ params }: Props) {
                 {movie.vote_average > 0 && (
                   <>
                     <span className="text-white/20">·</span>
-                    <RatingBadge rating={movie.vote_average} className="text-[10px] leading-none md:text-xs px-1 md:px-1.5 py-[1px] md:py-0.5" />
+                    <RatingBadge
+                      rating={movie.vote_average}
+                      className="text-[10px] leading-none md:text-xs px-1 md:px-1.5 py-[1px] md:py-0.5"
+                    />
                   </>
                 )}
               </div>
@@ -129,7 +129,11 @@ export default async function MoviePage({ params }: Props) {
                 <div className="flex flex-wrap gap-1 md:gap-2 mt-0.5 md:mt-2">
                   {/* Show Max 3 Genres */}
                   {movie.genres.slice(0, 3).map((g) => (
-                    <TagChip key={g.id} label={g.name} className="text-[9px] md:text-xs px-1.5 md:px-3 py-px md:py-1" />
+                    <TagChip
+                      key={g.id}
+                      label={g.name}
+                      className="text-[9px] md:text-xs px-1.5 md:px-3 py-px md:py-1"
+                    />
                   ))}
                 </div>
               )}

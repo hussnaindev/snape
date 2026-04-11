@@ -1,7 +1,7 @@
 import { MovieGrid } from '@/components/movie-grid';
 import { Topbar } from '@/components/topbar';
-import { searchMovies } from '@/lib/tmdb';
 import { APP_NAME } from '@/lib/config';
+import { searchMovies } from '@/lib/tmdb';
 import type { Metadata } from 'next';
 
 export const runtime = 'edge';
@@ -19,7 +19,9 @@ export default async function SearchPage({ searchParams }: Props) {
   const { q } = await searchParams;
   const query = q?.trim() ?? '';
 
-  const results = query ? await searchMovies(query).catch(() => ({ results: [] })) : { results: [] };
+  const results = query
+    ? await searchMovies(query).catch(() => ({ results: [] }))
+    : { results: [] };
 
   return (
     <>
@@ -28,9 +30,7 @@ export default async function SearchPage({ searchParams }: Props) {
         {query ? (
           <>
             <h1 className="text-white text-xl font-semibold mb-6">
-              {results.results.length > 0
-                ? `Results for "${query}"`
-                : `No results for "${query}"`}
+              {results.results.length > 0 ? `Results for "${query}"` : `No results for "${query}"`}
             </h1>
             {results.results.length > 0 && <MovieGrid movies={results.results} />}
           </>

@@ -32,6 +32,7 @@ async function tmdbFetch<T>(
     for (const [k, v] of Object.entries(params)) {
       url.searchParams.set(k, v);
     }
+    url.searchParams.set("include_adult", "true")
   }
 
   const res = await fetch(url.toString(), { next: { revalidate } });

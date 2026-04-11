@@ -1,6 +1,6 @@
+import { getMovieEmbedUrl } from '@/lib/vsembed';
 import type { Viewport } from 'next';
 import { notFound } from 'next/navigation';
-import { getMovieEmbedUrl } from '@/lib/vsembed';
 import { WatchControls } from './watch-controls';
 
 export const runtime = 'edge';

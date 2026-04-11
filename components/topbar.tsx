@@ -1,16 +1,34 @@
 'use client';
 
+import { Logo } from '@/components/ui/logo';
+import { APP_NAME } from '@/lib/config';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
-import { APP_NAME } from '@/lib/config';
-import { Logo } from '@/components/ui/logo';
+
+const GENRES = [
+  { id: 28, name: 'Action' },
+  { id: 12, name: 'Adventure' },
+  { id: 16, name: 'Animation' },
+  { id: 35, name: 'Comedy' },
+  { id: 80, name: 'Crime' },
+  { id: 18, name: 'Drama' },
+  { id: 10751, name: 'Family' },
+  { id: 14, name: 'Fantasy' },
+  { id: 36, name: 'History' },
+  { id: 27, name: 'Horror' },
+  { id: 10749, name: 'Romance' },
+  { id: 878, name: 'Sci-Fi' },
+  { id: 53, name: 'Thriller' },
+];
 
 export function Topbar() {
   const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [browseOpen, setBrowseOpen] = useState(false);
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const browseRef = useRef<HTMLDivElement>(null);
 
   function openSearch() {
     setSearchOpen(true);
@@ -33,10 +51,7 @@ export function Topbar() {
 
       <div className="relative flex w-full items-center justify-between">
         {/* Wordmark */}
-        <Link
-          href="/"
-          className="flex items-center gap-2 text-white"
-        >
+        <Link href="/" className="flex items-center gap-2 text-white">
           <Logo className="w-5 h-5 md:w-7 md:h-7 text-white" />
           {/** Keeping it commented for future use */}
           {/* <span className="font-syne text-sm md:text-xl font-bold tracking-widest uppercase">
@@ -44,8 +59,33 @@ export function Topbar() {
           </span> */}
         </Link>
 
-        {/* Search */}
-        <div className="flex items-center gap-2">
+        {/* Browse + Search */}
+        <div className="flex items-center gap-3">
+          {/* Browse dropdown */}
+          <div className="relative" ref={browseRef}>
+            <button
+              type="button"
+              onClick={() => setBrowseOpen(!browseOpen)}
+              className="text-white/70 hover:text-white transition-colors text-sm font-medium px-2 py-1"
+            >
+              Browse
+            </button>
+            {browseOpen && (
+              <div className="absolute top-full right-0 mt-1 bg-[#1a1a1a] rounded-lg shadow-xl border border-white/10 w-48 overflow-hidden z-50">
+                {GENRES.map((genre) => (
+                  <Link
+                    key={genre.id}
+                    href={`/browse/${genre.id}?name=${encodeURIComponent(genre.name)}`}
+                    onClick={() => setBrowseOpen(false)}
+                    className="block px-4 py-2 text-white/70 hover:text-white hover:bg-white/5 transition-colors text-sm"
+                  >
+                    {genre.name}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
           {searchOpen ? (
             <form onSubmit={handleSearch} className="flex items-center gap-2 animate-fade-in">
               <input

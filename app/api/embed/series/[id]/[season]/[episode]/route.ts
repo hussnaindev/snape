@@ -24,8 +24,7 @@ function getProviders(seriesId: number, season: number, episode: number): Provid
 const BROWSER_HEADERS = {
   'User-Agent':
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  Accept:
-    'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
   'Accept-Language': 'en-US,en;q=0.9',
   'Sec-Fetch-Dest': 'document',
   'Sec-Fetch-Mode': 'navigate',
@@ -86,7 +85,9 @@ async function tryProvider(provider: Provider, chrome: boolean): Promise<Provide
   try {
     const base = new URL(provider.url);
     playerUrl = new URL(
-      rawSrc.startsWith('http') ? rawSrc : `${base.origin}${rawSrc.startsWith('/') ? '' : '/'}${rawSrc}`,
+      rawSrc.startsWith('http')
+        ? rawSrc
+        : `${base.origin}${rawSrc.startsWith('/') ? '' : '/'}${rawSrc}`,
     );
     if (playerUrl.protocol !== 'https:' && playerUrl.protocol !== 'http:') {
       return { res: null, error: 'invalid player URL protocol' };

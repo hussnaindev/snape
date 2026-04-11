@@ -81,13 +81,13 @@ export function EpisodeGuide({ seriesId, seasons, initialSeason }: Props) {
 
       {/* Episode list */}
       {loading ? (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2 sm:gap-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex gap-3 animate-pulse">
-              <div className="flex-none w-[120px] sm:w-[160px] aspect-video rounded bg-white/10" />
-              <div className="flex-1 space-y-2 py-1">
-                <div className="h-3 bg-white/10 rounded w-1/3" />
-                <div className="h-2.5 bg-white/10 rounded w-2/3" />
+            <div key={i} className="flex gap-2 sm:gap-3 animate-pulse">
+              <div className="flex-none w-20 sm:w-[160px] aspect-video rounded bg-white/10" />
+              <div className="flex-1 space-y-1.5 sm:space-y-2 py-0.5 sm:py-1">
+                <div className="h-2.5 sm:h-3 bg-white/10 rounded w-1/3" />
+                <div className="h-2 sm:h-2.5 bg-white/10 rounded w-2/3" />
                 <div className="h-2 bg-white/10 rounded w-1/2" />
               </div>
             </div>
@@ -137,18 +137,12 @@ function EpisodeRow({
     <Link
       href={`/series/${seriesId}/watch?s=${selectedSeason}&e=${episode.episode_number}`}
       prefetch={false}
-      className="group flex gap-3 rounded-lg p-2 -mx-2 hover:bg-white/5 transition-colors"
+      className="group flex gap-2 sm:gap-3 rounded-lg p-1.5 sm:p-2 -mx-1.5 sm:-mx-2 hover:bg-white/5 transition-colors"
     >
       {/* Thumbnail */}
-      <div className="flex-none w-[120px] sm:w-[160px] aspect-video rounded overflow-hidden bg-white/5 relative">
+      <div className="flex-none w-20 sm:w-[160px] aspect-video rounded overflow-hidden bg-white/5 relative">
         {still ? (
-          <Image
-            src={still}
-            alt={episode.name}
-            fill
-            sizes="160px"
-            className="object-cover"
-          />
+          <Image src={still} alt={episode.name} fill sizes="160px" className="object-cover" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
             <svg
@@ -173,20 +167,18 @@ function EpisodeRow({
       </div>
 
       {/* Info */}
-      <div className="flex-1 min-w-0 py-0.5">
-        <div className="flex items-baseline gap-2">
-          <span className="text-white/40 text-xs font-mono tabular-nums">
+      <div className="flex-1 min-w-0 py-0.5 sm:py-1">
+        <div className="flex items-baseline gap-1 sm:gap-2">
+          <span className="text-white/40 text-[10px] sm:text-xs font-mono tabular-nums flex-none">
             E{String(episode.episode_number).padStart(2, '0')}
           </span>
-          <p className="text-white text-sm font-medium leading-tight line-clamp-1">
+          <p className="text-white text-[11px] sm:text-sm font-medium leading-tight line-clamp-1">
             {episode.name}
           </p>
         </div>
-        {runtime && (
-          <p className="text-white/40 text-xs mt-0.5">{runtime}</p>
-        )}
+        {runtime && <p className="text-white/40 text-[10px] sm:text-xs mt-0.5">{runtime}</p>}
         {episode.overview && (
-          <p className="text-white/50 text-xs mt-1 leading-relaxed line-clamp-2 sm:line-clamp-3">
+          <p className="text-white/50 text-[10px] sm:text-xs mt-1 leading-relaxed line-clamp-2">
             {episode.overview}
           </p>
         )}

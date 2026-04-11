@@ -8,9 +8,9 @@ type Provider = { url: string; referer: string };
 
 function getProviders(movieId: number): Provider[] {
   return [
-    { url: `https://vidsrc.icu/embed/movie/${movieId}`,  referer: 'https://vidsrc.icu/' },
-    { url: `https://embed.su/embed/movie/${movieId}`,     referer: 'https://embed.su/' },
-    { url: `https://moviesapi.club/movie/${movieId}`,     referer: 'https://moviesapi.club/' },
+    { url: `https://vidsrc.icu/embed/movie/${movieId}`, referer: 'https://vidsrc.icu/' },
+    { url: `https://embed.su/embed/movie/${movieId}`, referer: 'https://embed.su/' },
+    { url: `https://moviesapi.club/movie/${movieId}`, referer: 'https://moviesapi.club/' },
   ];
 }
 
@@ -18,8 +18,7 @@ function getProviders(movieId: number): Provider[] {
 const BROWSER_HEADERS = {
   'User-Agent':
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  Accept:
-    'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
   'Accept-Language': 'en-US,en;q=0.9',
   'Sec-Fetch-Dest': 'document',
   'Sec-Fetch-Mode': 'navigate',
@@ -36,10 +35,7 @@ function isChrome(req: NextRequest): boolean {
   return /Chrome\//.test(ua) && !/Edg\/|OPR\//.test(ua);
 }
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const movieId = Number(id);
   if (Number.isNaN(movieId)) return errorPage(404, 'Not found');
@@ -80,9 +76,12 @@ async function tryProvider(provider: Provider, chrome: boolean): Promise<Provide
   try {
     const base = new URL(provider.url);
     playerUrl = new URL(
-      rawSrc.startsWith('http') ? rawSrc : `${base.origin}${rawSrc.startsWith('/') ? '' : '/'}${rawSrc}`,
+      rawSrc.startsWith('http')
+        ? rawSrc
+        : `${base.origin}${rawSrc.startsWith('/') ? '' : '/'}${rawSrc}`,
     );
-    if (playerUrl.protocol !== 'https:' && playerUrl.protocol !== 'http:') return { res: null, error: 'invalid player URL protocol' };
+    if (playerUrl.protocol !== 'https:' && playerUrl.protocol !== 'http:')
+      return { res: null, error: 'invalid player URL protocol' };
   } catch {
     return { res: null, error: 'could not parse player URL' };
   }
@@ -113,15 +112,17 @@ async function tryProvider(provider: Provider, chrome: boolean): Promise<Provide
 </body>
 </html>`;
 
-  return { res: new Response(playerHtml, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/html; charset=utf-8',
-      // Cache at CDN for 1h, serve stale for up to 24h while revalidating.
-      // Provider URLs for a given movie ID are stable; no user-specific content.
-      'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
-    },
-  }) };
+  return {
+    res: new Response(playerHtml, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        // Cache at CDN for 1h, serve stale for up to 24h while revalidating.
+        // Provider URLs for a given movie ID are stable; no user-specific content.
+        'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
+      },
+    }),
+  };
 }
 
 // Chrome cannot sandbox the player iframe without breaking video (the player's
@@ -170,18 +171,20 @@ async function buildChromeResponse(playerUrl: URL, referer: string): Promise<Pro
     ? playerHtml.replace(/(<head[^>]*>)/i, `$1${blocker}`)
     : blocker + playerHtml;
 
-  return { res: new Response(modified, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
-    },
-  }) };
+  return {
+    res: new Response(modified, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
+      },
+    }),
+  };
 }
 
 function errorPage(status: number, message: string, errors?: string[]): Response {
   const detail = errors?.length
-    ? `<ul style="margin:.5rem 0 0;padding:0;list-style:none;font-size:11px;opacity:.6">${errors.map(e => `<li>${e}</li>`).join('')}</ul>`
+    ? `<ul style="margin:.5rem 0 0;padding:0;list-style:none;font-size:11px;opacity:.6">${errors.map((e) => `<li>${e}</li>`).join('')}</ul>`
     : '<div>No errors found</div>';
   const html = `<!doctype html><html><body style="background:#000;color:rgba(255,255,255,.5);display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font:14px/1 sans-serif;text-align:center"><span>${message}</span>${detail}</body></html>`;
   return new Response(html, {

@@ -23,10 +23,10 @@ export function BackdropPlayer({ backdropUrl, trailerKey, alt }: Props) {
     setPageOrigin(window.location.origin);
   }, []);
 
-  // Step 1 — mount the iframe after a short delay
+  // Step 1 — mount the iframe immediately to start loading ASAP
   useEffect(() => {
     if (!trailerKey) return;
-    const t = setTimeout(() => setShowVideo(true), 1500);
+    const t = setTimeout(() => setShowVideo(true), 100);
     return () => clearTimeout(t);
   }, [trailerKey]);
 
@@ -42,7 +42,10 @@ export function BackdropPlayer({ backdropUrl, trailerKey, alt }: Props) {
 
     // YouTube won't dispatch postMessage events until we send "listening"
     function initPlayer() {
-      iframe?.contentWindow?.postMessage(JSON.stringify({ event: 'listening' }), 'https://www.youtube.com');
+      iframe?.contentWindow?.postMessage(
+        JSON.stringify({ event: 'listening' }),
+        'https://www.youtube.com',
+      );
     }
 
     // Fallback: if no event arrives in 8 s, reveal anyway (e.g. postMessage blocked)
@@ -50,12 +53,17 @@ export function BackdropPlayer({ backdropUrl, trailerKey, alt }: Props) {
 
     function onMessage(e: MessageEvent) {
       try {
-        const data: unknown =
-          typeof e.data === 'string' ? (JSON.parse(e.data) as unknown) : e.data;
+        const data: unknown = typeof e.data === 'string' ? (JSON.parse(e.data) as unknown) : e.data;
         if (!data || typeof data !== 'object') return;
         const { event, info } = data as { event?: unknown; info?: unknown };
 
-        if (event === 'onStateChange' && info === 1) {
+        if (event === 'onReady') {
+          // Player is ready — try to set quality to 720p
+          iframe?.contentWindow?.postMessage(
+            JSON.stringify({ event: 'command', func: 'setPlaybackQuality', args: ['hd720'] }),
+            'https://www.youtube.com',
+          );
+        } else if (event === 'onStateChange' && info === 1) {
           // 1 = playing — safe to reveal the iframe
           clearTimeout(fallback);
           setVideoVisible(true);

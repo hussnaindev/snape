@@ -19,7 +19,12 @@ export function CastRail({ cast }: CastRailProps) {
         {visible.map((member) => {
           const photo = tmdbImage(member.profile_path, 'w185');
           return (
-            <Link key={member.id} href={`/person/${member.id}`} prefetch={false} className="flex-none w-24 group">
+            <Link
+              key={member.id}
+              href={`/person/${member.id}`}
+              prefetch={false}
+              className="flex-none w-24 group"
+            >
               <div className="aspect-[2/3] rounded overflow-hidden bg-white/5 mb-2">
                 {photo ? (
                   <div className="relative w-full h-full">

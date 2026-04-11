@@ -1,7 +1,7 @@
+import { FullStoryInit } from '@/components/fullstory-init';
+import { APP_NAME } from '@/lib/config';
 import type { Metadata } from 'next';
 import { Bungee, Cormorant_Garamond, DM_Sans, Syne } from 'next/font/google';
-import { APP_NAME } from '@/lib/config';
-import { FullStoryInit } from '@/components/fullstory-init';
 import './globals.css';
 
 const bungee = Bungee({
@@ -50,7 +50,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${cormorantGaramond.variable} ${bungee.variable} ${syne.variable}`}>
+    <html
+      lang="en"
+      className={`${dmSans.variable} ${cormorantGaramond.variable} ${bungee.variable} ${syne.variable}`}
+    >
       <head>
         <meta name="theme-color" content="#000000" />
       </head>
