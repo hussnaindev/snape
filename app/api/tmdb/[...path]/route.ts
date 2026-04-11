@@ -20,7 +20,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ path
   for (const [key, value] of searchParams.entries()) {
     tmdbUrl.searchParams.set(key, value);
   }
-  tmdbUrl.searchParams.set('include_adult', true)
+  tmdbUrl.searchParams.set('include_adult', 'true')
 
   const res = await fetch(tmdbUrl.toString(), { next: { revalidate: 3600 } });
 
