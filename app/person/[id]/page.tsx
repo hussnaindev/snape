@@ -3,12 +3,22 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import { BackdropPlayer } from '@/app/movie/[id]/backdrop-player';
 import { PersonCard } from '@/components/person-card';
 import { Topbar } from '@/components/topbar';
 import { ExpandableText } from '@/components/ui/expandable-text';
 import { RatingBadge } from '@/components/ui/rating-badge';
 import { SectionDivider } from '@/components/ui/section-divider';
-import { getPerson, getPersonMovieCredits } from '@/lib/tmdb';
+import {
+  getPerson,
+  getPersonMovieCredits,
+  getPersonSeriesCredits,
+  getMovieDetail,
+  getMovieVideos,
+  getSeriesDetail,
+  getSeriesVideos,
+  getEmbeddableTrailerKey,
+} from '@/lib/tmdb';
 import { tmdbImage } from '@/lib/tmdb-image';
 
 export const runtime = 'edge';
@@ -35,23 +45,101 @@ export default async function PersonPage({ params }: Props) {
   const personId = Number(id);
   if (Number.isNaN(personId)) notFound();
 
-  const [person, credits] = await Promise.all([
+  const [person, movieCredits, seriesCredits] = await Promise.all([
     getPerson(personId).catch(() => null),
     getPersonMovieCredits(personId).catch(() => ({ cast: [], crew: [] })),
+    getPersonSeriesCredits(personId).catch(() => ({ cast: [], crew: [] })),
   ]);
 
   if (!person) notFound();
 
   const photo = tmdbImage(person.profile_path, 'w342');
 
+  // Combine all credits and find the latest release
+  const allMovieCredits = [...movieCredits.cast];
+  const allSeriesCredits = [...seriesCredits.cast];
+
+
+  // Fetch backdrop and trailer for release with a backdrop
+  let backdropUrl: string | null = null;
+  let trailerKey: string | null = null;
+  let releaseWithBackdrop: {
+    id: number;
+    title: string;
+    type: 'movie' | 'series';
+    backdropPath: string | null;
+    releaseDate: string;
+  } | null = null;
+
+  // Try to find a release with a backdrop, working backwards from the latest
+  const movieReleases = allMovieCredits
+    .filter((m) => m.release_date)
+    .map((m) => ({ ...m, type: 'movie' as const, airDate: m.release_date }));
+
+  const seriesReleases = allSeriesCredits
+    .filter((s) => s.first_air_date)
+    .map((s) => ({ ...s, type: 'series' as const, airDate: s.first_air_date }));
+
+  const allReleases = [...movieReleases, ...seriesReleases].sort((a, b) =>
+    b.airDate > a.airDate ? 1 : -1,
+  );
+
+  for (const release of allReleases) {
+    try {
+      if (release.type === 'movie') {
+        const [movieDetail, videos] = await Promise.all([
+          getMovieDetail(release.id).catch(() => null),
+          getMovieVideos(release.id).catch(() => ({ results: [] })),
+        ]);
+
+        if (movieDetail?.backdrop_path) {
+          backdropUrl = tmdbImage(movieDetail.backdrop_path, 'original');
+          releaseWithBackdrop = {
+            id: release.id,
+            title: release.title,
+            type: 'movie',
+            backdropPath: movieDetail.backdrop_path,
+            releaseDate: release.release_date,
+          };
+          if (videos.results.length > 0) {
+            trailerKey = await getEmbeddableTrailerKey(videos);
+          }
+          break;
+        }
+      } else {
+        const [seriesDetail, videos] = await Promise.all([
+          getSeriesDetail(release.id).catch(() => null),
+          getSeriesVideos(release.id).catch(() => ({ results: [] })),
+        ]);
+
+        if (seriesDetail?.backdrop_path) {
+          backdropUrl = tmdbImage(seriesDetail.backdrop_path, 'original');
+          releaseWithBackdrop = {
+            id: release.id,
+            title: release.name,
+            type: 'series',
+            backdropPath: seriesDetail.backdrop_path,
+            releaseDate: release.first_air_date,
+          };
+          if (videos.results.length > 0) {
+            trailerKey = await getEmbeddableTrailerKey(videos);
+          }
+          break;
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+
   // Known for: top 8 by popularity with a poster
-  const knownFor = [...credits.cast]
+  const knownFor = [...movieCredits.cast]
     .filter((c) => c.poster_path)
     .sort((a, b) => b.popularity - a.popularity)
     .slice(0, 8);
 
   // Full filmography sorted by date desc
-  const filmography = [...credits.cast]
+  const filmography = [...movieCredits.cast]
     .filter((c) => c.release_date)
     .sort((a, b) => (b.release_date > a.release_date ? 1 : -1));
 
@@ -59,9 +147,12 @@ export default async function PersonPage({ params }: Props) {
     <>
       <Topbar />
       <div>
+        {/* Backdrop hero — show if we found a release with backdrop */}
+        {backdropUrl && releaseWithBackdrop && <BackdropPlayer backdropUrl={backdropUrl} trailerKey={trailerKey} alt={releaseWithBackdrop.title} />}
+
         {/* Info block */}
-        <div className="px-4 md:px-8 pt-24 relative z-10">
-          <div className="flex gap-4 md:gap-8">
+        <div className={`px-4 md:px-8 ${backdropUrl ? '-mt-36 md:-mt-60 relative z-10' : 'pt-24 relative z-10'}`}>
+          <div className={`flex gap-4 md:gap-8 ${backdropUrl ? 'h-36 md:h-60' : ''}`}>
             {/* Photo */}
             <div className="flex-none w-24 md:w-40 rounded overflow-hidden shadow-2xl">
               {photo && (
@@ -78,7 +169,7 @@ export default async function PersonPage({ params }: Props) {
             </div>
 
             {/* Details */}
-            <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
+            <div className="flex-1 min-w-0 overflow-hidden flex flex-col justify-end">
               <h1 className="font-syne text-xl md:text-4xl font-bold text-white leading-tight line-clamp-2">
                 {person.name}
               </h1>

@@ -100,6 +100,22 @@ export interface TMDBPersonMovieCredits {
   crew: TMDBPersonMovieCredit[];
 }
 
+export interface TMDBPersonSeriesCredit {
+  id: number;
+  name: string;
+  character: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  first_air_date: string;
+  vote_average: number;
+  popularity: number;
+}
+
+export interface TMDBPersonSeriesCredits {
+  cast: TMDBPersonSeriesCredit[];
+  crew: TMDBPersonSeriesCredit[];
+}
+
 export interface TMDBListResult<T> {
   results: T[];
   page: number;

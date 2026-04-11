@@ -9,6 +9,7 @@ import type {
   TMDBMovieDetail,
   TMDBPerson,
   TMDBPersonMovieCredits,
+  TMDBPersonSeriesCredits,
   TMDBSeason,
   TMDBSeries,
   TMDBSeriesDetail,
@@ -82,6 +83,10 @@ export async function getPerson(id: number): Promise<TMDBPerson> {
 
 export async function getPersonMovieCredits(id: number): Promise<TMDBPersonMovieCredits> {
   return tmdbFetch<TMDBPersonMovieCredits>(`/person/${id}/movie_credits`);
+}
+
+export async function getPersonSeriesCredits(id: number): Promise<TMDBPersonSeriesCredits> {
+  return tmdbFetch<TMDBPersonSeriesCredits>(`/person/${id}/tv_credits`);
 }
 
 export async function getMoviesByGenre(genreId: number, page = 1): Promise<TMDBMovie[]> {
