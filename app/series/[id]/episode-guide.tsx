@@ -66,7 +66,10 @@ export function EpisodeGuide({ seriesId, seasons, initialSeason }: Props) {
             <button
               key={s.season_number}
               type="button"
-              onClick={() => setSelectedSeason(s.season_number)}
+              onClick={() => {
+                setSelectedSeason(s.season_number);
+                if (s.season_number !== initialSeason.season_number) setLoading(true);
+              }}
               className={`flex-none px-4 py-1.5 rounded-full text-sm font-medium border transition-colors whitespace-nowrap ${
                 selectedSeason === s.season_number
                   ? 'bg-white text-black border-white'
