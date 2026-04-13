@@ -2,6 +2,7 @@ import { FullStoryInit } from '@/components/fullstory-init';
 import { APP_NAME } from '@/lib/config';
 import type { Metadata } from 'next';
 import { Bungee, Cormorant_Garamond, DM_Sans, Syne } from 'next/font/google';
+import NextTopLoader from 'nextjs-toploader';
 import './globals.css';
 
 const bungee = Bungee({
@@ -58,6 +59,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="theme-color" content="#000000" />
       </head>
       <body className="min-h-screen bg-black text-white antialiased">
+        <NextTopLoader color="#ffffff" height={2} showSpinner={false} />
         <FullStoryInit />
         {children}
       </body>
