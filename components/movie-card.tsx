@@ -22,6 +22,7 @@ export function MovieCard({ movie, qualityBadge, imageSize = 'w780', className }
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const isHoveringRef = useRef(false);
   const [pageOrigin, setPageOrigin] = useState('');
 
   // Initialize desktop check and page origin
@@ -34,6 +35,8 @@ export function MovieCard({ movie, qualityBadge, imageSize = 'w780', className }
   // Fetch trailer on hover (desktop only)
   const handleMouseEnter = async () => {
     if (!isDesktop) return;
+
+    isHoveringRef.current = true;
 
     // Clear any existing timeouts
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
@@ -50,7 +53,7 @@ export function MovieCard({ movie, qualityBadge, imageSize = 'w780', className }
       const res = await fetch(`/api/videos/movie/${movie.id}`);
       if (!res.ok) throw new Error(`Failed to fetch trailer: ${res.status}`);
       const { ok, data } = await res.json();
-      if (ok && data.trailerKey) {
+      if (ok && data.trailerKey && isHoveringRef.current) {
         setTrailerKey(data.trailerKey);
         // Show trailer after a short delay for smooth transition
         hoverTimeoutRef.current = setTimeout(() => setShowTrailer(true), 50);
@@ -61,6 +64,8 @@ export function MovieCard({ movie, qualityBadge, imageSize = 'w780', className }
   };
 
   const handleMouseLeave = () => {
+    isHoveringRef.current = false;
+
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
         JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }),

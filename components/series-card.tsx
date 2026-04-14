@@ -20,6 +20,7 @@ export function SeriesCard({ series, imageSize = 'w780', className }: SeriesCard
   const [videoVisible, setVideoVisible] = useState(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const isHoveringRef = useRef(false);
   const [pageOrigin, setPageOrigin] = useState('');
 
   // Initialize desktop check and page origin
@@ -32,6 +33,8 @@ export function SeriesCard({ series, imageSize = 'w780', className }: SeriesCard
   // Fetch trailer on hover (desktop only)
   const handleMouseEnter = async () => {
     if (!isDesktop) return;
+
+    isHoveringRef.current = true;
 
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
 
@@ -46,7 +49,7 @@ export function SeriesCard({ series, imageSize = 'w780', className }: SeriesCard
       const res = await fetch(`/api/videos/series/${series.id}`);
       if (!res.ok) throw new Error(`Failed to fetch trailer: ${res.status}`);
       const { ok, data } = await res.json();
-      if (ok && data.trailerKey) {
+      if (ok && data.trailerKey && isHoveringRef.current) {
         setTrailerKey(data.trailerKey);
         hoverTimeoutRef.current = setTimeout(() => setShowTrailer(true), 50);
       }
@@ -56,6 +59,8 @@ export function SeriesCard({ series, imageSize = 'w780', className }: SeriesCard
   };
 
   const handleMouseLeave = () => {
+    isHoveringRef.current = false;
+
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
         JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }),
