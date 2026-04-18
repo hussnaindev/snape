@@ -17,6 +17,9 @@ import {
 } from '@/lib/tmdb';
 import type { Metadata } from 'next';
 
+/** Max items shown per homepage movie/series rail. */
+const CAROUSEL_LIMIT = 10;
+
 export const metadata: Metadata = {
   title: `${APP_NAME} — Stream Movies Instantly`,
 };
@@ -109,30 +112,45 @@ export default async function HomePage() {
 
         {/* Rails */}
         <div className="mt-6 mb-10 flex flex-col gap-3">
-          <MovieCarousel title="Trending This Week" movies={trendingFiltered} />
-          <MovieCarousel title="Now Playing" movies={nowPlayingFiltered} />
+          <MovieCarousel
+            title="Trending This Week"
+            movies={trendingFiltered.slice(0, CAROUSEL_LIMIT)}
+          />
+          <MovieCarousel
+            title="Now Playing"
+            movies={nowPlayingFiltered.slice(0, CAROUSEL_LIMIT)}
+          />
 
           {/* Series sections interleaved with movies */}
           {trendingSeries.length > 0 && (
-            <SeriesCarousel title="Trending Series" series={trendingSeries} />
+            <SeriesCarousel
+              title="Trending Series"
+              series={trendingSeries.slice(0, CAROUSEL_LIMIT)}
+            />
           )}
 
-          <MovieCarousel title="Top Rated" movies={topRatedFiltered} />
-          <MovieCarousel title="Action" movies={action} />
+          <MovieCarousel title="Top Rated" movies={topRatedFiltered.slice(0, CAROUSEL_LIMIT)} />
+          <MovieCarousel title="Action" movies={action.slice(0, CAROUSEL_LIMIT)} />
 
           {popularSeries.length > 0 && (
-            <SeriesCarousel title="Popular Series" series={popularSeries} />
+            <SeriesCarousel
+              title="Popular Series"
+              series={popularSeries.slice(0, CAROUSEL_LIMIT)}
+            />
           )}
 
-          <MovieCarousel title="Adventure" movies={adventure} />
-          <MovieCarousel title="Thriller" movies={thriller} />
+          <MovieCarousel title="Adventure" movies={adventure.slice(0, CAROUSEL_LIMIT)} />
+          <MovieCarousel title="Thriller" movies={thriller.slice(0, CAROUSEL_LIMIT)} />
 
           {topRatedSeries.length > 0 && (
-            <SeriesCarousel title="Top Rated Series" series={topRatedSeries} />
+            <SeriesCarousel
+              title="Top Rated Series"
+              series={topRatedSeries.slice(0, CAROUSEL_LIMIT)}
+            />
           )}
 
-          <MovieCarousel title="Sci-Fi" movies={scifi} />
-          <MovieCarousel title="Bollywood" movies={bollywood} />
+          <MovieCarousel title="Sci-Fi" movies={scifi.slice(0, CAROUSEL_LIMIT)} />
+          <MovieCarousel title="Bollywood" movies={bollywood.slice(0, CAROUSEL_LIMIT)} />
         </div>
       </div>
     </>
