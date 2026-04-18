@@ -134,7 +134,7 @@ export default async function SeriesPage({ params }: Props) {
                 {series.name}
               </h1>
               {series.tagline && (
-                <p className="mt-0.5 md:mt-1 text-white/50 italic text-[10px] md:text-xs truncate">
+                <p className="hidden md:block md:mt-1 text-white/50 italic text-xs truncate">
                   {series.tagline}
                 </p>
               )}
