@@ -12,6 +12,7 @@ import {
   getPopularSeries,
   getTopRatedMovies,
   getTopRatedSeries,
+  getSeriesByGenre,
   getTrendingMovies,
   getTrendingSeries,
 } from '@/lib/tmdb';
@@ -37,6 +38,7 @@ export default async function HomePage() {
     trendingSeriesRaw,
     popularSeriesData,
     topRatedSeriesRaw,
+    animationSeriesRaw,
   ] = await Promise.all([
     getTrendingMovies(),
     getNowPlayingMovies(),
@@ -49,6 +51,7 @@ export default async function HomePage() {
     getTrendingSeries(),
     getPopularSeries(1),
     getTopRatedSeries(),
+    getSeriesByGenre(16), // Animation (TV)
   ]);
 
   // Filter out movies missing both backdrop and poster images
@@ -89,6 +92,7 @@ export default async function HomePage() {
   const trendingSeries = hasImages(trendingSeriesRaw);
   const popularSeries = hasImages(popularSeriesData.results);
   const topRatedSeries = hasImages(topRatedSeriesRaw);
+  const animationSeries = hasImages(animationSeriesRaw);
 
   // Fetch trailer keys for the 5 featured hero movies in parallel
   const featuredMovies = trendingFiltered.slice(0, 5);
@@ -151,6 +155,13 @@ export default async function HomePage() {
 
           <MovieCarousel title="Sci-Fi" movies={scifi.slice(0, CAROUSEL_LIMIT)} />
           <MovieCarousel title="Bollywood" movies={bollywood.slice(0, CAROUSEL_LIMIT)} />
+
+          {animationSeries.length > 0 && (
+            <SeriesCarousel
+              title="Anime"
+              series={animationSeries.slice(0, CAROUSEL_LIMIT)}
+            />
+          )}
         </div>
       </div>
     </>
