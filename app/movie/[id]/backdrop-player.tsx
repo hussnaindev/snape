@@ -147,7 +147,7 @@ export function BackdropPlayer({ backdropUrl, trailerKey, alt }: Props) {
         <button
           type="button"
           onClick={handleMuteToggle}
-          className="absolute bottom-40 sm:bottom-4 right-4 z-10 flex items-center justify-center w-8 h-8 rounded-full border border-white/40 bg-black/50 text-white/80 hover:text-white hover:border-white/70 transition-colors"
+          className="absolute bottom-40 sm:bottom-4 right-4 z-30 flex items-center justify-center w-8 h-8 rounded-full border border-white/40 bg-black/50 text-white/80 hover:text-white hover:border-white/70 transition-colors"
           aria-label={muted ? 'Unmute trailer' : 'Mute trailer'}
         >
           {muted ? (
