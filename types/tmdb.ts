@@ -123,6 +123,15 @@ export interface TMDBListResult<T> {
   total_results: number;
 }
 
+/** Hit from `GET /search/person`. */
+export interface TMDBPersonSearchHit {
+  id: number;
+  name: string;
+  popularity: number;
+  profile_path: string | null;
+  known_for_department: string;
+}
+
 // ── TV Series ────────────────────────────────────────────────────────────────
 
 export interface TMDBSeries {
