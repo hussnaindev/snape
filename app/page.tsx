@@ -1,9 +1,7 @@
 import { HeroSection } from '@/components/hero-section';
 import { MovieCarousel } from '@/components/movie-carousel';
-import { MovieGrid } from '@/components/movie-grid';
 import { SeriesCarousel } from '@/components/series-carousel';
 import { Topbar } from '@/components/topbar';
-import { SectionDivider } from '@/components/ui/section-divider';
 import { APP_NAME } from '@/lib/config';
 import {
   getBollywoodMovies,
@@ -11,7 +9,6 @@ import {
   getMovieVideos,
   getMoviesByGenre,
   getNowPlayingMovies,
-  getPopularMovies,
   getPopularSeries,
   getTopRatedMovies,
   getTopRatedSeries,
@@ -29,7 +26,6 @@ export default async function HomePage() {
     trending,
     nowPlaying,
     topRated,
-    popular,
     actionRaw,
     adventureRaw,
     thrillerRaw,
@@ -42,7 +38,6 @@ export default async function HomePage() {
     getTrendingMovies(),
     getNowPlayingMovies(),
     getTopRatedMovies(),
-    getPopularMovies(1),
     getMoviesByGenre(28), // Action
     getMoviesByGenre(12), // Adventure
     getMoviesByGenre(53), // Thriller
@@ -60,11 +55,10 @@ export default async function HomePage() {
     return movies.filter((m) => m.backdrop_path !== null || m.poster_path !== null);
   }
 
-  const [trendingFiltered, nowPlayingFiltered, topRatedFiltered, popularFiltered] = [
+  const [trendingFiltered, nowPlayingFiltered, topRatedFiltered] = [
     hasImages(trending),
     hasImages(nowPlaying),
     hasImages(topRated),
-    hasImages(popular.results),
   ];
 
   // Deduplicate genre rails — exclude movies already shown in earlier sections
@@ -114,7 +108,7 @@ export default async function HomePage() {
         <HeroSection movies={trendingFiltered} trailerKeys={trailerKeys} />
 
         {/* Rails */}
-        <div className="mt-6 flex flex-col gap-3">
+        <div className="mt-6 mb-10 flex flex-col gap-3">
           <MovieCarousel title="Trending This Week" movies={trendingFiltered} />
           <MovieCarousel title="Now Playing" movies={nowPlayingFiltered} />
 
@@ -139,14 +133,6 @@ export default async function HomePage() {
 
           <MovieCarousel title="Sci-Fi" movies={scifi} />
           <MovieCarousel title="Bollywood" movies={bollywood} />
-        </div>
-
-        {/* Popular grid */}
-        <div className="mt-6 mb-10">
-          <div className="px-4 md:px-8 mb-4">
-            <SectionDivider label={`Popular on ${APP_NAME}`} />
-          </div>
-          <MovieGrid movies={popularFiltered} />
         </div>
       </div>
     </>
