@@ -9,6 +9,7 @@ import type {
   TMDBMovieDetail,
   TMDBPerson,
   TMDBPersonMovieCredits,
+  TMDBPersonSearchHit,
   TMDBPersonSeriesCredits,
   TMDBSeason,
   TMDBSeries,
@@ -33,7 +34,7 @@ async function tmdbFetch<T>(
     for (const [k, v] of Object.entries(params)) {
       url.searchParams.set(k, v);
     }
-    url.searchParams.set("include_adult", "true")
+    url.searchParams.set('include_adult', 'true');
   }
 
   const res = await fetch(url.toString(), { next: { revalidate } });
@@ -107,11 +108,57 @@ export async function getBollywoodMovies(page = 1): Promise<TMDBMovie[]> {
   return data.results;
 }
 
-export async function searchMovies(query: string, page = 1): Promise<TMDBListResult<TMDBMovie>> {
-  return tmdbFetch<TMDBListResult<TMDBMovie>>('/search/movie', {
-    query,
-    page: String(page),
-  });
+/** Alternate query strings to try when the exact title yields no TMDB hits (typos, extra words). */
+function buildSearchQueryVariants(query: string): string[] {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+
+  const seen = new Set<string>();
+  const variants: string[] = [];
+  const add = (s: string) => {
+    const t = s.trim();
+    if (t.length < 2) return;
+    const key = t.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    variants.push(t);
+  };
+
+  add(trimmed);
+
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (words.length > 1) {
+    add(words.slice(0, -1).join(' '));
+    const longest = words.reduce((a, b) => (a.length >= b.length ? a : b), '');
+    if (longest.length > 3) add(longest);
+    const firstWord = words[0];
+    if (firstWord !== undefined) add(firstWord);
+  }
+
+  if (trimmed.length > 3) add(trimmed.slice(0, -1));
+  if (trimmed.length > 4) add(trimmed.slice(0, -2));
+
+  return variants;
+}
+
+async function searchTmdbListWithFallback<T>(endpoint: string, query: string): Promise<T[]> {
+  for (const q of buildSearchQueryVariants(query)) {
+    const data = await tmdbFetch<TMDBListResult<T>>(endpoint, { query: q, page: '1' }, 600);
+    if (data.results.length > 0) return data.results;
+  }
+  return [];
+}
+
+export async function searchMovies(query: string): Promise<TMDBMovie[]> {
+  return searchTmdbListWithFallback<TMDBMovie>('/search/movie', query);
+}
+
+export async function searchTvShows(query: string): Promise<TMDBSeries[]> {
+  return searchTmdbListWithFallback<TMDBSeries>('/search/tv', query);
+}
+
+export async function searchPeople(query: string): Promise<TMDBPersonSearchHit[]> {
+  return searchTmdbListWithFallback<TMDBPersonSearchHit>('/search/person', query);
 }
 
 // ── TV Series ────────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@
 import { Logo } from '@/components/ui/logo';
 import { APP_NAME } from '@/lib/config';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
 const GENRES = [
@@ -24,6 +24,7 @@ const GENRES = [
 
 export function Topbar() {
   const router = useRouter();
+  const pathname = usePathname();
   const [searchOpen, setSearchOpen] = useState(false);
   const [browseOpen, setBrowseOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -39,7 +40,13 @@ export function Topbar() {
     e.preventDefault();
     const q = query.trim();
     if (!q) return;
-    router.push(`/search?q=${encodeURIComponent(q)}`);
+    const url = `/search?q=${encodeURIComponent(q)}&tab=movies`;
+    router.push(url);
+    // Same pathname with a new `q` only updates the URL; the `/search` RSC payload can stay
+    // cached and skip re-fetching. Refresh forces the server page to run with the new query.
+    if (pathname === '/search') {
+      setTimeout(() => router.refresh(), 0);
+    }
     setSearchOpen(false);
     setQuery('');
   }
@@ -93,7 +100,7 @@ export function Topbar() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Escape' && setSearchOpen(false)}
-                placeholder="Search movies…"
+                placeholder="Search movies, TV, cast…"
                 className="bg-black/60 border border-white/20 rounded px-3 py-1.5 text-sm text-white placeholder-white/40 outline-none focus:border-white/60 w-44 md:w-64"
               />
               <button
@@ -121,6 +128,7 @@ export function Topbar() {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                aria-hidden="true"
               >
                 <circle cx="11" cy="11" r="8" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
