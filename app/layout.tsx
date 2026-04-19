@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { Bungee, Cormorant_Garamond, DM_Sans, Syne } from 'next/font/google';
 import NextTopLoader from 'nextjs-toploader';
 import './globals.css';
+import { GoogleAnalytics } from '@next/third-parties/google'
 
 const bungee = Bungee({
   subsets: ['latin'],
@@ -63,6 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <FullStoryInit />
         {children}
       </body>
+      <GoogleAnalytics gaId="G-J9LY8F7YKQ" />
     </html>
   );
 }
