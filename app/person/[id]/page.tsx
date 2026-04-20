@@ -20,6 +20,7 @@ import {
   getSeriesVideos,
   getEmbeddableTrailerKey,
 } from '@/lib/tmdb';
+import { filterHasImages } from '@/lib/tmdb-filters';
 import { tmdbImage } from '@/lib/tmdb-image';
 
 export const runtime = 'edge';
@@ -133,14 +134,13 @@ export default async function PersonPage({ params }: Props) {
     }
   }
 
-  // Known for: top 8 by popularity with a poster
-  const knownFor = [...movieCredits.cast]
-    .filter((c) => c.poster_path)
+  // Known for: top 8 by popularity (same image rule as homepage)
+  const knownFor = filterHasImages([...movieCredits.cast])
     .sort((a, b) => b.popularity - a.popularity)
     .slice(0, 8);
 
   // Full filmography sorted by date desc
-  const filmography = [...movieCredits.cast]
+  const filmography = filterHasImages([...movieCredits.cast])
     .filter((c) => c.release_date)
     .sort((a, b) => (b.release_date > a.release_date ? 1 : -1));
 
