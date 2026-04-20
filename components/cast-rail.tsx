@@ -1,6 +1,6 @@
+import { ActorProfileImage } from '@/components/actor-profile-image';
 import { tmdbImage } from '@/lib/tmdb-image';
 import type { TMDBCastMember } from '@/types/tmdb';
-import Image from 'next/image';
 import Link from 'next/link';
 import { SectionDivider } from './ui/section-divider';
 
@@ -25,22 +25,14 @@ export function CastRail({ cast }: CastRailProps) {
               prefetch={false}
               className="flex-none w-24 group"
             >
-              <div className="aspect-[2/3] rounded overflow-hidden bg-white/5 mb-2">
-                {photo ? (
-                  <div className="relative w-full h-full">
-                    <Image
-                      src={photo}
-                      alt={member.name}
-                      fill
-                      sizes="96px"
-                      className="object-cover group-hover:scale-105 transition-transform duration-200"
-                    />
-                  </div>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-white/20 text-2xl">
-                    👤
-                  </div>
-                )}
+              <div className="aspect-[2/3] rounded overflow-hidden bg-white/5 mb-2 relative">
+                <ActorProfileImage
+                  src={photo}
+                  alt={member.name}
+                  sizes="96px"
+                  className="object-cover group-hover:scale-105 transition-transform duration-200"
+                  fallbackSize="sm"
+                />
               </div>
               <p className="text-white text-xs font-medium leading-tight truncate">{member.name}</p>
               <p className="text-white/40 text-xs leading-tight truncate mt-0.5">

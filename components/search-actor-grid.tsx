@@ -1,6 +1,6 @@
+import { ActorProfileImage } from '@/components/actor-profile-image';
 import { tmdbImage } from '@/lib/tmdb-image';
 import type { TMDBPersonSearchHit } from '@/types/tmdb';
-import Image from 'next/image';
 import Link from 'next/link';
 
 interface SearchActorGridProps {
@@ -22,19 +22,13 @@ export function SearchActorGrid({ people }: SearchActorGridProps) {
             className="group block"
           >
             <div className="aspect-[2/3] rounded overflow-hidden bg-white/5 mb-2 relative">
-              {photo ? (
-                <Image
-                  src={photo}
-                  alt={person.name}
-                  fill
-                  sizes="(max-width: 640px) 50vw, 16vw"
-                  className="object-cover group-hover:scale-105 transition-transform duration-200"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-white/20 text-2xl">
-                  👤
-                </div>
-              )}
+              <ActorProfileImage
+                src={photo}
+                alt={person.name}
+                sizes="(max-width: 640px) 50vw, 16vw"
+                className="object-cover group-hover:scale-105 transition-transform duration-200"
+                fallbackSize="sm"
+              />
             </div>
             <p className="text-white text-xs font-medium leading-tight line-clamp-2">
               {person.name}

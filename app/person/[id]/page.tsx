@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { BackdropPlayer } from '@/app/movie/[id]/backdrop-player';
+import { ActorProfileImage } from '@/components/actor-profile-image';
 import { PersonCard } from '@/components/person-card';
 import { Topbar } from '@/components/topbar';
 import { ExpandableText } from '@/components/ui/expandable-text';
@@ -155,17 +156,15 @@ export default async function PersonPage({ params }: Props) {
           <div className={`flex gap-4 md:gap-8 ${backdropUrl ? 'h-36 md:h-60' : ''}`}>
             {/* Photo */}
             <div className="flex-none w-24 md:w-40 rounded overflow-hidden shadow-2xl">
-              {photo && (
-                <div className="relative aspect-[2/3]">
-                  <Image
-                    src={photo}
-                    alt={person.name}
-                    fill
-                    sizes="(max-width: 768px) 96px, 160px"
-                    className="object-cover"
-                  />
-                </div>
-              )}
+              <div className="relative aspect-[2/3]">
+                <ActorProfileImage
+                  src={photo}
+                  alt={person.name}
+                  sizes="(max-width: 768px) 96px, 160px"
+                  className="object-cover"
+                  fallbackSize="lg"
+                />
+              </div>
             </div>
 
             {/* Details */}
