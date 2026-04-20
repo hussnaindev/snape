@@ -157,7 +157,7 @@ export default async function HomePage() {
 
           {animationMovies.length > 0 && (
             <MovieCarousel
-              title="Anime"
+              title="Animation"
               movies={animationMovies.slice(0, CAROUSEL_LIMIT)}
             />
           )}
