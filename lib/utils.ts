@@ -19,3 +19,11 @@ export function formatDate(date: Date | string, locale = 'en-US'): string {
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
+
+/** True when `fetch` was aborted via `AbortSignal` (browser / Node). */
+export function isAbortError(e: unknown): boolean {
+  if (e instanceof Error && e.name === 'AbortError') return true;
+  return (
+    typeof DOMException !== 'undefined' && e instanceof DOMException && e.name === 'AbortError'
+  );
+}

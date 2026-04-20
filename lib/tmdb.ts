@@ -89,13 +89,15 @@ export async function getPersonSeriesCredits(id: number): Promise<TMDBPersonSeri
   return tmdbFetch<TMDBPersonSeriesCredits>(`/person/${id}/tv_credits`);
 }
 
-export async function getMoviesByGenre(genreId: number, page = 1): Promise<TMDBMovie[]> {
-  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>('/discover/movie', {
+export async function getMoviesByGenre(
+  genreId: number,
+  page = 1,
+): Promise<TMDBListResult<TMDBMovie>> {
+  return tmdbFetch<TMDBListResult<TMDBMovie>>('/discover/movie', {
     with_genres: String(genreId),
     sort_by: 'popularity.desc',
     page: String(page),
   });
-  return data.results;
 }
 
 export async function getBollywoodMovies(page = 1): Promise<TMDBMovie[]> {
@@ -148,12 +150,60 @@ async function searchTmdbListWithFallback<T>(endpoint: string, query: string): P
   return [];
 }
 
-export async function searchMovies(query: string): Promise<TMDBMovie[]> {
-  return searchTmdbListWithFallback<TMDBMovie>('/search/movie', query);
+export type SearchPagedResult<T> = TMDBListResult<T> & { resolvedQuery: string | null };
+
+export async function searchMovies(
+  query: string,
+  page = 1,
+  resolvedQuery?: string,
+): Promise<SearchPagedResult<TMDBMovie>> {
+  if (resolvedQuery) {
+    const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(
+      '/search/movie',
+      { query: resolvedQuery, page: String(page) },
+      600,
+    );
+    return { ...data, resolvedQuery };
+  }
+  if (page !== 1) {
+    throw new Error('searchMovies: resolvedQuery is required when page > 1');
+  }
+  for (const variant of buildSearchQueryVariants(query)) {
+    const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(
+      '/search/movie',
+      { query: variant, page: '1' },
+      600,
+    );
+    if (data.results.length > 0) return { ...data, resolvedQuery: variant };
+  }
+  return { page: 1, results: [], total_pages: 0, total_results: 0, resolvedQuery: null };
 }
 
-export async function searchTvShows(query: string): Promise<TMDBSeries[]> {
-  return searchTmdbListWithFallback<TMDBSeries>('/search/tv', query);
+export async function searchTvShows(
+  query: string,
+  page = 1,
+  resolvedQuery?: string,
+): Promise<SearchPagedResult<TMDBSeries>> {
+  if (resolvedQuery) {
+    const data = await tmdbFetch<TMDBListResult<TMDBSeries>>(
+      '/search/tv',
+      { query: resolvedQuery, page: String(page) },
+      600,
+    );
+    return { ...data, resolvedQuery };
+  }
+  if (page !== 1) {
+    throw new Error('searchTvShows: resolvedQuery is required when page > 1');
+  }
+  for (const variant of buildSearchQueryVariants(query)) {
+    const data = await tmdbFetch<TMDBListResult<TMDBSeries>>(
+      '/search/tv',
+      { query: variant, page: '1' },
+      600,
+    );
+    if (data.results.length > 0) return { ...data, resolvedQuery: variant };
+  }
+  return { page: 1, results: [], total_pages: 0, total_results: 0, resolvedQuery: null };
 }
 
 export async function searchPeople(query: string): Promise<TMDBPersonSearchHit[]> {

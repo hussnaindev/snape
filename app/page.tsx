@@ -12,10 +12,10 @@ import {
   getPopularSeries,
   getTopRatedMovies,
   getTopRatedSeries,
-  getSeriesByGenre,
   getTrendingMovies,
   getTrendingSeries,
 } from '@/lib/tmdb';
+import { filterHasImages } from '@/lib/tmdb-filters';
 import type { Metadata } from 'next';
 
 /** Max items shown per homepage movie/series rail. */
@@ -51,20 +51,13 @@ export default async function HomePage() {
     getTrendingSeries(),
     getPopularSeries(1),
     getTopRatedSeries(),
-    getMoviesByGenre(16), 
+    getMoviesByGenre(16),
   ]);
 
-  // Filter out movies missing both backdrop and poster images
-  function hasImages<T extends { backdrop_path: string | null; poster_path: string | null }>(
-    movies: T[],
-  ): T[] {
-    return movies.filter((m) => m.backdrop_path !== null && m.poster_path !== null);
-  }
-
   const [trendingFiltered, nowPlayingFiltered, topRatedFiltered] = [
-    hasImages(trending),
-    hasImages(nowPlaying),
-    hasImages(topRated),
+    filterHasImages(trending),
+    filterHasImages(nowPlaying),
+    filterHasImages(topRated),
   ];
 
   // Deduplicate genre rails — exclude movies already shown in earlier sections
@@ -82,17 +75,17 @@ export default async function HomePage() {
     });
   }
 
-  const action = dedupe(hasImages(actionRaw));
-  const adventure = dedupe(hasImages(adventureRaw));
-  const thriller = dedupe(hasImages(thrillerRaw));
-  const scifi = dedupe(hasImages(scifiRaw));
-  const bollywood = dedupe(hasImages(bollywoodRaw));
+  const action = dedupe(filterHasImages(actionRaw.results));
+  const adventure = dedupe(filterHasImages(adventureRaw.results));
+  const thriller = dedupe(filterHasImages(thrillerRaw.results));
+  const scifi = dedupe(filterHasImages(scifiRaw.results));
+  const bollywood = dedupe(filterHasImages(bollywoodRaw));
 
   // Series — filtered for image presence
-  const trendingSeries = hasImages(trendingSeriesRaw);
-  const popularSeries = hasImages(popularSeriesData.results);
-  const topRatedSeries = hasImages(topRatedSeriesRaw);
-  const animationMovies = hasImages(animationMoviesRaw);
+  const trendingSeries = filterHasImages(trendingSeriesRaw);
+  const popularSeries = filterHasImages(popularSeriesData.results);
+  const topRatedSeries = filterHasImages(topRatedSeriesRaw);
+  const animationMovies = filterHasImages(animationMoviesRaw.results);
 
   // Fetch trailer keys for the 5 featured hero movies in parallel
   const featuredMovies = trendingFiltered.slice(0, 5);
@@ -120,10 +113,7 @@ export default async function HomePage() {
             title="Trending This Week"
             movies={trendingFiltered.slice(0, CAROUSEL_LIMIT)}
           />
-          <MovieCarousel
-            title="Now Playing"
-            movies={nowPlayingFiltered.slice(0, CAROUSEL_LIMIT)}
-          />
+          <MovieCarousel title="Now Playing" movies={nowPlayingFiltered.slice(0, CAROUSEL_LIMIT)} />
 
           {/* Series sections interleaved with movies */}
           {trendingSeries.length > 0 && (
@@ -156,10 +146,7 @@ export default async function HomePage() {
           <MovieCarousel title="Bollywood" movies={bollywood.slice(0, CAROUSEL_LIMIT)} />
 
           {animationMovies.length > 0 && (
-            <MovieCarousel
-              title="Animation"
-              movies={animationMovies.slice(0, CAROUSEL_LIMIT)}
-            />
+            <MovieCarousel title="Animation" movies={animationMovies.slice(0, CAROUSEL_LIMIT)} />
           )}
         </div>
       </div>

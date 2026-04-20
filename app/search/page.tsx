@@ -1,10 +1,11 @@
-import { MovieGrid } from '@/components/movie-grid';
+import { InfiniteMovieGrid } from '@/components/infinite-movie-grid';
+import { InfiniteSeriesGrid } from '@/components/infinite-series-grid';
 import { SearchActorGrid } from '@/components/search-actor-grid';
 import { SearchTabChips, parseSearchTab } from '@/components/search-tab-chips';
-import { SeriesGrid } from '@/components/series-grid';
 import { Topbar } from '@/components/topbar';
 import { APP_NAME } from '@/lib/config';
 import { searchMovies, searchPeople, searchTvShows } from '@/lib/tmdb';
+import { filterHasImages } from '@/lib/tmdb-filters';
 import type { TMDBMovie, TMDBPersonSearchHit, TMDBSeries } from '@/types/tmdb';
 import type { Metadata } from 'next';
 
@@ -29,13 +30,17 @@ export default async function SearchPage({ searchParams }: Props) {
   let movies: TMDBMovie[] = [];
   let series: TMDBSeries[] = [];
   let people: TMDBPersonSearchHit[] = [];
+  let movieSearch: Awaited<ReturnType<typeof searchMovies>> | null = null;
+  let seriesSearch: Awaited<ReturnType<typeof searchTvShows>> | null = null;
 
   if (query) {
     try {
       if (activeTab === 'movies') {
-        movies = await searchMovies(query);
+        movieSearch = await searchMovies(query);
+        movies = filterHasImages(movieSearch.results);
       } else if (activeTab === 'series') {
-        series = await searchTvShows(query);
+        seriesSearch = await searchTvShows(query);
+        series = filterHasImages(seriesSearch.results);
       } else {
         people = await searchPeople(query);
       }
@@ -45,7 +50,16 @@ export default async function SearchPage({ searchParams }: Props) {
   }
 
   const totalHits =
-    activeTab === 'movies' ? movies.length : activeTab === 'series' ? series.length : people.length;
+    activeTab === 'movies'
+      ? (movieSearch?.total_results ?? 0)
+      : activeTab === 'series'
+        ? (seriesSearch?.total_results ?? 0)
+        : people.length;
+
+  const showMovieGrid =
+    activeTab === 'movies' && movieSearch !== null && movieSearch.total_results > 0;
+  const showSeriesGrid =
+    activeTab === 'series' && seriesSearch !== null && seriesSearch.total_results > 0;
 
   return (
     <>
@@ -57,8 +71,25 @@ export default async function SearchPage({ searchParams }: Props) {
               {totalHits > 0 ? `Results for "${query}"` : `No results for "${query}"`}
             </h1>
             <SearchTabChips query={query} active={activeTab} />
-            {totalHits > 0 && activeTab === 'movies' && <MovieGrid movies={movies} />}
-            {totalHits > 0 && activeTab === 'series' && <SeriesGrid series={series} />}
+            {showMovieGrid && movieSearch && (
+              <InfiniteMovieGrid
+                key={`${query}-movies`}
+                mode="search"
+                query={query}
+                resolvedQuery={movieSearch.resolvedQuery}
+                initialMovies={movies}
+                totalPages={movieSearch.total_pages}
+              />
+            )}
+            {showSeriesGrid && seriesSearch && (
+              <InfiniteSeriesGrid
+                key={`${query}-series`}
+                query={query}
+                resolvedQuery={seriesSearch.resolvedQuery}
+                initialSeries={series}
+                totalPages={seriesSearch.total_pages}
+              />
+            )}
             {totalHits > 0 && activeTab === 'actors' && <SearchActorGrid people={people} />}
           </>
         ) : (
