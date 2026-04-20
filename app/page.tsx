@@ -58,7 +58,7 @@ export default async function HomePage() {
   function hasImages<T extends { backdrop_path: string | null; poster_path: string | null }>(
     movies: T[],
   ): T[] {
-    return movies.filter((m) => m.backdrop_path !== null || m.poster_path !== null);
+    return movies.filter((m) => m.backdrop_path !== null && m.poster_path !== null);
   }
 
   const [trendingFiltered, nowPlayingFiltered, topRatedFiltered] = [
