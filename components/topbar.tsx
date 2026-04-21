@@ -61,7 +61,7 @@ export function Topbar() {
         <Link href="/" className="flex items-center gap-2 text-white">
           <Logo className="w-5 h-5 md:w-7 md:h-7 text-white" />
           {/** Keeping it commented for future use */}
-          {/* <span className="font-syne text-sm md:text-xl font-bold tracking-widest uppercase">
+          {/* <span className="font-body text-sm md:text-xl font-bold tracking-widest uppercase">
             {APP_NAME}
           </span> */}
         </Link>

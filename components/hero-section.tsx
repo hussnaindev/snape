@@ -215,7 +215,7 @@ export function HeroSection({ movies, trailerKeys }: HeroSectionProps) {
         className={`absolute -bottom-3 sm:bottom-0 left-0 right-0 px-3 sm:px-4 md:px-12 pb-0 sm:pb-2 transition-opacity duration-300 ${fading ? 'opacity-0' : 'opacity-100'}`}
       >
         <div className="max-w-xl">
-          <h1 className="font-syne font-bold text-xl sm:text-4xl md:text-6xl text-white leading-tight">
+          <h1 className="font-body font-bold text-xl sm:text-4xl md:text-6xl text-white leading-tight">
             {movie.title}
           </h1>
           <div className="flex items-center gap-2 sm:gap-3 mt-2 sm:mt-3">

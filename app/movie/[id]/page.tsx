@@ -95,7 +95,7 @@ export default async function MoviePage({ params }: Props) {
 
             {/* Details */}
             <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
-              <h1 className="font-syne text-xl md:text-4xl font-bold text-white leading-tight line-clamp-2">
+              <h1 className="font-body text-xl md:text-4xl font-bold text-white leading-tight line-clamp-2">
                 {movie.title}
               </h1>
               {movie.tagline && (

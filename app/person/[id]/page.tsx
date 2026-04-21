@@ -169,7 +169,7 @@ export default async function PersonPage({ params }: Props) {
 
             {/* Details */}
             <div className="flex-1 min-w-0 overflow-hidden flex flex-col justify-end">
-              <h1 className="font-syne text-xl md:text-4xl font-bold text-white leading-tight line-clamp-2">
+              <h1 className="font-body text-xl md:text-4xl font-bold text-white leading-tight line-clamp-2">
                 {person.name}
               </h1>
               {person.known_for_department && (

@@ -130,7 +130,7 @@ export default async function SeriesPage({ params }: Props) {
 
             {/* Details */}
             <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
-              <h1 className="font-syne text-xl md:text-4xl font-bold text-white leading-tight line-clamp-2">
+              <h1 className="font-body text-xl md:text-4xl font-bold text-white leading-tight line-clamp-2">
                 {series.name}
               </h1>
               {series.tagline && (
@@ -229,7 +229,7 @@ export default async function SeriesPage({ params }: Props) {
         {/* Episode Guide */}
         {initialSeason && series.seasons.length > 0 && (
           <div className="mt-10 px-4 md:px-8">
-            <h2 className="text-white font-syne font-semibold text-base md:text-lg mb-4">
+            <h2 className="text-white font-body font-semibold text-base md:text-lg mb-4">
               Episodes
             </h2>
             <EpisodeGuide
