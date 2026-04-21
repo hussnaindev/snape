@@ -1,10 +1,11 @@
 import { FullStoryInit } from '@/components/fullstory-init';
+import { PwaInstallPrompt } from '@/components/pwa-install-prompt';
 import { APP_NAME } from '@/lib/config';
 import type { Metadata } from 'next';
 import { Bungee, Cormorant_Garamond, DM_Sans, Syne } from 'next/font/google';
 import NextTopLoader from 'nextjs-toploader';
 import './globals.css';
-import { GoogleAnalytics } from '@next/third-parties/google'
+import { GoogleAnalytics } from '@next/third-parties/google';
 
 const bungee = Bungee({
   subsets: ['latin'],
@@ -41,7 +42,7 @@ export const metadata: Metadata = {
     template: `%s | ${APP_NAME}`,
   },
   description: 'Stream movies instantly. No sign-up required.',
-  icons: { icon: '/icon.svg' },
+  icons: { icon: '/icon.svg', apple: '/apple-touch-icon.png' },
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-black text-white antialiased">
         <NextTopLoader color="#ffffff" height={2} showSpinner={false} />
         <FullStoryInit />
+        <PwaInstallPrompt />
         {children}
       </body>
       <GoogleAnalytics gaId="G-J9LY8F7YKQ" />

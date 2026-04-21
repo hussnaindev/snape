@@ -17,4 +17,9 @@ const nextConfig: NextConfig = {
 export default withPWA({
   dest: 'public',
   disable: process.env.NODE_ENV === 'development',
+  workboxOptions: {
+    // Avoid rollup terser hangs/early-exits on some Node/tooling combos.
+    // This keeps SW generation reliable; it only impacts SW bundle minification.
+    mode: 'development',
+  },
 })(nextConfig);
