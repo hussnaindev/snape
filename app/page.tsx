@@ -1,8 +1,10 @@
+import { ContinueWatchingCarousel } from '@/components/continue-watching-carousel';
 import { HeroSection } from '@/components/hero-section';
 import { MovieCarousel } from '@/components/movie-carousel';
 import { SeriesCarousel } from '@/components/series-carousel';
 import { Topbar } from '@/components/topbar';
 import { APP_NAME } from '@/lib/config';
+import { cookies } from 'next/headers';
 import {
   getBollywoodMovies,
   getEmbeddableTrailerKey,
@@ -26,6 +28,9 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
+  const cookieStore = await cookies();
+  const hasHistory = cookieStore.has('hwh');
+
   const [
     trending,
     nowPlaying,
@@ -107,8 +112,11 @@ export default async function HomePage() {
         {/* Hero */}
         <HeroSection movies={trendingFiltered} trailerKeys={trailerKeys} />
 
+        {/* Continue Watching — client-only, reads localStorage, min 3 entries to show */}
+        <ContinueWatchingCarousel hasHistory={hasHistory} />
+
         {/* Rails */}
-        <div className="mt-6 mb-10 flex flex-col gap-3">
+        <div className="mt-4 mb-10 flex flex-col gap-3">
           <MovieCarousel
             title="Trending This Week"
             movies={trendingFiltered.slice(0, CAROUSEL_LIMIT)}

@@ -1,3 +1,5 @@
+import { WatchHistoryRecorder } from '@/components/watch-history-recorder';
+import { getMovieDetail } from '@/lib/tmdb';
 import { getMovieEmbedUrl } from '@/lib/vsembed';
 import type { Viewport } from 'next';
 import { notFound } from 'next/navigation';
@@ -23,6 +25,7 @@ export default async function WatchPage({ params }: Props) {
   if (Number.isNaN(movieId)) notFound();
 
   const embedUrl = getMovieEmbedUrl(movieId);
+  const movie = await getMovieDetail(movieId).catch(() => null);
 
   return (
     <div className="fixed inset-0 bg-black">
@@ -59,6 +62,17 @@ export default async function WatchPage({ params }: Props) {
           Both live in WatchControls so they share orientation/fullscreen state
           and the back button can call router.back() to pop history correctly. */}
       <WatchControls />
+
+      {movie && (
+        <WatchHistoryRecorder
+          id={movieId}
+          type="movie"
+          title={movie.title}
+          posterPath={movie.poster_path}
+          backdropPath={movie.backdrop_path}
+          year={movie.release_date?.slice(0, 4) ?? ''}
+        />
+      )}
     </div>
   );
 }

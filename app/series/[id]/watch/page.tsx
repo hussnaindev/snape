@@ -1,6 +1,7 @@
 import type { Viewport } from 'next';
 import { notFound } from 'next/navigation';
 
+import { WatchHistoryRecorder } from '@/components/watch-history-recorder';
 import { getSeriesDetail, getSeriesSeason } from '@/lib/tmdb';
 import { getSeriesEmbedUrl } from '@/lib/vsembed';
 
@@ -81,6 +82,15 @@ export default async function SeriesWatchPage({ params, searchParams }: Props) {
           currentEpisodeNum={resolvedEpisodeNum}
         />
       )}
+
+      <WatchHistoryRecorder
+        id={seriesId}
+        type="series"
+        title={series.name}
+        posterPath={series.poster_path}
+        backdropPath={series.backdrop_path}
+        year={series.first_air_date?.slice(0, 4) ?? ''}
+      />
     </div>
   );
 }
