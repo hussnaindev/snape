@@ -23,6 +23,8 @@ import type { Metadata } from 'next';
 /** Max items shown per homepage movie/series rail. */
 const CAROUSEL_LIMIT = 10;
 
+export const runtime = 'edge';
+
 export const metadata: Metadata = {
   title: `${APP_NAME} — Stream Movies Instantly`,
 };
