@@ -1,7 +1,11 @@
 'use client';
 
 import { tmdbImage } from '@/lib/tmdb-image';
-import { WATCH_HISTORY_MIN_ENTRIES, getWatchHistory, syncWatchHistoryCookie } from '@/lib/watch-history';
+import {
+  WATCH_HISTORY_MIN_ENTRIES,
+  getWatchHistory,
+  syncWatchHistoryCookie,
+} from '@/lib/watch-history';
 import type { WatchHistoryEntry } from '@/lib/watch-history';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -20,13 +24,7 @@ function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
         {/* Mobile: portrait card with poster */}
         <div className="sm:hidden aspect-[2/3] relative overflow-hidden">
           {poster ? (
-            <Image
-              src={poster}
-              alt={entry.title}
-              fill
-              sizes="130px"
-              className="object-cover"
-            />
+            <Image src={poster} alt={entry.title} fill sizes="130px" className="object-cover" />
           ) : (
             <div className="absolute inset-0 bg-white/5 flex items-center justify-center text-white/20 text-xs">
               No Image

@@ -1,6 +1,7 @@
 'use client';
 
 import { Logo } from '@/components/ui/logo';
+import { UserMenu } from '@/components/user-menu';
 import { APP_NAME } from '@/lib/config';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -92,6 +93,8 @@ export function Topbar() {
               </div>
             )}
           </div>
+
+          <UserMenu />
 
           {searchOpen ? (
             <form onSubmit={handleSearch} className="flex items-center gap-2 animate-fade-in">

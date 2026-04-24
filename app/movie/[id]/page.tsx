@@ -17,6 +17,7 @@ import {
 import { tmdbImage } from '@/lib/tmdb-image';
 
 import { ExpandableText } from '@/components/ui/expandable-text';
+import { WatchlistButton } from '@/components/watchlist-button';
 
 import { BackdropPlayer } from './backdrop-player';
 import { WatchButtons } from './watch-buttons';
@@ -138,12 +139,14 @@ export default async function MoviePage({ params }: Props) {
                 </div>
               )}
 
-              {/* Watch button — pinned to bottom of column */}
-              <div className="md:hidden mt-auto pt-1 w-full">
+              {/* Watch + Watchlist buttons */}
+              <div className="md:hidden mt-auto pt-1 w-full flex items-center gap-2">
                 <WatchButtons href={watchHref} fullWidth />
+                <WatchlistButton tmdbId={movieId} mediaType="movie" iconOnly />
               </div>
-              <div className="hidden md:block mt-auto pt-4">
+              <div className="hidden md:flex mt-auto pt-4 items-center gap-3">
                 <WatchButtons href={watchHref} />
+                <WatchlistButton tmdbId={movieId} mediaType="movie" />
               </div>
             </div>
           </div>

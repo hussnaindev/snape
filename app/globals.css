@@ -54,6 +54,16 @@
   }
 }
 
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-18px); }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
 /* ── Custom utilities ── */
 @utility no-scrollbar {
   scrollbar-width: none;
@@ -88,6 +98,14 @@
   transform-origin: center;
 }
 
+@utility animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@utility animate-slide-in-right {
+  animation: slide-in-right 0.28s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
 /* ── Base ── */
 *,
 *::before,
@@ -116,4 +134,15 @@ body {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Kill browser autofill yellow on dark inputs */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.05) inset !important;
+  -webkit-text-fill-color: white !important;
+  caret-color: white;
+  transition: background-color 5000s ease-in-out 0s;
 }

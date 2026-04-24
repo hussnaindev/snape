@@ -1,13 +1,10 @@
-import { getMovieVideos, getEmbeddableTrailerKey } from '@/lib/tmdb';
+import { getEmbeddableTrailerKey, getMovieVideos } from '@/lib/tmdb';
 
 export const runtime = 'edge';
 
-export async function GET(
-  _: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const movieId = parseInt(id, 10);
+  const movieId = Number.parseInt(id, 10);
 
   if (!movieId) {
     return Response.json({ ok: false, error: 'Invalid movie ID', code: 400 }, { status: 400 });

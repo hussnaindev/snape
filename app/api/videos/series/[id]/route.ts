@@ -1,13 +1,10 @@
-import { getSeriesVideos, getEmbeddableTrailerKey } from '@/lib/tmdb';
+import { getEmbeddableTrailerKey, getSeriesVideos } from '@/lib/tmdb';
 
 export const runtime = 'edge';
 
-export async function GET(
-  _: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const seriesId = parseInt(id, 10);
+  const seriesId = Number.parseInt(id, 10);
 
   if (!seriesId) {
     return Response.json({ ok: false, error: 'Invalid series ID', code: 400 }, { status: 400 });

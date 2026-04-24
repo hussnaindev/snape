@@ -11,14 +11,14 @@ import { ExpandableText } from '@/components/ui/expandable-text';
 import { RatingBadge } from '@/components/ui/rating-badge';
 import { SectionDivider } from '@/components/ui/section-divider';
 import {
+  getEmbeddableTrailerKey,
+  getMovieDetail,
+  getMovieVideos,
   getPerson,
   getPersonMovieCredits,
   getPersonSeriesCredits,
-  getMovieDetail,
-  getMovieVideos,
   getSeriesDetail,
   getSeriesVideos,
-  getEmbeddableTrailerKey,
 } from '@/lib/tmdb';
 import { filterHasImages } from '@/lib/tmdb-filters';
 import { tmdbImage } from '@/lib/tmdb-image';
@@ -60,7 +60,6 @@ export default async function PersonPage({ params }: Props) {
   // Combine all credits and find the latest release
   const allMovieCredits = [...movieCredits.cast];
   const allSeriesCredits = [...seriesCredits.cast];
-
 
   // Fetch backdrop and trailer for release with a backdrop
   let backdropUrl: string | null = null;
@@ -149,10 +148,18 @@ export default async function PersonPage({ params }: Props) {
       <Topbar />
       <div>
         {/* Backdrop hero — show if we found a release with backdrop */}
-        {backdropUrl && releaseWithBackdrop && <BackdropPlayer backdropUrl={backdropUrl} trailerKey={trailerKey} alt={releaseWithBackdrop.title} />}
+        {backdropUrl && releaseWithBackdrop && (
+          <BackdropPlayer
+            backdropUrl={backdropUrl}
+            trailerKey={trailerKey}
+            alt={releaseWithBackdrop.title}
+          />
+        )}
 
         {/* Info block */}
-        <div className={`px-4 md:px-8 ${backdropUrl ? '-mt-36 md:-mt-60 relative z-10' : 'pt-24 relative z-10'}`}>
+        <div
+          className={`px-4 md:px-8 ${backdropUrl ? '-mt-36 md:-mt-60 relative z-10' : 'pt-24 relative z-10'}`}
+        >
           <div className={`flex gap-4 md:gap-8 ${backdropUrl ? 'h-36 md:h-60' : ''}`}>
             {/* Photo */}
             <div className="flex-none w-24 md:w-40 rounded overflow-hidden shadow-2xl">

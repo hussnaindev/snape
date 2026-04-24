@@ -4,7 +4,6 @@ import { MovieCarousel } from '@/components/movie-carousel';
 import { SeriesCarousel } from '@/components/series-carousel';
 import { Topbar } from '@/components/topbar';
 import { APP_NAME } from '@/lib/config';
-import { cookies } from 'next/headers';
 import {
   getBollywoodMovies,
   getEmbeddableTrailerKey,
@@ -19,6 +18,7 @@ import {
 } from '@/lib/tmdb';
 import { filterHasImages } from '@/lib/tmdb-filters';
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 
 /** Max items shown per homepage movie/series rail. */
 const CAROUSEL_LIMIT = 10;

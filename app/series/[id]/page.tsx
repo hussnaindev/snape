@@ -21,6 +21,7 @@ import {
 import { tmdbImage } from '@/lib/tmdb-image';
 import { cn } from '@/lib/utils';
 
+import { WatchlistButton } from '@/components/watchlist-button';
 import { EpisodeGuide } from './episode-guide';
 
 export const runtime = 'edge';
@@ -183,22 +184,24 @@ export default async function SeriesPage({ params }: Props) {
                 ))}
               </div>
 
-              {/* Watch button */}
-              <div className="md:hidden mt-auto pt-1 w-full">
+              {/* Watch + Watchlist buttons */}
+              <div className="md:hidden mt-auto pt-1 w-full flex items-center gap-2">
                 <Link
                   href={watchHref}
-                  className="inline-flex items-center justify-center gap-2 w-full bg-white text-black font-semibold text-sm px-6 py-2.5 rounded-lg hover:bg-gray-200 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 flex-1 bg-white text-black font-semibold text-sm px-6 py-2.5 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   <span>▶</span> Watch
                 </Link>
+                <WatchlistButton tmdbId={seriesId} mediaType="series" iconOnly />
               </div>
-              <div className="hidden md:block mt-auto pt-4">
+              <div className="hidden md:flex mt-auto pt-4 items-center gap-3">
                 <Link
                   href={watchHref}
                   className="inline-flex items-center gap-2 bg-white text-black font-semibold text-sm px-6 py-2.5 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   <span>▶</span> Watch
                 </Link>
+                <WatchlistButton tmdbId={seriesId} mediaType="series" />
               </div>
             </div>
           </div>
