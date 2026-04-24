@@ -209,7 +209,7 @@ export function MovieCard({ movie, qualityBadge, imageSize = 'w780', className }
               src={embedUrl}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               title={`${movie.title} trailer`}
-              className={`absolute inset-0 h-full w-full origin-center scale-[1.2] pointer-events-none transition-opacity duration-500 ${videoVisible ? 'opacity-100' : 'opacity-0'}`}
+              className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[177.78vh] h-[56.25vw] min-w-[110%] min-h-[110%] scale-[1.1] pointer-events-none transition-opacity duration-500 ${videoVisible ? 'opacity-100' : 'opacity-0'}`}
             />
           )}
         </div>
