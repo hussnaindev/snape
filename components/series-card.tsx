@@ -203,7 +203,7 @@ export function SeriesCard({ series, imageSize = 'w780', className }: SeriesCard
               src={embedUrl}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               title={`${series.name} trailer`}
-              className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[177.78vh] h-[56.25vw] min-w-[130%] min-h-[130%] scale-[1.3] pointer-events-none transition-opacity duration-500 ${videoVisible ? 'opacity-100' : 'opacity-0'}`}
+              className={`absolute inset-0 h-full w-full origin-center scale-[1.2] pointer-events-none transition-opacity duration-500 ${videoVisible ? 'opacity-100' : 'opacity-0'}`}
             />
           )}
         </div>
