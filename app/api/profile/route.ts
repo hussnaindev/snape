@@ -5,14 +5,25 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
+const presetAvatars = [
+  '/avatar1.png',
+  '/avatar2.png',
+  '/avatar3.png',
+  '/avatar4.png',
+  '/avatar5.png',
+] as const;
 
 const updateSchema = z.object({
   name: z.string().min(1).max(80).trim().optional(),
-  // Accepts HTTPS URLs (future CDN) or base64 data URLs from the client-side resizer
+  // Accepts preset avatars, HTTPS URLs (future CDN), or base64 data URLs from the client-side resizer
   avatarUrl: z
     .union([
+      z.enum(presetAvatars),
       z.string().url().max(500),
-      z.string().regex(/^data:image\/(jpeg|png|webp);base64,/).max(150_000),
+      z
+        .string()
+        .regex(/^data:image\/(jpeg|png|webp);base64,/)
+        .max(150_000),
       z.null(),
     ])
     .optional(),

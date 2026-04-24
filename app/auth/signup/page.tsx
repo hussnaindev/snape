@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/components/auth/auth-provider';
 import { FloatingAuthBg } from '@/components/auth/floating-bg';
+import { AvatarChoice } from '@/components/avatar-choice';
 import { Logo } from '@/components/ui/logo';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -16,6 +17,7 @@ export default function SignupPage() {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>('/avatar1.png');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,7 +31,7 @@ export default function SignupPage() {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, avatarUrl }),
       });
       const json = await res.json();
       if (!json.ok) {
@@ -80,6 +82,45 @@ export default function SignupPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Avatar */}
+              <div className="pt-1">
+                <AvatarChoice value={avatarUrl} onChange={setAvatarUrl} label="Profile avatar" />
+                <div className="mt-2 flex items-center gap-2">
+                  <label className="text-xs text-white/40 hover:text-white/60 transition-colors cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        e.target.value = '';
+                        if (!file) return;
+                        if (!file.type.startsWith('image/')) {
+                          setError('Please select an image file');
+                          return;
+                        }
+                        try {
+                          const dataUrl = await resizeImage(file, 200);
+                          setAvatarUrl(dataUrl);
+                        } catch {
+                          setError('Failed to load image');
+                        }
+                      }}
+                    />
+                    Upload custom photo instead
+                  </label>
+                  {avatarUrl?.startsWith('data:') && (
+                    <button
+                      type="button"
+                      onClick={() => setAvatarUrl('/avatar1.png')}
+                      className="text-xs text-white/35 hover:text-white/60 transition-colors"
+                    >
+                      Reset to presets
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* Name */}
               <div>
                 <label htmlFor="name" className="text-white/60 text-xs font-medium mb-1.5 block">
@@ -126,7 +167,10 @@ export default function SignupPage() {
 
               {/* Password */}
               <div>
-                <label htmlFor="password" className="text-white/60 text-xs font-medium mb-1.5 block">
+                <label
+                  htmlFor="password"
+                  className="text-white/60 text-xs font-medium mb-1.5 block"
+                >
                   Password
                 </label>
                 <div className="relative">
@@ -156,7 +200,8 @@ export default function SignupPage() {
                 </div>
                 {password.length > 0 && password.length < 8 && (
                   <p className="mt-1.5 text-xs text-amber-400/80">
-                    {8 - password.length} more character{8 - password.length !== 1 ? 's' : ''} needed
+                    {8 - password.length} more character{8 - password.length !== 1 ? 's' : ''}{' '}
+                    needed
                   </p>
                 )}
               </div>
@@ -191,7 +236,17 @@ export default function SignupPage() {
 
 function UserIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <circle cx="12" cy="8" r="4" />
       <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
     </svg>
@@ -200,7 +255,17 @@ function UserIcon({ size = 16 }: { size?: number }) {
 
 function MailIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <rect x="2" y="4" width="20" height="16" rx="2" />
       <path d="m22 7-10 7L2 7" />
     </svg>
@@ -209,7 +274,17 @@ function MailIcon({ size = 16 }: { size?: number }) {
 
 function LockIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <rect x="3" y="11" width="18" height="11" rx="2" />
       <path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </svg>
@@ -218,7 +293,17 @@ function LockIcon({ size = 16 }: { size?: number }) {
 
 function EyeIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
       <circle cx="12" cy="12" r="3" />
     </svg>
@@ -227,7 +312,17 @@ function EyeIcon() {
 
 function EyeOffIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
       <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
       <line x1="1" y1="1" x2="23" y2="23" />
@@ -237,7 +332,18 @@ function EyeOffIcon() {
 
 function AlertIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-none mt-0.5" aria-hidden="true">
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="flex-none mt-0.5"
+      aria-hidden="true"
+    >
       <circle cx="12" cy="12" r="10" />
       <line x1="12" y1="8" x2="12" y2="12" />
       <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -247,8 +353,46 @@ function AlertIcon() {
 
 function SpinnerIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="animate-spin" aria-hidden="true">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      className="animate-spin"
+      aria-hidden="true"
+    >
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>
   );
+}
+
+function resizeImage(file: File, maxPx: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('canvas unavailable'));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('image load failed'));
+    };
+    img.src = url;
+  });
 }

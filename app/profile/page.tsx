@@ -2,6 +2,7 @@
 
 import { AccountLayout } from '@/components/account-layout';
 import { useAuth } from '@/components/auth/auth-provider';
+import { AvatarChoice } from '@/components/avatar-choice';
 import { AvatarUploader } from '@/components/avatar-uploader';
 import { useEffect, useRef, useState } from 'react';
 
@@ -53,7 +54,10 @@ export default function ProfilePage() {
         body: JSON.stringify({ name: name.trim() }),
       });
       const json = await res.json();
-      if (!json.ok) { toast.show('err', json.error ?? 'Failed to save'); return; }
+      if (!json.ok) {
+        toast.show('err', json.error ?? 'Failed to save');
+        return;
+      }
       await refresh();
       toast.show('ok', 'Profile updated');
     } catch {
@@ -91,9 +95,37 @@ export default function ProfilePage() {
             </p>
           </div>
 
+          <div className="mb-8">
+            <AvatarChoice
+              value={user?.avatarUrl ?? null}
+              onChange={async (next) => {
+                try {
+                  const res = await fetch('/api/profile', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ avatarUrl: next }),
+                  });
+                  const json = await res.json();
+                  if (!json.ok) {
+                    toast.show('err', json.error ?? 'Failed to update avatar');
+                    return;
+                  }
+                  await refresh();
+                  toast.show('ok', next ? 'Avatar updated' : 'Avatar removed');
+                } catch {
+                  toast.show('err', 'Network error');
+                }
+              }}
+              label="Or pick a preset avatar"
+            />
+          </div>
+
           <form onSubmit={handleSave} className="space-y-4">
             <div>
-              <label htmlFor="name" className="flex items-center gap-1.5 text-white/60 text-xs font-medium mb-1.5">
+              <label
+                htmlFor="name"
+                className="flex items-center gap-1.5 text-white/60 text-xs font-medium mb-1.5"
+              >
                 <UserIcon size={12} /> Display name
               </label>
               <div className="relative">
@@ -124,7 +156,9 @@ export default function ProfilePage() {
                   {user.email}
                 </div>
               </div>
-              <p className="mt-1 text-white/25 text-xs pl-1">Email cannot be changed at this time</p>
+              <p className="mt-1 text-white/25 text-xs pl-1">
+                Email cannot be changed at this time
+              </p>
             </div>
 
             <button
@@ -151,7 +185,18 @@ export default function ProfilePage() {
 
 function PersonIcon() {
   return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-white/60">
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="text-white/60"
+    >
       <circle cx="12" cy="8" r="4" />
       <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
     </svg>
@@ -160,7 +205,17 @@ function PersonIcon() {
 
 function UserIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <circle cx="12" cy="8" r="4" />
       <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
     </svg>
@@ -169,7 +224,17 @@ function UserIcon({ size = 16 }: { size?: number }) {
 
 function MailIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <rect x="2" y="4" width="20" height="16" rx="2" />
       <path d="m22 7-10 7L2 7" />
     </svg>
@@ -178,7 +243,17 @@ function MailIcon({ size = 16 }: { size?: number }) {
 
 function CameraIcon() {
   return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
       <circle cx="12" cy="13" r="4" />
     </svg>
@@ -187,7 +262,17 @@ function CameraIcon() {
 
 function CheckIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <polyline points="20 6 9 17 4 12" />
     </svg>
   );
@@ -195,7 +280,17 @@ function CheckIcon() {
 
 function SpinnerIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="animate-spin" aria-hidden="true">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      className="animate-spin"
+      aria-hidden="true"
+    >
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>
   );
