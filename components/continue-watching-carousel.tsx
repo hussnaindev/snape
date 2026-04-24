@@ -3,13 +3,14 @@
 import { tmdbImage } from '@/lib/tmdb-image';
 import {
   WATCH_HISTORY_MIN_ENTRIES,
+  clearAllWatchHistory,
   getWatchHistory,
   syncWatchHistoryCookie,
 } from '@/lib/watch-history';
 import type { WatchHistoryEntry } from '@/lib/watch-history';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useLayoutEffect, useState } from 'react';
+import { useLayoutEffect, useEffect, useState } from 'react';
 
 const MIN_ENTRIES = WATCH_HISTORY_MIN_ENTRIES;
 
@@ -105,6 +106,15 @@ export function ContinueWatchingCarousel({ hasHistory }: { hasHistory: boolean }
     setItems(history);
   }, []);
 
+  useEffect(() => {
+    function onCleared() {
+      setItems(getWatchHistory());
+      syncWatchHistoryCookie([]);
+    }
+    window.addEventListener('watch-history-cleared', onCleared);
+    return () => window.removeEventListener('watch-history-cleared', onCleared);
+  }, []);
+
   const loaded = items !== null;
   const visible = loaded && items.length >= MIN_ENTRIES;
 
@@ -152,19 +162,29 @@ export function ContinueWatchingCarousel({ hasHistory }: { hasHistory: boolean }
   return (
     <section className="px-4 md:px-8 mt-6">
       <div className="flex items-center gap-2 mb-3">
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          aria-hidden="true"
-          className="flex-shrink-0 text-white"
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+            className="flex-shrink-0 text-white"
+          >
+            <polygon points="5,3 19,12 5,21" fill="currentColor" stroke="none" />
+          </svg>
+          <h2 className="min-w-0 truncate text-white font-semibold text-sm sm:text-base tracking-wide">
+            Continue Watching
+          </h2>
+        </div>
+        <button
+          type="button"
+          onClick={() => void clearAllWatchHistory()}
+          aria-label="Clear watch history"
+          className="hidden md:inline-flex flex-none text-xs font-medium text-white/35 hover:text-white/55 transition-colors px-1 py-0.5 -mr-1"
         >
-          <polygon points="5,3 19,12 5,21" fill="currentColor" stroke="none" />
-        </svg>
-        <h2 className="text-white font-semibold text-sm sm:text-base tracking-wide">
-          Continue Watching
-        </h2>
+          Clear
+        </button>
       </div>
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">

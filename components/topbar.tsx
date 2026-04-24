@@ -3,6 +3,7 @@
 import { Logo } from '@/components/ui/logo';
 import { UserMenu } from '@/components/user-menu';
 import { APP_NAME } from '@/lib/config';
+import { clearAllWatchHistory } from '@/lib/watch-history';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from './auth/auth-provider';
@@ -211,6 +212,27 @@ export function Topbar() {
                 ))}
               </nav>
 
+              {/* Continue watching — clear lives here on small screens (desktop: row on homepage) */}
+              <div className="px-4 pt-1 pb-2 border-t border-white/10">
+                <p className="text-white/40 text-[11px] font-semibold tracking-wider uppercase">
+                  Continue watching
+                </p>
+              </div>
+              <div className="px-3 pb-3">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await clearAllWatchHistory();
+                    setMobileOpen(false);
+                    router.refresh();
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/45 hover:text-white/75 hover:bg-white/5 rounded-xl transition-colors text-left"
+                >
+                  <ClearHistoryIcon />
+                  Clear watch history
+                </button>
+              </div>
+
               {/* Account */}
               <div className="px-4 pt-2 pb-2 border-t border-white/10">
                 <p className="text-white/40 text-[11px] font-semibold tracking-wider uppercase">Account</p>
@@ -279,6 +301,18 @@ export function Topbar() {
         </>
       )}
     </header>
+  );
+}
+
+function ClearHistoryIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 6h18" />
+      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </svg>
   );
 }
 

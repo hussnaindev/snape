@@ -68,12 +68,19 @@ export async function DELETE(req: Request) {
   if (!session)
     return NextResponse.json({ ok: false, error: 'Unauthenticated', code: 401 }, { status: 401 });
 
-  const { tmdbId, mediaType } = await req.json().catch(() => ({}));
+  const body = await req.json().catch(() => ({}));
+  const db = await getDb();
+
+  if (body && typeof body === 'object' && body.all === true) {
+    await db.delete(watchHistory).where(eq(watchHistory.profileId, session.profileId));
+    return NextResponse.json({ ok: true, data: null });
+  }
+
+  const { tmdbId, mediaType } = body as { tmdbId?: number; mediaType?: 'movie' | 'series' };
   if (!tmdbId || !mediaType) {
     return NextResponse.json({ ok: false, error: 'Invalid input', code: 400 }, { status: 400 });
   }
 
-  const db = await getDb();
   await db
     .delete(watchHistory)
     .where(

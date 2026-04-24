@@ -114,7 +114,7 @@ export default async function HomePage() {
         {/* Hero */}
         <HeroSection movies={trendingFiltered} trailerKeys={trailerKeys} />
 
-        {/* Continue Watching — client-only, reads localStorage, min 3 entries to show */}
+        {/* Continue Watching — client-only, reads localStorage, shows from 1 entry */}
         <ContinueWatchingCarousel hasHistory={hasHistory} />
 
         {/* Rails */}

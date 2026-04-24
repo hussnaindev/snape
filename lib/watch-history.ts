@@ -9,7 +9,7 @@ export interface WatchHistoryEntry {
   watchedAt: number; // Date.now()
 }
 
-export const WATCH_HISTORY_MIN_ENTRIES = 3;
+export const WATCH_HISTORY_MIN_ENTRIES = 1;
 
 const STORAGE_KEY = 'heroflix_watch_history';
 const COOKIE_KEY = 'hwh';
@@ -70,4 +70,32 @@ export function removeFromWatchHistory(id: number, type: 'movie' | 'series'): vo
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     if (updated.length === 0) clearHistoryCookie();
   } catch {}
+}
+
+const CLEARED_EVENT = 'watch-history-cleared';
+
+/** Remove all entries from device storage and the presence cookie; notify listeners (e.g. homepage carousel). */
+export function clearWatchHistory(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    clearHistoryCookie();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(CLEARED_EVENT));
+    }
+  } catch {}
+}
+
+/** Clears local history and best-effort clears server rows when the user is signed in (401 is ignored). */
+export async function clearAllWatchHistory(): Promise<void> {
+  clearWatchHistory();
+  try {
+    await fetch('/api/watch-history', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ all: true }),
+      credentials: 'include',
+    });
+  } catch {
+    // offline or blocked — local state already cleared
+  }
 }
