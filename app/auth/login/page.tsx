@@ -62,7 +62,7 @@ export default function LoginPage() {
             {/* Heading */}
             <div className="flex items-center gap-3 mb-1">
               <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-none">
-                <UserCircleIcon />
+                <Logo className="w-5 h-5 text-white/80" />
               </div>
               <h1 className="text-white text-2xl font-bold">Welcome back</h1>
             </div>
@@ -78,8 +78,8 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Email */}
               <div>
-                <label htmlFor="email" className="flex items-center gap-1.5 text-white/60 text-xs font-medium mb-1.5">
-                  <MailIcon size={12} /> Email
+                <label htmlFor="email" className="text-white/60 text-xs font-medium mb-1.5 block">
+                  Email
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none">
@@ -100,8 +100,8 @@ export default function LoginPage() {
 
               {/* Password */}
               <div>
-                <label htmlFor="password" className="flex items-center gap-1.5 text-white/60 text-xs font-medium mb-1.5">
-                  <LockIcon size={12} /> Password
+                <label htmlFor="password" className="text-white/60 text-xs font-medium mb-1.5 block">
+                  Password
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none">
@@ -154,15 +154,6 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
-  );
-}
-
-function UserCircleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-white/60">
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-    </svg>
   );
 }
 

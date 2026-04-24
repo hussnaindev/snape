@@ -1,66 +1,150 @@
-import type { CSSProperties } from 'react';
+ 'use client';
 
-type Card = { outer: CSSProperties; bg: string; dur: string; delay: string };
+import { tmdbImage } from '@/lib/tmdb-image';
+import Image from 'next/image';
+import { useEffect, useMemo, useState } from 'react';
 
-const CARDS: Card[] = [
-  {
-    outer: { top: '7%', left: '3%', width: 110, height: 156, transform: 'rotate(-14deg)' },
-    bg: 'linear-gradient(135deg,rgba(59,130,246,.35),rgba(109,40,217,.22))',
-    dur: '7s', delay: '0s',
-  },
-  {
-    outer: { top: '54%', left: '1%', width: 96, height: 138, transform: 'rotate(11deg)' },
-    bg: 'linear-gradient(135deg,rgba(16,185,129,.28),rgba(6,78,59,.2))',
-    dur: '8.5s', delay: '2s',
-  },
-  {
-    outer: { top: '19%', right: '2%', width: 106, height: 150, transform: 'rotate(13deg)' },
-    bg: 'linear-gradient(135deg,rgba(239,68,68,.28),rgba(153,27,27,.2))',
-    dur: '6.5s', delay: '1s',
-  },
-  {
-    outer: { top: '67%', right: '3%', width: 100, height: 143, transform: 'rotate(-9deg)' },
-    bg: 'linear-gradient(135deg,rgba(245,158,11,.24),rgba(120,53,15,.18))',
-    dur: '9s', delay: '3s',
-  },
-  {
-    outer: { top: '16%', left: '13%', width: 84, height: 120, transform: 'rotate(19deg)' },
-    bg: 'linear-gradient(135deg,rgba(168,85,247,.24),rgba(88,28,135,.17))',
-    dur: '7.5s', delay: '1.5s',
-  },
-  {
-    outer: { top: '41%', right: '10%', width: 88, height: 126, transform: 'rotate(-21deg)' },
-    bg: 'linear-gradient(135deg,rgba(236,72,153,.22),rgba(157,23,77,.15))',
-    dur: '8s', delay: '2.5s',
-  },
-  {
-    outer: { bottom: '12%', left: '17%', width: 82, height: 117, transform: 'rotate(-6deg)' },
-    bg: 'linear-gradient(135deg,rgba(14,165,233,.22),rgba(7,89,133,.15))',
-    dur: '6s', delay: '0.5s',
-  },
-  {
-    outer: { bottom: '9%', right: '13%', width: 93, height: 133, transform: 'rotate(8deg)' },
-    bg: 'linear-gradient(135deg,rgba(34,197,94,.2),rgba(21,128,61,.14))',
-    dur: '7s', delay: '3.5s',
-  },
+type Poster = { posterPath: string; title: string };
+
+const FALLBACK_POSTERS: Poster[] = [
+  { posterPath: '/kqjL17yufvn9OVLyXYpvtyrFfak.jpg', title: 'The Dark Knight' },
+  { posterPath: '/6ELCZlTA5lGUops70hKdB83WJxH.jpg', title: 'Interstellar' },
+  { posterPath: '/mY7SeH4HFFxW1hiI6cWuwCRKptN.jpg', title: 'Dune' },
+  { posterPath: '/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg', title: 'Fight Club' },
+  { posterPath: '/lFSSLTlFozwpaGlO31OoUeirBgQ.jpg', title: 'Breaking Bad' },
+  { posterPath: '/qJRB789ceLryrLvOKrZqLKr2CGf.jpg', title: 'Game of Thrones' },
+  { posterPath: '/9O1Iy9od7xHc45QYdCzWvtF6i5G.jpg', title: 'Inception' },
 ];
 
+function chunk<T>(arr: T[], n: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+  return out;
+}
+
+function repeatToMin<T>(arr: T[], minLen: number): T[] {
+  if (arr.length === 0) return [];
+  const out: T[] = [];
+  while (out.length < minLen) out.push(...arr);
+  return out.slice(0, minLen);
+}
+
 export function FloatingAuthBg() {
+  const [posters, setPosters] = useState<Poster[]>(FALLBACK_POSTERS);
+  const [broken, setBroken] = useState<Record<string, true>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        // Fetch trending across movie+tv so poster paths are real & current.
+        const res = await fetch('/api/tmdb/trending/all/week', { cache: 'force-cache' });
+        const json = (await res.json()) as unknown;
+        if (!res.ok) throw new Error('tmdb proxy failed');
+        if (!json || typeof json !== 'object') throw new Error('bad payload');
+
+        const data = (json as { ok?: unknown; data?: unknown }).data as { results?: unknown } | undefined;
+        const results = (data?.results as any[]) ?? [];
+        const mapped: Poster[] = results
+          .map((r) => {
+            const posterPath = typeof r?.poster_path === 'string' ? (r.poster_path as string) : null;
+            if (!posterPath) return null;
+            const title =
+              (typeof r?.title === 'string' && r.title) ||
+              (typeof r?.name === 'string' && r.name) ||
+              'Poster';
+            return { posterPath, title } satisfies Poster;
+          })
+          .filter(Boolean) as Poster[];
+
+        // Keep it dense even if TMDB returns few posters.
+        const dense = mapped.length >= 18 ? mapped.slice(0, 36) : [...mapped, ...FALLBACK_POSTERS];
+        if (!cancelled && dense.length > 0) setPosters(dense);
+      } catch {
+        // keep fallback
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const rows = useMemo(() => {
+    // Portrait card rows, straight aligned. We create 3 rows (always full cards).
+    const usable = posters.filter((p) => !!tmdbImage(p.posterPath, 'w342'));
+    const base = usable.length >= 18 ? usable.slice(0, 30) : [...usable, ...FALLBACK_POSTERS];
+    const perRow = 10;
+    const wantedRows = 3;
+    const needed = perRow * wantedRows;
+    const filled = repeatToMin(base, needed);
+    return chunk(filled, perRow).slice(0, wantedRows);
+  }, [posters]);
+
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none select-none" aria-hidden="true">
-      {CARDS.map((card, i) => (
-        <div key={i} className="absolute" style={card.outer}>
-          <div
-            className="w-full h-full rounded-xl border border-white/10 animate-float"
-            style={{
-              background: card.bg,
-              animationDuration: card.dur,
-              animationDelay: card.delay,
-              backdropFilter: 'blur(1px)',
-            }}
-          />
-        </div>
-      ))}
+      <style>{`
+        @keyframes authMarqueeLeft {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        @keyframes authMarqueeRight {
+          0% { transform: translateX(-50%); }
+          100% { transform: translateX(0); }
+        }
+      `}</style>
+
+      <div className="absolute inset-0 flex flex-col justify-center gap-[clamp(10px,2vh,18px)] px-6 py-[clamp(56px,7vh,110px)]">
+        {rows.map((row, rowIdx) => {
+          const dir: 'left' | 'right' = rowIdx % 2 === 0 ? 'left' : 'right';
+          const duration = `${28 + rowIdx * 6}s`;
+          const anim = dir === 'left' ? 'authMarqueeLeft' : 'authMarqueeRight';
+
+          // Duplicate row for seamless marquee.
+          const track = [...row, ...row];
+
+          return (
+            <div
+              key={rowIdx}
+              className="relative overflow-hidden"
+            >
+              <div
+                className="flex items-center gap-5 will-change-transform"
+                style={{
+                  width: 'max-content',
+                  animation: `${anim} ${duration} linear infinite`,
+                }}
+              >
+                {track.map((poster, i) => {
+                  const src = tmdbImage(poster.posterPath, 'w342');
+                  if (!src || broken[src]) return null;
+
+                  return (
+                    <div
+                      key={`${poster.posterPath}-${i}`}
+                      className="relative shrink-0 h-[clamp(200px,22vh,340px)] aspect-[2/3] rounded-2xl overflow-hidden border border-white/10 shadow-[0_18px_60px_rgba(0,0,0,0.65)] bg-white/5"
+                    >
+                      <Image
+                        src={src}
+                        alt={poster.title}
+                        fill
+                        sizes="(max-width: 768px) 24vh, 340px"
+                        className="object-cover"
+                        priority={rowIdx === 0 && i < 4}
+                        onError={() => setBroken((b) => ({ ...b, [src]: true }))}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                      <div className="absolute inset-0 ring-1 ring-white/10 rounded-2xl" />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

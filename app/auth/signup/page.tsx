@@ -66,7 +66,7 @@ export default function SignupPage() {
             {/* Heading */}
             <div className="flex items-center gap-3 mb-1">
               <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-none">
-                <SparkleIcon />
+                <Logo className="w-5 h-5 text-white/80" />
               </div>
               <h1 className="text-white text-2xl font-bold">Create account</h1>
             </div>
@@ -82,8 +82,8 @@ export default function SignupPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Name */}
               <div>
-                <label htmlFor="name" className="flex items-center gap-1.5 text-white/60 text-xs font-medium mb-1.5">
-                  <UserIcon size={12} /> Display name
+                <label htmlFor="name" className="text-white/60 text-xs font-medium mb-1.5 block">
+                  Display name
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none">
@@ -104,8 +104,8 @@ export default function SignupPage() {
 
               {/* Email */}
               <div>
-                <label htmlFor="email" className="flex items-center gap-1.5 text-white/60 text-xs font-medium mb-1.5">
-                  <MailIcon size={12} /> Email
+                <label htmlFor="email" className="text-white/60 text-xs font-medium mb-1.5 block">
+                  Email
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none">
@@ -126,8 +126,8 @@ export default function SignupPage() {
 
               {/* Password */}
               <div>
-                <label htmlFor="password" className="flex items-center gap-1.5 text-white/60 text-xs font-medium mb-1.5">
-                  <LockIcon size={12} /> Password
+                <label htmlFor="password" className="text-white/60 text-xs font-medium mb-1.5 block">
+                  Password
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none">
@@ -155,8 +155,8 @@ export default function SignupPage() {
                   </button>
                 </div>
                 {password.length > 0 && password.length < 8 && (
-                  <p className="mt-1.5 text-xs text-amber-400/80 flex items-center gap-1">
-                    <LockIcon size={11} /> {8 - password.length} more character{8 - password.length !== 1 ? 's' : ''} needed
+                  <p className="mt-1.5 text-xs text-amber-400/80">
+                    {8 - password.length} more character{8 - password.length !== 1 ? 's' : ''} needed
                   </p>
                 )}
               </div>
@@ -186,14 +186,6 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
-  );
-}
-
-function SparkleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-white/60">
-      <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" />
-    </svg>
   );
 }
 

@@ -86,17 +86,15 @@ export default function WatchlistPage() {
 
         {user && !fetching && cards.length > 0 && (
           <>
-            {/* Mobile: portrait 2:3 grid */}
-            <div className="md:hidden grid grid-cols-3 gap-2.5">
+            {/* Match homepage card sizing: fixed widths + wraps */}
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               {cards.map((card) => (
-                <PortraitCard key={`${card.mediaType}-${card.id}`} card={card} onRemove={removeItem} />
-              ))}
-            </div>
-
-            {/* Desktop: landscape 16:9 grid */}
-            <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {cards.map((card) => (
-                <LandscapeCard key={`${card.mediaType}-${card.id}`} card={card} onRemove={removeItem} />
+                <div
+                  key={`${card.mediaType}-${card.id}`}
+                  className="w-[130px] sm:w-[240px] md:w-[300px] lg:w-[340px]"
+                >
+                  <WatchlistCard card={card} onRemove={removeItem} />
+                </div>
               ))}
             </div>
           </>
@@ -106,8 +104,7 @@ export default function WatchlistPage() {
   );
 }
 
-/* ── Portrait card (mobile) ── */
-function PortraitCard({
+function WatchlistCard({
   card,
   onRemove,
 }: {
@@ -118,93 +115,62 @@ function PortraitCard({
   const year = (card.release_date ?? card.first_air_date ?? '').slice(0, 4);
   const href = card.mediaType === 'movie' ? `/movie/${card.id}` : `/series/${card.id}`;
   const poster = tmdbImage(card.poster_path, 'w342');
+  const backdrop = tmdbImage(card.backdrop_path, 'w780');
 
   return (
-    <div className="group relative">
-      <Link href={href} prefetch={false}>
-        <div className="rounded-lg overflow-hidden bg-white/5 aspect-[2/3] relative">
+    <div className="group relative block overflow-hidden rounded-md bg-white/5 transition-all duration-300 ease-out sm:hover:scale-105 sm:hover:shadow-[0_8px_30px_rgba(0,0,0,0.6)] sm:hover:brightness-110 sm:hover:z-10">
+      <Link href={href} prefetch={false} className="block h-full w-full">
+        {/* Mobile: Poster (portrait) */}
+        <div className="aspect-[2/3] overflow-hidden sm:hidden relative">
           {poster ? (
             <Image
               src={poster}
               alt={title}
               fill
-              sizes="(max-width: 640px) 33vw, 20vw"
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              sizes="50vw"
+              className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-white/20 text-xs">No Image</div>
+            <div className="absolute inset-0 flex items-center justify-center bg-white/5 text-white/20 text-sm">
+              No Image
+            </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
-      </Link>
-      <button
-        type="button"
-        onClick={() => onRemove(card.id, card.mediaType)}
-        aria-label="Remove from watchlist"
-        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/70 border border-white/20 text-white/60 hover:text-white hover:bg-black/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-[10px]"
-      >
-        ✕
-      </button>
-      <div className="mt-1.5 px-0.5">
-        <p className="text-white text-[11px] font-medium leading-tight line-clamp-1">{title}</p>
-        {year && <p className="text-white/40 text-[9px]">{year}</p>}
-      </div>
-    </div>
-  );
-}
 
-/* ── Landscape card (desktop) ── */
-function LandscapeCard({
-  card,
-  onRemove,
-}: {
-  card: TMDBCard;
-  onRemove: (id: number, type: 'movie' | 'series') => void;
-}) {
-  const title = card.title ?? card.name ?? '';
-  const year = (card.release_date ?? card.first_air_date ?? '').slice(0, 4);
-  const href = card.mediaType === 'movie' ? `/movie/${card.id}` : `/series/${card.id}`;
-  // prefer backdrop for landscape, fall back to poster
-  const img = tmdbImage(card.backdrop_path ?? card.poster_path, card.backdrop_path ? 'w780' : 'w342');
-
-  return (
-    <div className="group relative rounded-xl overflow-hidden bg-white/5">
-      <Link href={href} prefetch={false} className="block">
-        {/* 16:9 image container */}
-        <div className="aspect-video relative">
-          {img ? (
+        {/* Desktop: Backdrop (landscape) */}
+        <div className="hidden sm:block aspect-video overflow-hidden relative">
+          {backdrop ? (
             <Image
-              src={img}
+              src={backdrop}
               alt={title}
               fill
-              sizes="(max-width: 1024px) 50vw, 33vw"
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              sizes="(max-width: 1024px) 33vw, 25vw"
+              className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-white/20 text-sm">No Image</div>
+            <div className="absolute inset-0 flex items-center justify-center bg-white/5 text-white/20 text-sm">
+              No Image
+            </div>
           )}
-          {/* gradient overlay for text legibility */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+        </div>
 
-          {/* media type badge */}
-          <span className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-black/60 text-white/70 border border-white/10">
-            {card.mediaType === 'movie' ? 'Movie' : 'Series'}
-          </span>
-
-          {/* title + year at bottom */}
-          <div className="absolute bottom-0 left-0 right-0 px-3 pb-3">
-            <p className="text-white text-sm font-semibold leading-tight line-clamp-1">{title}</p>
-            {year && <p className="text-white/50 text-xs mt-0.5">{year}</p>}
-          </div>
+        {/* Always-visible title strip (matches homepage style) */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end px-1.5 py-1 sm:px-3 sm:py-2.5">
+          <p className="text-white text-[11px] sm:text-sm font-medium leading-tight line-clamp-2 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+            {title}
+          </p>
+          {year && (
+            <span className="text-white/50 text-[9px] sm:text-xs mt-0.5 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+              {year}
+            </span>
+          )}
         </div>
       </Link>
-
-      {/* Remove button */}
       <button
         type="button"
         onClick={() => onRemove(card.id, card.mediaType)}
         aria-label="Remove from watchlist"
-        className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-black/70 border border-white/20 text-white/60 hover:text-white hover:bg-black/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 border border-white/20 text-white/60 hover:text-white hover:bg-black/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
       >
         ✕
       </button>
