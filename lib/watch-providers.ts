@@ -46,7 +46,15 @@ export function pickPreferredProviders(region: TMDBWatchProvidersRegion | null |
   }
 
   // Return in a fixed order so UI is consistent.
-  return PREFERRED_PROVIDERS.filter((p) => found.has(p.key)).map((p) => p.key);
+  const ordered = PREFERRED_PROVIDERS.filter((p) => found.has(p.key)).map((p) => p.key);
+
+  // If multiple providers exist, always show Apple TV+ at the end.
+  if (ordered.length > 1) {
+    const i = ordered.indexOf('appletv');
+    if (i !== -1) ordered.push(...ordered.splice(i, 1));
+  }
+
+  return ordered;
 }
 
 export function preferredProviderMeta(key: PreferredProviderKey): { label: string; assetPath: string } {

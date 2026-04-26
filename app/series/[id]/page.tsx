@@ -182,11 +182,11 @@ export default async function SeriesPage({ params }: Props) {
                   )}
                 </div>
 
-                <div className="flex flex-nowrap gap-1 md:gap-2 mt-2 overflow-x-auto">
+                <div className="flex flex-nowrap gap-1 md:gap-2 mt-2 overflow-x-auto no-scrollbar">
                   {series.status && (
                     <span
                       className={cn(
-                        'text-[9px] md:text-xs px-1.5 md:px-2 py-px md:py-0.5 rounded border font-medium',
+                        'inline-flex items-center justify-center text-center whitespace-nowrap text-[9px] md:text-xs px-1.5 md:px-2 py-px md:py-0.5 rounded border font-medium',
                         statusColor,
                       )}
                     >

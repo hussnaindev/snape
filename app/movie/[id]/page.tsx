@@ -142,7 +142,7 @@ export default async function MoviePage({ params }: Props) {
                 </div>
 
                 {movie.genres.length > 0 && (
-                  <div className="flex flex-nowrap gap-1 md:gap-2 mt-2 overflow-x-auto">
+                  <div className="flex flex-nowrap gap-1 md:gap-2 mt-2 overflow-x-auto no-scrollbar">
                     {movie.genres.slice(0, 3).map((g) => (
                       <TagChip key={g.id} label={g.name} />
                     ))}
