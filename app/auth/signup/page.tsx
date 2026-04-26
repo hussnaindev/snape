@@ -4,6 +4,7 @@ import { useAuth } from '@/components/auth/auth-provider';
 import { FloatingAuthBg } from '@/components/auth/floating-bg';
 import { AvatarChoice } from '@/components/avatar-choice';
 import { Logo } from '@/components/ui/logo';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -63,7 +64,7 @@ export default function SignupPage() {
 
       {/* Form card */}
       <div className="relative z-10 flex-1 flex items-center justify-center px-4 pb-20">
-        <div className="w-full max-w-sm">
+        <div className="w-full max-w-sm lg:max-w-2xl">
           <div className="bg-black/70 backdrop-blur-md border border-white/12 rounded-2xl px-8 py-10 shadow-2xl">
             {/* Heading */}
             <div className="flex items-center gap-3 mb-1">
@@ -81,144 +82,185 @@ export default function SignupPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Avatar */}
-              <div className="pt-1">
-                <AvatarChoice value={avatarUrl} onChange={setAvatarUrl} label="Profile avatar" />
-                <div className="mt-2 flex items-center gap-2">
-                  <label className="text-xs text-white/40 hover:text-white/60 transition-colors cursor-pointer">
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        e.target.value = '';
-                        if (!file) return;
-                        if (!file.type.startsWith('image/')) {
-                          setError('Please select an image file');
-                          return;
-                        }
-                        try {
-                          const dataUrl = await resizeImage(file, 200);
-                          setAvatarUrl(dataUrl);
-                        } catch {
-                          setError('Failed to load image');
-                        }
-                      }}
+            <form onSubmit={handleSubmit} className="space-y-4 lg:flex lg:items-start lg:gap-8 lg:space-y-0">
+              {/* Left panel — compact so it stays above the Create button baseline */}
+              <div className="pt-1 lg:w-[248px] lg:flex-none lg:self-start">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-[0_16px_48px_rgba(0,0,0,0.35)]">
+                  <p className="text-white/60 text-xs font-medium mb-3">Profile avatar</p>
+
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="relative w-[112px] aspect-[3/4] shrink-0 overflow-hidden rounded-xl border border-white/12 bg-black/30">
+                      {avatarUrl ? (
+                        <Image
+                          src={avatarUrl}
+                          alt="Selected avatar"
+                          fill
+                          sizes="112px"
+                          className="object-cover"
+                          priority
+                        />
+                      ) : (
+                        <div className="absolute inset-0 grid place-items-center px-2 text-center text-white/30 text-xs">
+                          None selected
+                        </div>
+                      )}
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
+                    </div>
+
+                    <AvatarChoice
+                      value={avatarUrl}
+                      onChange={setAvatarUrl}
+                      label="Presets"
+                      variant="portrait"
+                      portraitGridCols={5}
+                      size={40}
+                      className="w-full space-y-1.5"
                     />
-                    Upload custom photo instead
+
+                    <div className="flex w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-white/10 pt-3 text-center">
+                      <label className="cursor-pointer text-[11px] text-white/40 transition-colors hover:text-white/65">
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            e.target.value = '';
+                            if (!file) return;
+                            if (!file.type.startsWith('image/')) {
+                              setError('Please select an image file');
+                              return;
+                            }
+                            try {
+                              const dataUrl = await resizeImage(file, 200);
+                              setAvatarUrl(dataUrl);
+                            } catch {
+                              setError('Failed to load image');
+                            }
+                          }}
+                        />
+                        Upload photo
+                      </label>
+                      {avatarUrl?.startsWith('data:') && (
+                        <>
+                          <span className="text-white/20" aria-hidden>
+                            ·
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setAvatarUrl('/avatar1.png')}
+                            className="text-[11px] text-white/35 transition-colors hover:text-white/65"
+                          >
+                            Reset
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right panel (fields) */}
+              <div className="space-y-4 flex-1 min-w-0">
+                {/* Name */}
+                <div>
+                  <label htmlFor="name" className="text-white/60 text-xs font-medium mb-1.5 block">
+                    Display name
                   </label>
-                  {avatarUrl?.startsWith('data:') && (
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none">
+                      <UserIcon size={16} />
+                    </span>
+                    <input
+                      id="name"
+                      type="text"
+                      autoComplete="name"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:border-white/40 transition-colors"
+                      placeholder="Enter your name"
+                    />
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label htmlFor="email" className="text-white/60 text-xs font-medium mb-1.5 block">
+                    Email
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none">
+                      <MailIcon size={16} />
+                    </span>
+                    <input
+                      id="email"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:border-white/40 transition-colors"
+                      placeholder="Enter your email"
+                    />
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div>
+                  <label
+                    htmlFor="password"
+                    className="text-white/60 text-xs font-medium mb-1.5 block"
+                  >
+                    Password
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none">
+                      <LockIcon size={16} />
+                    </span>
+                    <input
+                      id="password"
+                      type={showPw ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      required
+                      minLength={8}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-10 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:border-white/40 transition-colors"
+                      placeholder="Enter your password (min. 8 chars)"
+                    />
                     <button
                       type="button"
-                      onClick={() => setAvatarUrl('/avatar1.png')}
-                      className="text-xs text-white/35 hover:text-white/60 transition-colors"
+                      onClick={() => setShowPw(!showPw)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                      tabIndex={-1}
+                      aria-label={showPw ? 'Hide password' : 'Show password'}
                     >
-                      Reset to presets
+                      {showPw ? <EyeOffIcon /> : <EyeIcon />}
                     </button>
+                  </div>
+                  {password.length > 0 && password.length < 8 && (
+                    <p className="mt-1.5 text-xs text-amber-400/80">
+                      {8 - password.length} more character{8 - password.length !== 1 ? 's' : ''}{' '}
+                      needed
+                    </p>
                   )}
                 </div>
-              </div>
 
-              {/* Name */}
-              <div>
-                <label htmlFor="name" className="text-white/60 text-xs font-medium mb-1.5 block">
-                  Display name
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none">
-                    <UserIcon size={16} />
-                  </span>
-                  <input
-                    id="name"
-                    type="text"
-                    autoComplete="name"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:border-white/40 transition-colors"
-                    placeholder="Enter your name"
-                  />
-                </div>
-              </div>
-
-              {/* Email */}
-              <div>
-                <label htmlFor="email" className="text-white/60 text-xs font-medium mb-1.5 block">
-                  Email
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none">
-                    <MailIcon size={16} />
-                  </span>
-                  <input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:border-white/40 transition-colors"
-                    placeholder="Enter your email"
-                  />
-                </div>
-              </div>
-
-              {/* Password */}
-              <div>
-                <label
-                  htmlFor="password"
-                  className="text-white/60 text-xs font-medium mb-1.5 block"
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-white text-black font-semibold text-sm py-3 rounded-lg hover:bg-white/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2 flex items-center justify-center gap-2"
                 >
-                  Password
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none">
-                    <LockIcon size={16} />
-                  </span>
-                  <input
-                    id="password"
-                    type={showPw ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    required
-                    minLength={8}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-10 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:border-white/40 transition-colors"
-                    placeholder="Enter your password (min. 8 chars)"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPw(!showPw)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
-                    tabIndex={-1}
-                    aria-label={showPw ? 'Hide password' : 'Show password'}
-                  >
-                    {showPw ? <EyeOffIcon /> : <EyeIcon />}
-                  </button>
-                </div>
-                {password.length > 0 && password.length < 8 && (
-                  <p className="mt-1.5 text-xs text-amber-400/80">
-                    {8 - password.length} more character{8 - password.length !== 1 ? 's' : ''}{' '}
-                    needed
-                  </p>
-                )}
+                  {loading ? (
+                    <>
+                      <SpinnerIcon /> Creating account…
+                    </>
+                  ) : (
+                    'Create account'
+                  )}
+                </button>
               </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-white text-black font-semibold text-sm py-3 rounded-lg hover:bg-white/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2 flex items-center justify-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <SpinnerIcon /> Creating account…
-                  </>
-                ) : (
-                  'Create account'
-                )}
-              </button>
             </form>
 
             <p className="mt-6 text-center text-white/40 text-sm">

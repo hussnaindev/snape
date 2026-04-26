@@ -64,9 +64,9 @@ export default function LoginPage() {
               <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-none">
                 <Logo className="w-5 h-5 text-white/80" />
               </div>
-              <h1 className="text-white text-2xl font-bold">Welcome back</h1>
+              <h1 className="text-white text-2xl font-bold">Login to continue</h1>
             </div>
-            <p className="text-white/40 text-sm mb-8 pl-12">Login to your account</p>
+            <p className="text-white/40 text-sm mb-8 pl-12">Pick up where you left off.</p>
 
             {error && (
               <div className="mb-6 flex items-start gap-2.5 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
