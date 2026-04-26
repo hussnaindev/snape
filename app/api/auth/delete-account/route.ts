@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';

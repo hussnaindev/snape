@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { passwords, profiles, users } from '@/db/schema';
 import { verifyPassword } from '@/lib/crypto';
 import { getDb } from '@/lib/db';

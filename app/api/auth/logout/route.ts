@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { SESSION_COOKIE, deleteSession } from '@/lib/session';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';

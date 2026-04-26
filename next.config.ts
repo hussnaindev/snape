@@ -2,6 +2,7 @@ import withPWA from '@ducanh2912/next-pwa';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ['wrangler', 'miniflare', '@miniflare/core', '@cloudflare/next-on-pages'],
   images: {
     unoptimized: true,
     remotePatterns: [

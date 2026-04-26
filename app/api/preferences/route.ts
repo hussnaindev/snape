@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { preferences } from '@/db/schema';
 import { getDb } from '@/lib/db';
 import { getSession } from '@/lib/session';
