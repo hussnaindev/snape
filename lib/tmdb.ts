@@ -15,6 +15,7 @@ import type {
   TMDBSeries,
   TMDBSeriesDetail,
   TMDBVideosResult,
+  TMDBWatchProvidersResult,
 } from '@/types/tmdb';
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
@@ -75,6 +76,10 @@ export async function getMovieVideos(id: number): Promise<TMDBVideosResult> {
 export async function getMovieRecommendations(id: number): Promise<TMDBMovie[]> {
   const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(`/movie/${id}/recommendations`);
   return data.results;
+}
+
+export async function getMovieWatchProviders(id: number): Promise<TMDBWatchProvidersResult> {
+  return tmdbFetch<TMDBWatchProvidersResult>(`/movie/${id}/watch/providers`, undefined, 86400);
 }
 
 export async function getPerson(id: number): Promise<TMDBPerson> {
@@ -250,6 +255,10 @@ export async function getSeriesVideos(id: number): Promise<TMDBVideosResult> {
 export async function getSeriesRecommendations(id: number): Promise<TMDBSeries[]> {
   const data = await tmdbFetch<TMDBListResult<TMDBSeries>>(`/tv/${id}/recommendations`);
   return data.results;
+}
+
+export async function getSeriesWatchProviders(id: number): Promise<TMDBWatchProvidersResult> {
+  return tmdbFetch<TMDBWatchProvidersResult>(`/tv/${id}/watch/providers`, undefined, 86400);
 }
 
 export async function getSeriesSeason(seriesId: number, seasonNumber: number): Promise<TMDBSeason> {

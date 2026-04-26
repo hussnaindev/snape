@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 
 import { BackdropPlayer } from '@/app/movie/[id]/backdrop-player';
@@ -10,6 +11,7 @@ import { Topbar } from '@/components/topbar';
 import { ExpandableText } from '@/components/ui/expandable-text';
 import { RatingBadge } from '@/components/ui/rating-badge';
 import { TagChip } from '@/components/ui/tag-chip';
+import { WatchProvidersRow } from '@/components/watch-providers-row';
 import {
   getEmbeddableTrailerKey,
   getSeriesCredits,
@@ -17,9 +19,11 @@ import {
   getSeriesRecommendations,
   getSeriesSeason,
   getSeriesVideos,
+  getSeriesWatchProviders,
 } from '@/lib/tmdb';
 import { tmdbImage } from '@/lib/tmdb-image';
 import { cn } from '@/lib/utils';
+import { pickPreferredProviders } from '@/lib/watch-providers';
 
 import { WatchlistButton } from '@/components/watchlist-button';
 import { EpisodeGuide } from './episode-guide';
@@ -29,6 +33,18 @@ export const revalidate = 3600;
 
 interface Props {
   params: Promise<{ id: string }>;
+}
+
+async function getRequestCountry(): Promise<string> {
+  const h = await headers();
+  const raw =
+    h.get('cf-ipcountry') ??
+    h.get('x-vercel-ip-country') ??
+    h.get('x-country-code') ??
+    h.get('x-country') ??
+    '';
+  const country = raw.trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(country) ? country : 'US';
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -55,11 +71,14 @@ export default async function SeriesPage({ params }: Props) {
   const seriesId = Number(id);
   if (Number.isNaN(seriesId)) notFound();
 
-  const [series, credits, recommendations, videos] = await Promise.all([
+  const country = await getRequestCountry();
+
+  const [series, credits, recommendations, videos, providers] = await Promise.all([
     getSeriesDetail(seriesId).catch(() => null),
     getSeriesCredits(seriesId).catch(() => ({ cast: [], crew: [] })),
     getSeriesRecommendations(seriesId).catch(() => []),
     getSeriesVideos(seriesId).catch(() => ({ results: [] })),
+    getSeriesWatchProviders(seriesId).catch(() => null),
   ]);
 
   if (!series) notFound();
@@ -104,6 +123,8 @@ export default async function SeriesPage({ params }: Props) {
     .map((c) => c.name)
     .join(', ');
 
+  const preferredProviders = pickPreferredProviders(providers?.results?.[country]);
+
   return (
     <>
       <Topbar />
@@ -113,7 +134,7 @@ export default async function SeriesPage({ params }: Props) {
 
         {/* Info block */}
         <div className="px-4 md:px-8 -mt-36 md:-mt-60 relative z-10">
-          <div className="flex gap-4 md:gap-8 h-36 md:h-60">
+          <div className="flex gap-4 md:gap-8 h-36 md:h-60 items-start">
             {/* Poster */}
             <div className="flex-none w-24 md:w-40 rounded overflow-hidden shadow-2xl">
               {poster && (
@@ -130,41 +151,43 @@ export default async function SeriesPage({ params }: Props) {
             </div>
 
             {/* Details */}
-            <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
-              <h1 className="font-body text-xl md:text-4xl font-bold text-white leading-tight line-clamp-2">
-                {series.name}
-              </h1>
-              {series.tagline && (
-                <p className="hidden md:block md:mt-1 text-white/50 italic text-xs truncate">
-                  {series.tagline}
-                </p>
-              )}
+            <div className="flex-1 min-w-0 h-full flex flex-col">
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                <h1 className="font-body text-xl md:text-4xl font-bold text-white leading-tight line-clamp-3 md:line-clamp-2">
+                  {series.name}
+                </h1>
+                {series.tagline && (
+                  <p className="hidden md:block md:mt-1 text-white/50 italic text-xs truncate">
+                    {series.tagline}
+                  </p>
+                )}
 
-              {/* Metadata row */}
-              <div className="flex flex-wrap items-center gap-1 md:gap-2 mt-0.5 md:mt-2 text-[10px] md:text-sm text-white/60">
-                {yearRange && <span>{yearRange}</span>}
-                {series.number_of_seasons > 0 && (
-                  <>
-                    <span className="text-white/20">·</span>
-                    <span>
-                      {series.number_of_seasons}{' '}
-                      {series.number_of_seasons === 1 ? 'Season' : 'Seasons'}
-                    </span>
-                  </>
-                )}
-                {series.vote_average > 0 && (
-                  <>
-                    <span className="text-white/20">·</span>
-                    <RatingBadge
-                      rating={series.vote_average}
-                      className="text-[10px] leading-none md:text-xs px-1 md:px-1.5 py-[1px] md:py-0.5"
-                    />
-                  </>
-                )}
+                {/* Metadata row */}
+                <div className="flex flex-wrap items-center gap-1 md:gap-2 mt-0.5 md:mt-2 text-[10px] md:text-sm text-white/60">
+                  {yearRange && <span>{yearRange}</span>}
+                  {series.number_of_seasons > 0 && (
+                    <>
+                      <span className="text-white/20">·</span>
+                      <span>
+                        {series.number_of_seasons}{' '}
+                        {series.number_of_seasons === 1 ? 'Season' : 'Seasons'}
+                      </span>
+                    </>
+                  )}
+                  {series.vote_average > 0 && (
+                    <>
+                      <span className="text-white/20">·</span>
+                      <RatingBadge
+                        rating={series.vote_average}
+                        className="text-[10px] leading-none md:text-xs px-1 md:px-1.5 py-[1px] md:py-0.5"
+                      />
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Status + genre chips */}
-              <div className="flex flex-wrap gap-1 md:gap-2 mt-0.5 md:mt-2">
+              <div className="flex flex-nowrap gap-1 md:gap-2 mt-0.5 md:mt-2 overflow-x-auto">
                 {series.status && (
                   <span
                     className={cn(
@@ -184,8 +207,11 @@ export default async function SeriesPage({ params }: Props) {
                 ))}
               </div>
 
+              {/* Watch providers (preferred logos) */}
+              <WatchProvidersRow providers={preferredProviders} />
+
               {/* Watch + Watchlist buttons */}
-              <div className="md:hidden mt-auto pt-1 w-full flex items-center gap-2">
+              <div className="md:hidden mt-auto pt-2 w-full flex items-center gap-2 shrink-0">
                 <Link
                   href={watchHref}
                   className="inline-flex items-center justify-center gap-2 flex-1 bg-white text-black font-semibold text-sm px-6 py-2.5 rounded-lg hover:bg-gray-200 transition-colors"
@@ -194,7 +220,7 @@ export default async function SeriesPage({ params }: Props) {
                 </Link>
                 <WatchlistButton tmdbId={seriesId} mediaType="series" iconOnly />
               </div>
-              <div className="hidden md:flex mt-auto pt-4 items-center gap-3">
+              <div className="hidden md:flex mt-auto pt-4 items-center gap-3 shrink-0">
                 <Link
                   href={watchHref}
                   className="inline-flex items-center gap-2 bg-white text-black font-semibold text-sm px-6 py-2.5 rounded-lg hover:bg-gray-200 transition-colors"

@@ -217,3 +217,26 @@ export interface TMDBSeriesDetail {
   next_episode_to_air: TMDBEpisode | null;
   popularity: number;
 }
+
+// ── Watch Providers ───────────────────────────────────────────────────────────
+
+export interface TMDBWatchProvider {
+  provider_id: number;
+  provider_name: string;
+  logo_path: string | null;
+  display_priority: number;
+}
+
+export interface TMDBWatchProvidersRegion {
+  link?: string;
+  flatrate?: TMDBWatchProvider[];
+  rent?: TMDBWatchProvider[];
+  buy?: TMDBWatchProvider[];
+  free?: TMDBWatchProvider[];
+  ads?: TMDBWatchProvider[];
+}
+
+export interface TMDBWatchProvidersResult {
+  id: number;
+  results: Record<string, TMDBWatchProvidersRegion | undefined>;
+}
