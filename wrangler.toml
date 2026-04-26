@@ -6,5 +6,5 @@ pages_build_output_dir = ".vercel/output/static"
 [[d1_databases]]
 binding = "DB"
 database_name = "snape-db"
-database_id = "ab5d339980e6ececa4c4eb8a666fe97502bdd915"
+database_id = "9901bd47-921b-4167-ac66-94a24e909958"
 migrations_dir = "db/migrations"
