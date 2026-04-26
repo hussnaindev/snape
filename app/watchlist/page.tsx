@@ -70,8 +70,8 @@ export default function WatchlistPage() {
 
         {!user && !isLoading && (
           <Empty
-            message="Sign in to save movies and shows to your watchlist"
-            action={{ label: 'Sign in', href: '/auth/login' }}
+            message="Login to save movies and shows to your watchlist"
+            action={{ label: 'Login', href: '/auth/login' }}
           />
         )}
 

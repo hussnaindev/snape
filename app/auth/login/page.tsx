@@ -66,7 +66,7 @@ export default function LoginPage() {
               </div>
               <h1 className="text-white text-2xl font-bold">Welcome back</h1>
             </div>
-            <p className="text-white/40 text-sm mb-8 pl-12">Sign in to your account</p>
+            <p className="text-white/40 text-sm mb-8 pl-12">Login to your account</p>
 
             {error && (
               <div className="mb-6 flex items-start gap-2.5 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
@@ -136,10 +136,10 @@ export default function LoginPage() {
               >
                 {loading ? (
                   <>
-                    <SpinnerIcon /> Signing in…
+                    <SpinnerIcon /> Logging in…
                   </>
                 ) : (
-                  'Sign in'
+                  'Login'
                 )}
               </button>
             </form>

@@ -219,7 +219,7 @@ export default async function SeriesPage({ params }: Props) {
                 <WatchlistButton
                   tmdbId={seriesId}
                   mediaType="series"
-                  className="hidden md:block"
+                  className="hidden md:inline-flex"
                 />
               </div>
             </div>

@@ -166,7 +166,7 @@ export default async function MoviePage({ params }: Props) {
                 <WatchlistButton
                   tmdbId={movieId}
                   mediaType="movie"
-                  className="hidden md:block"
+                  className="hidden md:inline-flex"
                 />
               </div>
             </div>

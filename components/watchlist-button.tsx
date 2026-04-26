@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/components/auth/auth-provider';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
 interface Props {
@@ -40,7 +41,37 @@ export function WatchlistButton({ tmdbId, mediaType, className, iconOnly = false
       .finally(() => setInitializing(false));
   }, [user, tmdbId, mediaType]);
 
-  if (!user) return null;
+  if (!user) {
+    const href = '/auth/login';
+
+    if (iconOnly) {
+      return (
+        <Link
+          href={href}
+          aria-label="Login to add to watchlist"
+          className={cn(
+            'flex items-center justify-center w-9 h-9 rounded-full border transition-all bg-black/40 text-white border-white/30 hover:border-white/70 backdrop-blur-sm',
+            className,
+          )}
+        >
+          <PlusIcon />
+        </Link>
+      );
+    }
+
+    return (
+      <Link
+        href={href}
+        className={cn(
+          'inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all bg-transparent text-white border-white/30 hover:border-white/60 whitespace-nowrap',
+          className,
+        )}
+      >
+        <PlusIcon />
+        Add to Watchlist
+      </Link>
+    );
+  }
   if (initializing) {
     return (
       <div

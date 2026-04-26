@@ -284,7 +284,7 @@ export function Topbar() {
                       onClick={() => setMobileOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
                     >
-                      <SignInIcon /> Sign in
+                      <SignInIcon /> Login
                     </Link>
                     <Link
                       href="/auth/signup"
