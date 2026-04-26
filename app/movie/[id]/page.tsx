@@ -27,10 +27,6 @@ import { BackdropPlayer } from './backdrop-player';
 import { WatchButtons } from './watch-buttons';
 
 export const runtime = 'edge';
-
-// Cache the rendered page at the edge for 1 hour.
-// Without this, every bot/crawler hit triggers a full SSR function invocation
-// even though the underlying TMDB fetch responses are already data-cached.
 export const revalidate = 3600;
 
 interface Props {
@@ -93,17 +89,17 @@ export default async function MoviePage({ params }: Props) {
   return (
     <>
       <Topbar />
+
       <div>
-        {/* Backdrop hero */}
         <BackdropPlayer backdropUrl={backdrop} trailerKey={trailerKey} alt={movie.title} />
 
-        {/* Info block */}
         <div className="px-4 md:px-8 -mt-36 md:-mt-60 relative z-10">
-          <div className="flex gap-4 md:gap-8 h-36 md:h-60 items-start">
-            {/* Poster */}
-            <div className="flex-none w-24 md:w-40 rounded overflow-hidden shadow-2xl">
+          {/* MAIN ROW */}
+          <div className="flex gap-4 md:gap-8 items-stretch">
+            {/* POSTER */}
+            <div className="flex-none w-24 md:w-40">
               {poster && (
-                <div className="relative aspect-[2/3]">
+                <div className="relative aspect-[2/3] w-full h-full rounded overflow-hidden shadow-2xl">
                   <Image
                     src={poster}
                     alt={movie.title}
@@ -115,20 +111,21 @@ export default async function MoviePage({ params }: Props) {
               )}
             </div>
 
-            {/* Details */}
-            <div className="flex-1 min-w-0 h-full flex flex-col">
-              <div className="flex-1 min-h-0 overflow-y-auto">
-                <h1 className="font-body text-xl md:text-4xl font-bold text-white leading-tight line-clamp-3 md:line-clamp-2">
+            {/* DETAILS */}
+            <div className="flex-1 min-w-0 flex flex-col justify-between">
+              {/* TOP CONTENT */}
+              <div className="min-w-0">
+                <h1 className="font-body text-xl md:text-4xl font-bold text-white leading-tight line-clamp-2">
                   {movie.title}
                 </h1>
+
                 {movie.tagline && (
-                  <p className="hidden md:block md:mt-1 text-white/50 italic text-xs truncate">
+                  <p className="hidden md:block mt-1 text-white/50 italic text-xs truncate">
                     {movie.tagline}
                   </p>
                 )}
 
-                {/* Metadata row */}
-                <div className="flex flex-wrap items-center gap-1 md:gap-2 mt-0.5 md:mt-2 text-[10px] md:text-sm text-white/60">
+                <div className="flex flex-wrap items-center gap-1 md:gap-2 mt-1 text-[10px] md:text-sm text-white/60">
                   {year && <span>{year}</span>}
                   {runtime && (
                     <>
@@ -139,45 +136,43 @@ export default async function MoviePage({ params }: Props) {
                   {movie.vote_average > 0 && (
                     <>
                       <span className="text-white/20">·</span>
-                      <RatingBadge
-                        rating={movie.vote_average}
-                        className="text-[10px] leading-none md:text-xs px-1 md:px-1.5 py-[1px] md:py-0.5"
-                      />
+                      <RatingBadge rating={movie.vote_average} />
                     </>
                   )}
                 </div>
+
+                {movie.genres.length > 0 && (
+                  <div className="flex flex-nowrap gap-1 md:gap-2 mt-2 overflow-x-auto">
+                    {movie.genres.slice(0, 3).map((g) => (
+                      <TagChip key={g.id} label={g.name} />
+                    ))}
+                  </div>
+                )}
+
+                <WatchProvidersRow providers={preferredProviders} />
               </div>
 
-              {/* Genre chips */}
-              {movie.genres.length > 0 && (
-                <div className="flex flex-nowrap gap-1 md:gap-2 mt-0.5 md:mt-2 overflow-x-auto">
-                  {/* Show Max 3 Genres */}
-                  {movie.genres.slice(0, 3).map((g) => (
-                    <TagChip
-                      key={g.id}
-                      label={g.name}
-                      className="text-[9px] md:text-xs px-1.5 md:px-3 py-px md:py-1"
-                    />
-                  ))}
-                </div>
-              )}
+              {/* BOTTOM ACTIONS */}
+              <div className="pt-2 flex items-center gap-2 shrink-0">
+                <WatchButtons href={watchHref} fullWidth className="md:hidden" />
+                <WatchButtons href={watchHref} className="hidden md:flex" />
 
-              {/* Watch providers (preferred logos) */}
-              <WatchProvidersRow providers={preferredProviders} />
-
-              {/* Watch + Watchlist buttons */}
-              <div className="md:hidden mt-auto pt-2 w-full flex items-center gap-2 shrink-0">
-                <WatchButtons href={watchHref} fullWidth />
-                <WatchlistButton tmdbId={movieId} mediaType="movie" iconOnly />
-              </div>
-              <div className="hidden md:flex mt-auto pt-4 items-center gap-3 shrink-0">
-                <WatchButtons href={watchHref} />
-                <WatchlistButton tmdbId={movieId} mediaType="movie" />
+                <WatchlistButton
+                  tmdbId={movieId}
+                  mediaType="movie"
+                  iconOnly
+                  className="md:hidden"
+                />
+                <WatchlistButton
+                  tmdbId={movieId}
+                  mediaType="movie"
+                  className="hidden md:block"
+                />
               </div>
             </div>
           </div>
 
-          {/* Synopsis */}
+          {/* SYNOPSIS */}
           {movie.overview && (
             <div className="mt-5 md:mt-8 max-w-2xl">
               <ExpandableText text={movie.overview} />
@@ -185,12 +180,10 @@ export default async function MoviePage({ params }: Props) {
           )}
         </div>
 
-        {/* Cast */}
         <div className="mt-10">
           <CastRail cast={credits.cast} />
         </div>
 
-        {/* Recommendations */}
         {recommendations.length > 0 && (
           <div className="mt-10 mb-16">
             <MovieCarousel title="More Like This" movies={recommendations} />

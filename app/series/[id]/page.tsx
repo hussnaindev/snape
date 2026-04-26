@@ -87,7 +87,6 @@ export default async function SeriesPage({ params }: Props) {
   const backdrop = tmdbImage(series.backdrop_path, 'original');
   const poster = tmdbImage(series.poster_path, 'w342');
 
-  // Year range display (e.g. "2019 – Present" or "2019 – 2023")
   const startYear = series.first_air_date?.slice(0, 4) ?? '';
   const endYear = series.last_air_date?.slice(0, 4) ?? '';
   const yearRange =
@@ -97,16 +96,15 @@ export default async function SeriesPage({ params }: Props) {
         ? `${startYear} – Present`
         : startYear;
 
-  // Determine first real season to show (skip specials)
-  const mainSeasons = series.seasons.filter((s) => s.season_number !== 0 && s.episode_count > 0);
+  const mainSeasons = series.seasons.filter(
+    (s) => s.season_number !== 0 && s.episode_count > 0,
+  );
   const firstSeason = mainSeasons[0] ?? series.seasons[0];
 
-  // Pre-fetch first season episode data
   const initialSeason = firstSeason
     ? await getSeriesSeason(seriesId, firstSeason.season_number).catch(() => null)
     : null;
 
-  // First watchable episode
   const firstEpisode =
     initialSeason?.episodes.find(
       (e) => e.air_date !== null && e.air_date <= new Date().toISOString().slice(0, 10),
@@ -116,7 +114,8 @@ export default async function SeriesPage({ params }: Props) {
     ? `/series/${seriesId}/watch?s=${firstEpisode.season_number}&e=${firstEpisode.episode_number}`
     : `/series/${seriesId}/watch?s=1&e=1`;
 
-  const statusColor = STATUS_COLORS[series.status] ?? 'text-white/40 border-white/20 bg-white/5';
+  const statusColor =
+    STATUS_COLORS[series.status] ?? 'text-white/40 border-white/20 bg-white/5';
 
   const creators = series.created_by
     .slice(0, 3)
@@ -128,17 +127,17 @@ export default async function SeriesPage({ params }: Props) {
   return (
     <>
       <Topbar />
+
       <div>
-        {/* Backdrop hero */}
         <BackdropPlayer backdropUrl={backdrop} trailerKey={trailerKey} alt={series.name} />
 
-        {/* Info block */}
         <div className="px-4 md:px-8 -mt-36 md:-mt-60 relative z-10">
-          <div className="flex gap-4 md:gap-8 h-36 md:h-60 items-start">
-            {/* Poster */}
-            <div className="flex-none w-24 md:w-40 rounded overflow-hidden shadow-2xl">
+          {/* MAIN ROW */}
+          <div className="flex gap-4 md:gap-8 items-stretch">
+            {/* POSTER */}
+            <div className="flex-none w-24 md:w-40">
               {poster && (
-                <div className="relative aspect-[2/3]">
+                <div className="relative aspect-[2/3] w-full h-full rounded overflow-hidden shadow-2xl">
                   <Image
                     src={poster}
                     alt={series.name}
@@ -150,20 +149,21 @@ export default async function SeriesPage({ params }: Props) {
               )}
             </div>
 
-            {/* Details */}
-            <div className="flex-1 min-w-0 h-full flex flex-col">
-              <div className="flex-1 min-h-0 overflow-y-auto">
-                <h1 className="font-body text-xl md:text-4xl font-bold text-white leading-tight line-clamp-3 md:line-clamp-2">
+            {/* DETAILS */}
+            <div className="flex-1 min-w-0 flex flex-col justify-between">
+              {/* TOP */}
+              <div className="min-w-0">
+                <h1 className="font-body text-xl md:text-4xl font-bold text-white leading-tight line-clamp-2">
                   {series.name}
                 </h1>
+
                 {series.tagline && (
-                  <p className="hidden md:block md:mt-1 text-white/50 italic text-xs truncate">
+                  <p className="hidden md:block mt-1 text-white/50 italic text-xs truncate">
                     {series.tagline}
                   </p>
                 )}
 
-                {/* Metadata row */}
-                <div className="flex flex-wrap items-center gap-1 md:gap-2 mt-0.5 md:mt-2 text-[10px] md:text-sm text-white/60">
+                <div className="flex flex-wrap items-center gap-1 md:gap-2 mt-1 text-[10px] md:text-sm text-white/60">
                   {yearRange && <span>{yearRange}</span>}
                   {series.number_of_seasons > 0 && (
                     <>
@@ -177,69 +177,62 @@ export default async function SeriesPage({ params }: Props) {
                   {series.vote_average > 0 && (
                     <>
                       <span className="text-white/20">·</span>
-                      <RatingBadge
-                        rating={series.vote_average}
-                        className="text-[10px] leading-none md:text-xs px-1 md:px-1.5 py-[1px] md:py-0.5"
-                      />
+                      <RatingBadge rating={series.vote_average} />
                     </>
                   )}
                 </div>
+
+                <div className="flex flex-nowrap gap-1 md:gap-2 mt-2 overflow-x-auto">
+                  {series.status && (
+                    <span
+                      className={cn(
+                        'text-[9px] md:text-xs px-1.5 md:px-2 py-px md:py-0.5 rounded border font-medium',
+                        statusColor,
+                      )}
+                    >
+                      {series.status}
+                    </span>
+                  )}
+                  {series.genres.slice(0, 3).map((g) => (
+                    <TagChip key={g.id} label={g.name} />
+                  ))}
+                </div>
+
+                <WatchProvidersRow providers={preferredProviders} />
               </div>
 
-              {/* Status + genre chips */}
-              <div className="flex flex-nowrap gap-1 md:gap-2 mt-0.5 md:mt-2 overflow-x-auto">
-                {series.status && (
-                  <span
-                    className={cn(
-                      'text-[9px] md:text-xs px-1.5 md:px-2 py-px md:py-0.5 rounded border font-medium',
-                      statusColor,
-                    )}
-                  >
-                    {series.status}
-                  </span>
-                )}
-                {series.genres.slice(0, 3).map((g) => (
-                  <TagChip
-                    key={g.id}
-                    label={g.name}
-                    className="text-[9px] md:text-xs px-1.5 md:px-3 py-px md:py-1"
-                  />
-                ))}
-              </div>
-
-              {/* Watch providers (preferred logos) */}
-              <WatchProvidersRow providers={preferredProviders} />
-
-              {/* Watch + Watchlist buttons */}
-              <div className="md:hidden mt-auto pt-2 w-full flex items-center gap-2 shrink-0">
+              {/* BOTTOM */}
+              <div className="pt-2 flex items-center gap-2 shrink-0">
                 <Link
                   href={watchHref}
-                  className="inline-flex items-center justify-center gap-2 flex-1 bg-white text-black font-semibold text-sm px-6 py-2.5 rounded-lg hover:bg-gray-200 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 flex-1 bg-white text-black font-semibold text-sm px-5 py-2 md:px-6 md:py-2.5 rounded-lg hover:bg-gray-200 transition-colors md:flex-none"
                 >
                   <span>▶</span> Watch
                 </Link>
-                <WatchlistButton tmdbId={seriesId} mediaType="series" iconOnly />
-              </div>
-              <div className="hidden md:flex mt-auto pt-4 items-center gap-3 shrink-0">
-                <Link
-                  href={watchHref}
-                  className="inline-flex items-center gap-2 bg-white text-black font-semibold text-sm px-6 py-2.5 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  <span>▶</span> Watch
-                </Link>
-                <WatchlistButton tmdbId={seriesId} mediaType="series" />
+
+                <WatchlistButton
+                  tmdbId={seriesId}
+                  mediaType="series"
+                  iconOnly
+                  className="md:hidden"
+                />
+                <WatchlistButton
+                  tmdbId={seriesId}
+                  mediaType="series"
+                  className="hidden md:block"
+                />
               </div>
             </div>
           </div>
 
-          {/* Synopsis */}
+          {/* SYNOPSIS */}
           {series.overview && (
             <div className="mt-5 md:mt-8 max-w-2xl">
               <ExpandableText text={series.overview} />
             </div>
           )}
 
-          {/* Creator */}
+          {/* CREATOR */}
           {creators && (
             <p className="mt-3 text-xs md:text-sm text-white/40">
               <span className="text-white/60">Created by</span>{' '}
@@ -247,7 +240,7 @@ export default async function SeriesPage({ params }: Props) {
             </p>
           )}
 
-          {/* Networks */}
+          {/* NETWORKS */}
           {series.networks.length > 0 && (
             <p className="mt-1 text-xs text-white/40">
               {series.networks.map((n) => n.name).join(' · ')}
@@ -255,7 +248,7 @@ export default async function SeriesPage({ params }: Props) {
           )}
         </div>
 
-        {/* Episode Guide */}
+        {/* EPISODES */}
         {initialSeason && series.seasons.length > 0 && (
           <div className="mt-10 px-4 md:px-8">
             <h2 className="text-white font-body font-semibold text-base md:text-lg mb-4">
@@ -269,12 +262,12 @@ export default async function SeriesPage({ params }: Props) {
           </div>
         )}
 
-        {/* Cast */}
+        {/* CAST */}
         <div className="mt-10">
           <CastRail cast={credits.cast} />
         </div>
 
-        {/* Recommendations */}
+        {/* RECOMMENDATIONS */}
         {recommendations.length > 0 && (
           <div className="mt-10 mb-16">
             <SeriesCarousel title="More Like This" series={recommendations} />
