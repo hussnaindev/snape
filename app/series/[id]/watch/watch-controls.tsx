@@ -85,8 +85,8 @@ export function WatchControls({ seriesId }: Props) {
         className="absolute z-10 flex items-center justify-center gap-1.5 bg-black/70 text-white text-xs font-medium px-3 py-1.5 rounded-full border border-white/20 hover:border-white/50 transition-colors md:hidden"
         style={{
           top: 'max(12px, env(safe-area-inset-top))',
-          // Leave space for the Episodes toggle pill on the far-right.
-          right: 'max(132px, calc(env(safe-area-inset-right) + 132px))',
+          // Sit just left of the Episodes pill (which is pinned to safe-area right).
+          right: 'calc(max(12px, env(safe-area-inset-right)) + 56px)',
         }}
         aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen landscape'}
       >
