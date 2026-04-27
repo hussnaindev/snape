@@ -57,6 +57,26 @@ export function pickPreferredProviders(region: TMDBWatchProvidersRegion | null |
   return ordered;
 }
 
+export function pickPreferredProvidersWithFallback(
+  results: Record<string, TMDBWatchProvidersRegion | undefined> | null | undefined,
+  country: string,
+): PreferredProviderKey[] {
+  if (!results) return [];
+
+  const primary = pickPreferredProviders(results[country]);
+  if (primary.length > 0) return primary;
+
+  const us = pickPreferredProviders(results.US);
+  if (us.length > 0) return us;
+
+  for (const region of Object.values(results)) {
+    const picked = pickPreferredProviders(region);
+    if (picked.length > 0) return picked;
+  }
+
+  return [];
+}
+
 export function preferredProviderMeta(key: PreferredProviderKey): { label: string; assetPath: string } {
   const meta = PREFERRED_PROVIDERS.find((p) => p.key === key);
   if (!meta) return { label: key, assetPath: '' };

@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 
 import { BackdropPlayer } from '@/app/movie/[id]/backdrop-player';
@@ -23,7 +22,7 @@ import {
 } from '@/lib/tmdb';
 import { tmdbImage } from '@/lib/tmdb-image';
 import { cn } from '@/lib/utils';
-import { pickPreferredProviders } from '@/lib/watch-providers';
+import { pickPreferredProvidersWithFallback } from '@/lib/watch-providers';
 
 import { WatchlistButton } from '@/components/watchlist-button';
 import { EpisodeGuide } from './episode-guide';
@@ -33,18 +32,6 @@ export const revalidate = 3600;
 
 interface Props {
   params: Promise<{ id: string }>;
-}
-
-async function getRequestCountry(): Promise<string> {
-  const h = await headers();
-  const raw =
-    h.get('cf-ipcountry') ??
-    h.get('x-vercel-ip-country') ??
-    h.get('x-country-code') ??
-    h.get('x-country') ??
-    '';
-  const country = raw.trim().toUpperCase();
-  return /^[A-Z]{2}$/.test(country) ? country : 'US';
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -71,7 +58,7 @@ export default async function SeriesPage({ params }: Props) {
   const seriesId = Number(id);
   if (Number.isNaN(seriesId)) notFound();
 
-  const country = await getRequestCountry();
+  const country = 'US';
 
   const [series, credits, recommendations, videos, providers] = await Promise.all([
     getSeriesDetail(seriesId).catch(() => null),
@@ -122,7 +109,7 @@ export default async function SeriesPage({ params }: Props) {
     .map((c) => c.name)
     .join(', ');
 
-  const preferredProviders = pickPreferredProviders(providers?.results?.[country]);
+  const preferredProviders = pickPreferredProvidersWithFallback(providers?.results, country);
 
   return (
     <>
