@@ -34,15 +34,7 @@ export default async function WatchPage({ params }: Props) {
         notches, camera cutouts, and the iOS home indicator so the player's
         own control bar is never hidden behind system UI.
       */}
-      <div
-        className="absolute inset-0 player-safe-area"
-        style={{
-          paddingTop: 'env(safe-area-inset-top)',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-          paddingLeft: 'env(safe-area-inset-left)',
-          paddingRight: 'env(safe-area-inset-right)',
-        }}
-      >
+      <div className="absolute inset-0 player-safe-area">
         {/*
           No sandbox: vidsrc.icu's play button calls window.open() internally
           (ad + video start in one gesture). Sandboxing without allow-popups

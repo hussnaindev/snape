@@ -50,15 +50,7 @@ export default async function SeriesWatchPage({ params, searchParams }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black">
-      <div
-        className="absolute inset-0"
-        style={{
-          paddingTop: 'env(safe-area-inset-top)',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-          paddingLeft: 'env(safe-area-inset-left)',
-          paddingRight: 'env(safe-area-inset-right)',
-        }}
-      >
+      <div className="absolute inset-0 player-safe-area">
         <iframe
           src={embedUrl}
           className="w-full h-full"
