@@ -413,7 +413,7 @@ function SpinnerIcon() {
 
 function resizeImage(file: File, maxPx: number): Promise<string> {
   return new Promise((resolve, reject) => {
-    const img = new Image();
+    const img = document.createElement('img');
     const url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);

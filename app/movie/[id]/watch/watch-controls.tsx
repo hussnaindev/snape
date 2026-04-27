@@ -73,21 +73,22 @@ export function WatchControls() {
       <button
         type="button"
         onClick={handleBack}
-        className="absolute z-10 w-10 h-10 flex items-center justify-center rounded-full bg-black/60 text-white text-lg"
+        className="absolute z-10 flex items-center justify-center gap-1.5 bg-black/70 text-white text-xs font-medium px-3 py-1.5 rounded-full border border-white/20 hover:border-white/50 transition-colors"
         style={{
           top: 'max(12px, env(safe-area-inset-top))',
           left: 'max(12px, env(safe-area-inset-left))',
         }}
         aria-label="Back"
       >
-        ←
+        <span aria-hidden="true">←</span>
+        <span className="hidden sm:inline">Back</span>
       </button>
 
       {/* Fullscreen + landscape toggle — top-right, mobile only */}
       <button
         type="button"
         onClick={toggleFullscreen}
-        className="absolute z-10 w-10 h-10 flex items-center justify-center rounded-full bg-black/60 text-white md:hidden"
+        className="absolute z-10 flex items-center justify-center gap-1.5 bg-black/70 text-white text-xs font-medium px-3 py-1.5 rounded-full border border-white/20 hover:border-white/50 transition-colors md:hidden"
         style={{
           top: 'max(12px, env(safe-area-inset-top))',
           right: 'max(12px, env(safe-area-inset-right))',
@@ -96,8 +97,8 @@ export function WatchControls() {
       >
         {isFullscreen ? (
           <svg
-            width="18"
-            height="18"
+            width="14"
+            height="14"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -113,8 +114,8 @@ export function WatchControls() {
           </svg>
         ) : (
           <svg
-            width="18"
-            height="18"
+            width="14"
+            height="14"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -129,6 +130,7 @@ export function WatchControls() {
             <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
           </svg>
         )}
+        <span className="hidden sm:inline">{isFullscreen ? 'Exit' : 'Full screen'}</span>
       </button>
     </>
   );
