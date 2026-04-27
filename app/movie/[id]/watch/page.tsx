@@ -1,5 +1,4 @@
 import { WatchHistoryRecorder } from '@/components/watch-history-recorder';
-import { WatchPlayer } from '@/components/watch-player';
 import { getMovieDetail } from '@/lib/tmdb';
 import { getMovieEmbedUrl } from '@/lib/vsembed';
 import type { Viewport } from 'next';
@@ -30,7 +29,15 @@ export default async function WatchPage({ params }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black">
-      <WatchPlayer src={embedUrl} title="Video player" />
+      <div className="absolute inset-0 player-safe-area">
+        <iframe
+          src={embedUrl}
+          className="w-full h-full"
+          allowFullScreen
+          allow="autoplay; fullscreen; accelerometer; gyroscope; picture-in-picture"
+          title="Video player"
+        />
+      </div>
 
       {/* Back button (top-left) + fullscreen toggle (top-right, mobile only).
           Both live in WatchControls so they share orientation/fullscreen state
