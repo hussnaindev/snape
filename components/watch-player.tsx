@@ -34,6 +34,7 @@ export function WatchPlayer({
 
   const [fitMode, setFitMode] = useState<FitMode>('contain');
   const [coverScale, setCoverScale] = useState(1);
+  const [isLandscape, setIsLandscape] = useState(false);
 
   const scale = useMemo(() => (fitMode === 'cover' ? coverScale : 1), [fitMode, coverScale]);
 
@@ -52,6 +53,19 @@ export function WatchPlayer({
       window.removeEventListener('orientationchange', update);
     };
   }, [contentAspect]);
+
+  useEffect(() => {
+    function update() {
+      setIsLandscape(window.innerWidth > window.innerHeight);
+    }
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('orientationchange', update);
+    };
+  }, []);
 
   function onTouchStart(e: React.TouchEvent) {
     if (e.touches.length !== 2) return;
@@ -126,37 +140,41 @@ export function WatchPlayer({
       */}
       <div className="absolute inset-0 pointer-events-none">
         <div
-          className="absolute inset-x-0 top-0 h-10 pointer-events-auto"
-          style={{ touchAction: 'none' }}
+          className="absolute inset-x-0 top-0 pointer-events-auto"
+          style={{ touchAction: 'none', height: isLandscape ? 28 : 40 }}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
           onTouchCancel={onTouchEnd}
         />
         <div
-          className="absolute inset-x-0 bottom-0 h-10 pointer-events-auto"
-          style={{ touchAction: 'none' }}
+          className="absolute inset-x-0 bottom-0 pointer-events-auto"
+          style={{ touchAction: 'none', height: isLandscape ? 28 : 40 }}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
           onTouchCancel={onTouchEnd}
         />
-        <div
-          className="absolute inset-y-0 left-0 w-10 pointer-events-auto"
-          style={{ touchAction: 'none' }}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-          onTouchCancel={onTouchEnd}
-        />
-        <div
-          className="absolute inset-y-0 right-0 w-10 pointer-events-auto"
-          style={{ touchAction: 'none' }}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-          onTouchCancel={onTouchEnd}
-        />
+        {!isLandscape && (
+          <>
+            <div
+              className="absolute inset-y-0 left-0 w-10 pointer-events-auto"
+              style={{ touchAction: 'none' }}
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onTouchEnd}
+              onTouchCancel={onTouchEnd}
+            />
+            <div
+              className="absolute inset-y-0 right-0 w-10 pointer-events-auto"
+              style={{ touchAction: 'none' }}
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onTouchEnd}
+              onTouchCancel={onTouchEnd}
+            />
+          </>
+        )}
       </div>
     </div>
   );
