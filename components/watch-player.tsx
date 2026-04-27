@@ -106,9 +106,6 @@ export function WatchPlayer({
     <div
       ref={containerRef}
       className="absolute inset-0 player-safe-area overflow-hidden"
-      style={{
-        touchAction: 'none',
-      }}
     >
       <iframe
         src={src}
@@ -120,11 +117,47 @@ export function WatchPlayer({
         allowFullScreen
         allow="autoplay; fullscreen; accelerometer; gyroscope; picture-in-picture"
         title={title}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={onTouchEnd}
       />
+
+      {/*
+        Cross-origin iframes don't reliably bubble touch events to React handlers.
+        These thin edge zones capture the 2-finger gesture without blocking taps
+        on the player's own controls.
+      */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div
+          className="absolute inset-x-0 top-0 h-10 pointer-events-auto"
+          style={{ touchAction: 'none' }}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchEnd}
+        />
+        <div
+          className="absolute inset-x-0 bottom-0 h-10 pointer-events-auto"
+          style={{ touchAction: 'none' }}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchEnd}
+        />
+        <div
+          className="absolute inset-y-0 left-0 w-10 pointer-events-auto"
+          style={{ touchAction: 'none' }}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchEnd}
+        />
+        <div
+          className="absolute inset-y-0 right-0 w-10 pointer-events-auto"
+          style={{ touchAction: 'none' }}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchEnd}
+        />
+      </div>
     </div>
   );
 }
