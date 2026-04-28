@@ -1,6 +1,5 @@
 # Snape
 
-> Short description of what this app does.
 
 ## Stack
 
