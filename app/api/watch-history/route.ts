@@ -7,7 +7,6 @@ import { and, desc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-
 const upsertSchema = z.object({
   tmdbId: z.number().int().positive(),
   mediaType: z.enum(['movie', 'series']),
@@ -18,6 +17,10 @@ const upsertSchema = z.object({
   progress: z.number().min(0).max(100).default(0),
   season: z.number().int().positive().nullable().optional(),
   episode: z.number().int().positive().nullable().optional(),
+});
+
+const bulkUpsertSchema = z.object({
+  entries: z.array(upsertSchema).min(1).max(20),
 });
 
 export async function GET() {
@@ -43,6 +46,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Unauthenticated', code: 401 }, { status: 401 });
 
   const body = await req.json().catch(() => null);
+
+  // Check for bulk sync
+  const bulkParsed = bulkUpsertSchema.safeParse(body);
+  if (bulkParsed.success) {
+    const db = await getDb();
+    const now = new Date();
+    for (const entry of bulkParsed.data.entries) {
+      await db
+        .insert(watchHistory)
+        .values({ profileId: session.profileId, ...entry, watchedAt: now })
+        .onConflictDoUpdate({
+          target: [watchHistory.profileId, watchHistory.tmdbId, watchHistory.mediaType],
+          set: {
+            progress: entry.progress,
+            watchedAt: now,
+            season: entry.season ?? null,
+            episode: entry.episode ?? null,
+          },
+        });
+    }
+    return NextResponse.json({ ok: true, data: null });
+  }
+
+  // Single entry upsert
   const parsed = upsertSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ ok: false, error: 'Invalid input', code: 400 }, { status: 400 });

@@ -1,6 +1,7 @@
 'use client';
 
-import { addToWatchHistory } from '@/lib/watch-history';
+import { useAuth } from '@/components/auth/auth-provider';
+import { addToWatchHistory, uploadEntryToServer } from '@/lib/watch-history';
 import { useEffect } from 'react';
 
 interface Props {
@@ -13,9 +14,25 @@ interface Props {
 }
 
 export function WatchHistoryRecorder({ id, type, title, posterPath, backdropPath, year }: Props) {
+  const { state } = useAuth();
+  const isAuthenticated = state.status === 'authenticated';
+
   useEffect(() => {
     addToWatchHistory({ id, type, title, posterPath, backdropPath, year });
-  }, [id, type, title, posterPath, backdropPath, year]);
+
+    if (isAuthenticated) {
+      uploadEntryToServer({
+        id,
+        type,
+        title,
+        posterPath,
+        backdropPath,
+        year,
+        progress: 0, // will be overwritten by server upsert
+        watchedAt: Date.now(),
+      });
+    }
+  }, [id, type, title, posterPath, backdropPath, year, isAuthenticated]);
 
   return null;
 }

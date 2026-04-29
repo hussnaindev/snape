@@ -7,10 +7,11 @@ import {
   getWatchHistory,
   syncWatchHistoryCookie,
 } from '@/lib/watch-history';
+import { SYNCED_EVENT } from '@/lib/watch-history';
 import type { WatchHistoryEntry } from '@/lib/watch-history';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useLayoutEffect, useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 
 const MIN_ENTRIES = WATCH_HISTORY_MIN_ENTRIES;
 
@@ -111,8 +112,15 @@ export function ContinueWatchingCarousel({ hasHistory }: { hasHistory: boolean }
       setItems(getWatchHistory());
       syncWatchHistoryCookie([]);
     }
+    function onSynced() {
+      setItems(getWatchHistory());
+    }
     window.addEventListener('watch-history-cleared', onCleared);
-    return () => window.removeEventListener('watch-history-cleared', onCleared);
+    window.addEventListener(SYNCED_EVENT, onSynced);
+    return () => {
+      window.removeEventListener('watch-history-cleared', onCleared);
+      window.removeEventListener(SYNCED_EVENT, onSynced);
+    };
   }, []);
 
   const loaded = items !== null;

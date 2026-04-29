@@ -1,5 +1,6 @@
 'use client';
 
+import { handleLogout as clearLocalHistory, syncOnLogin } from '@/lib/watch-history';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 export type AuthUser = {
@@ -33,7 +34,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch('/api/auth/me');
       const json = await res.json();
       if (json.ok) {
-        setState({ status: 'authenticated', user: json.data as AuthUser });
+        const user = json.data as AuthUser;
+        setState({ status: 'authenticated', user });
+        await syncOnLogin();
       } else {
         setState({ status: 'unauthenticated' });
       }
@@ -44,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
+    clearLocalHistory();
     setState({ status: 'unauthenticated' });
   }, []);
 
