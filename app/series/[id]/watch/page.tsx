@@ -82,6 +82,8 @@ export default async function SeriesWatchPage({ params, searchParams }: Props) {
         posterPath={series.poster_path}
         backdropPath={series.backdrop_path}
         year={series.first_air_date?.slice(0, 4) ?? ''}
+        season={resolvedSeasonNum}
+        episode={resolvedEpisodeNum}
       />
     </div>
   );

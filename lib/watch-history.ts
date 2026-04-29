@@ -7,6 +7,8 @@ export interface WatchHistoryEntry {
   year: string;
   progress: number; // 0–100
   watchedAt: number; // Date.now()
+  season?: number;
+  episode?: number;
 }
 
 export const WATCH_HISTORY_MIN_ENTRIES = 1;
@@ -34,7 +36,7 @@ export function syncWatchHistoryCookie(items: WatchHistoryEntry[]): void {
 
 // Deterministic pseudo-random progress 15–85 based on TMDB id.
 // Same title always shows the same bar — avoids it jumping on re-renders.
-function seededProgress(id: number): number {
+export function seededProgress(id: number): number {
   return (((id * 2654435761) >>> 0) % 71) + 15;
 }
 
@@ -51,12 +53,24 @@ export function getWatchHistory(): WatchHistoryEntry[] {
 export function addToWatchHistory(entry: Omit<WatchHistoryEntry, 'progress' | 'watchedAt'>): void {
   try {
     const history = getWatchHistory();
+    const existing = history.find((e) => e.id === entry.id && e.type === entry.type);
     const filtered = history.filter((e) => !(e.id === entry.id && e.type === entry.type));
-    filtered.unshift({
-      ...entry,
+    const newEntry: WatchHistoryEntry = {
+      id: entry.id,
+      type: entry.type,
+      title: entry.title,
+      posterPath: entry.posterPath,
+      backdropPath: entry.backdropPath,
+      year: entry.year,
       progress: seededProgress(entry.id),
       watchedAt: Date.now(),
-    });
+    };
+    // Preserve existing season/episode if not provided in new entry
+    const season = entry.season ?? existing?.season;
+    const episode = entry.episode ?? existing?.episode;
+    if (season !== undefined) newEntry.season = season;
+    if (episode !== undefined) newEntry.episode = episode;
+    filtered.unshift(newEntry);
     const next = filtered.slice(0, MAX_ENTRIES);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     if (next.length >= WATCH_HISTORY_MIN_ENTRIES) setHistoryCookie();
@@ -119,6 +133,8 @@ export async function fetchServerWatchHistory(): Promise<WatchHistoryEntry[]> {
         year: string;
         progress: number;
         watchedAt: string;
+        season: number | null;
+        episode: number | null;
       }) => ({
         id: item.tmdbId,
         type: item.mediaType,
@@ -128,6 +144,8 @@ export async function fetchServerWatchHistory(): Promise<WatchHistoryEntry[]> {
         year: item.year ?? '',
         progress: item.progress ?? 0,
         watchedAt: new Date(item.watchedAt).getTime(),
+        ...(item.season ? { season: item.season } : {}),
+        ...(item.episode ? { episode: item.episode } : {}),
       }),
     );
   } catch {
@@ -138,18 +156,21 @@ export async function fetchServerWatchHistory(): Promise<WatchHistoryEntry[]> {
 /** Upload a single entry to server. */
 export async function uploadEntryToServer(entry: WatchHistoryEntry): Promise<void> {
   try {
+    const body: Record<string, unknown> = {
+      tmdbId: entry.id,
+      mediaType: entry.type,
+      title: entry.title,
+      posterPath: entry.posterPath,
+      backdropPath: entry.backdropPath,
+      year: entry.year,
+      progress: entry.progress,
+    };
+    if (entry.season !== undefined) body.season = entry.season;
+    if (entry.episode !== undefined) body.episode = entry.episode;
     await fetch('/api/watch-history', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tmdbId: entry.id,
-        mediaType: entry.type,
-        title: entry.title,
-        posterPath: entry.posterPath,
-        backdropPath: entry.backdropPath,
-        year: entry.year,
-        progress: entry.progress,
-      }),
+      body: JSON.stringify(body),
       credentials: 'include',
     });
   } catch {
@@ -163,13 +184,31 @@ export function mergeWatchHistories(
   server: WatchHistoryEntry[],
 ): WatchHistoryEntry[] {
   const map = new Map<string, WatchHistoryEntry>();
+
+  // First pass: add all entries
   for (const entry of [...server, ...local]) {
     const key = `${entry.id}:${entry.type}`;
     const existing = map.get(key);
     if (!existing || entry.watchedAt > existing.watchedAt) {
       map.set(key, entry);
+    } else if (existing && existing.watchedAt === entry.watchedAt) {
+      // Same timestamp - prefer entry with non-zero progress (correct fake progress)
+      if (entry.progress > 0 && existing.progress === 0) {
+        map.set(key, entry);
+      }
     }
   }
+
+  // Second pass: ensure local progress is preserved when server has 0
+  for (const entry of local) {
+    const key = `${entry.id}:${entry.type}`;
+    const existing = map.get(key);
+    if (existing && existing.progress === 0 && entry.progress > 0) {
+      // Server has 0 progress but local has correct fake progress - use local
+      map.set(key, { ...existing, progress: entry.progress });
+    }
+  }
+
   const merged = Array.from(map.values()).sort((a, b) => b.watchedAt - a.watchedAt);
   return merged.slice(0, MAX_ENTRIES);
 }
@@ -187,20 +226,24 @@ export async function syncOnLogin(): Promise<void> {
     // Upload merged to server via bulk API
     if (merged.length > 0) {
       try {
+        const entries = merged.map((entry) => {
+          const item: Record<string, unknown> = {
+            tmdbId: entry.id,
+            mediaType: entry.type,
+            title: entry.title,
+            posterPath: entry.posterPath,
+            backdropPath: entry.backdropPath,
+            year: entry.year,
+            progress: entry.progress,
+          };
+          if (entry.season !== undefined) item.season = entry.season;
+          if (entry.episode !== undefined) item.episode = entry.episode;
+          return item;
+        });
         await fetch('/api/watch-history', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            entries: merged.map((entry) => ({
-              tmdbId: entry.id,
-              mediaType: entry.type,
-              title: entry.title,
-              posterPath: entry.posterPath,
-              backdropPath: entry.backdropPath,
-              year: entry.year,
-              progress: entry.progress,
-            })),
-          }),
+          body: JSON.stringify({ entries }),
           credentials: 'include',
         });
       } catch {

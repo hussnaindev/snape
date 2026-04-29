@@ -18,7 +18,10 @@ const MIN_ENTRIES = WATCH_HISTORY_MIN_ENTRIES;
 function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
   const backdrop = tmdbImage(entry.backdropPath, 'w780');
   const poster = tmdbImage(entry.posterPath, 'w342');
-  const href = entry.type === 'movie' ? `/movie/${entry.id}/watch` : `/series/${entry.id}/watch`;
+  const href =
+    entry.type === 'movie'
+      ? `/movie/${entry.id}/watch`
+      : `/series/${entry.id}/watch?s=${entry.season ?? 1}&e=${entry.episode ?? 1}`;
 
   return (
     <div className="group relative flex-none w-[130px] sm:w-[300px] md:w-[340px] lg:w-[380px] rounded-md overflow-hidden bg-white/5">

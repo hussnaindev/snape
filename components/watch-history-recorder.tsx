@@ -1,7 +1,12 @@
 'use client';
 
 import { useAuth } from '@/components/auth/auth-provider';
-import { addToWatchHistory, uploadEntryToServer } from '@/lib/watch-history';
+import {
+  type WatchHistoryEntry,
+  addToWatchHistory,
+  seededProgress,
+  uploadEntryToServer,
+} from '@/lib/watch-history';
 import { useEffect } from 'react';
 
 interface Props {
@@ -11,28 +16,45 @@ interface Props {
   posterPath: string | null;
   backdropPath: string | null;
   year: string;
+  season?: number;
+  episode?: number;
 }
 
-export function WatchHistoryRecorder({ id, type, title, posterPath, backdropPath, year }: Props) {
+export function WatchHistoryRecorder({
+  id,
+  type,
+  title,
+  posterPath,
+  backdropPath,
+  year,
+  season,
+  episode,
+}: Props) {
   const { state } = useAuth();
   const isAuthenticated = state.status === 'authenticated';
 
   useEffect(() => {
-    addToWatchHistory({ id, type, title, posterPath, backdropPath, year });
+    const entry: Omit<WatchHistoryEntry, 'progress' | 'watchedAt'> = {
+      id,
+      type,
+      title,
+      posterPath,
+      backdropPath,
+      year,
+    };
+    if (season !== undefined) entry.season = season;
+    if (episode !== undefined) entry.episode = episode;
+    addToWatchHistory(entry);
 
     if (isAuthenticated) {
-      uploadEntryToServer({
-        id,
-        type,
-        title,
-        posterPath,
-        backdropPath,
-        year,
-        progress: 0, // will be overwritten by server upsert
+      const serverEntry: WatchHistoryEntry = {
+        ...entry,
+        progress: seededProgress(id),
         watchedAt: Date.now(),
-      });
+      };
+      uploadEntryToServer(serverEntry);
     }
-  }, [id, type, title, posterPath, backdropPath, year, isAuthenticated]);
+  }, [id, type, title, posterPath, backdropPath, year, season, episode, isAuthenticated]);
 
   return null;
 }
