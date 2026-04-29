@@ -1,5 +1,6 @@
 # Snape
 
+> Short description of what this app does.
 
 ## Stack
 
@@ -28,16 +29,18 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Commands
 
-
-| Command             | Description                     |
-| ------------------- | ------------------------------- |
-| `bun run dev`       | Start dev server with Turbopack |
-| `bun run build`     | Production build                |
-| `bun run start`     | Start production server         |
-| `bun run typecheck` | Type-check without emitting     |
-| `bun run lint`      | Lint with Biome                 |
-| `bun run lint:fix`  | Lint + auto-fix with Biome      |
-| `bun run format`    | Format all files with Biome     |
+| Command                   | Description                        |
+| ------------------------- | ---------------------------------- |
+| `bun run dev`             | Start dev server with Turbopack     |
+| `bun run build`           | Production build                    |
+| `bun run start`           | Start production server             |
+| `bun run typecheck`       | Type-check without emitting         |
+| `bun run lint`            | Lint with Biome                     |
+| `bun run lint:fix`        | Lint + auto-fix with Biome          |
+| `bun run format`          | Format all files with Biome         |
+| `bun run db:generate`     | Generate DB migrations from schema  |
+| `bun run db:migrate:local`| Apply migrations to local D1 DB     |
+| `bun run db:migrate:cf`   | Apply migrations to Cloudflare D1   |
 
 
 ## Project Structure
