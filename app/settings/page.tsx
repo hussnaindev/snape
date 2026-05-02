@@ -261,9 +261,7 @@ function AccountSettings() {
     }
   }
 
-  const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
-  const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [pwSaving, setPwSaving] = useState(false);
 
@@ -278,7 +276,7 @@ function AccountSettings() {
       const res = await fetch('/api/auth/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw }),
+        body: JSON.stringify({ newPassword: newPw }),
       });
       const json = await res.json();
       if (!json.ok) {
@@ -286,7 +284,6 @@ function AccountSettings() {
         return;
       }
       show('ok', 'Password changed');
-      setCurrentPw('');
       setNewPw('');
     } catch {
       show('err', 'Network error');
@@ -424,30 +421,6 @@ function AccountSettings() {
             <h2 className="text-white font-semibold text-sm">Change password</h2>
           </div>
           <form onSubmit={changePassword} className="space-y-4">
-            <Field label="Current password">
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none">
-                  <LockIcon size={15} />
-                </span>
-                <input
-                  type={showCurrent ? 'text' : 'password'}
-                  required
-                  value={currentPw}
-                  onChange={(e) => setCurrentPw(e.target.value)}
-                  className={`${INPUT_CLASS} pl-10 pr-10`}
-                  placeholder="Enter current password"
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCurrent(!showCurrent)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
-                  tabIndex={-1}
-                >
-                  {showCurrent ? <EyeOffIcon /> : <EyeIcon />}
-                </button>
-              </div>
-            </Field>
             <Field label="New password">
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none">
