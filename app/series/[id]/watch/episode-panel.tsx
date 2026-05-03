@@ -4,8 +4,9 @@ import { apiFetch } from '@/lib/api';
 import { tmdbImage } from '@/lib/tmdb-image';
 import type { TMDBEpisode, TMDBSeason, TMDBSeasonSummary } from '@/types/tmdb';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useState } from 'react';
+import { useEffect } from 'react';
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -26,7 +27,6 @@ export function EpisodePanel({
   currentSeasonNum,
   currentEpisodeNum,
 }: Props) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState(currentSeasonNum);
   const [seasonData, setSeasonData] = useState<TMDBSeason>(initialSeason);
@@ -63,12 +63,6 @@ export function EpisodePanel({
   const airedEpisodes = seasonData.episodes.filter(
     (e) => e.air_date !== null && e.air_date <= TODAY,
   );
-
-  function handleEpisodeClick(ep: TMDBEpisode) {
-    setOpen(false);
-    sessionStorage.setItem('watch-loading', '1');
-    router.replace(`/series/${seriesId}/watch?s=${ep.season_number}&e=${ep.episode_number}`);
-  }
 
   const currentEp = seasonData.episodes.find(
     (e) => e.season_number === currentSeasonNum && e.episode_number === currentEpisodeNum,
@@ -190,10 +184,11 @@ export function EpisodePanel({
                     const still = tmdbImage(ep.still_path, 'w300');
 
                     return (
-                      <button
+                      <Link
                         key={ep.id}
-                        type="button"
-                        onClick={() => handleEpisodeClick(ep)}
+                        href={`/series/${seriesId}/watch?s=${ep.season_number}&e=${ep.episode_number}`}
+                        prefetch={false}
+                        onClick={() => setOpen(false)}
                         className={`flex gap-3 items-center px-4 py-2.5 text-left transition-colors hover:bg-white/5 ${
                           isCurrent ? 'bg-white/10' : ''
                         }`}
@@ -247,7 +242,7 @@ export function EpisodePanel({
                             <p className="text-white/30 text-[10px] mt-0.5">{ep.runtime}m</p>
                           )}
                         </div>
-                      </button>
+                      </Link>
                     );
                   })}
 
