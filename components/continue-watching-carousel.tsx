@@ -64,17 +64,17 @@ function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
 
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-          {/* Play button — transform-gpu keeps compositor layer alive so backdrop-blur is pre-computed */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 transform-gpu">
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/60 shadow-[0_0_24px_rgba(255,255,255,0.25)] flex items-center justify-center">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="white" aria-hidden="true">
-                  <polygon points="6,4 20,12 6,20" />
-                </svg>
-              </div>
-              <span className="text-white/90 text-[11px] font-semibold tracking-wider uppercase">
-                Continue
-              </span>
+          {/* Play button overlay (desktop only) */}
+          <div className="hidden sm:flex absolute inset-0 items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+            <div className="relative w-14 h-14 rounded-full overflow-hidden bg-black/30 border-[1.5px] border-white/40 shadow-[0_0_12px_rgba(255,255,255,0.15)] group-hover:bg-black/40 group-hover:shadow-[0_0_14px_rgba(255,255,255,0.2)] transition-all duration-300 flex items-center justify-center">
+              {/* Shine sweep */}
+              <div
+                className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out"
+                style={{ background: 'linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.1) 45%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.1) 55%, transparent 62%)' }}
+              />
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+                <polygon points="6,4 20,12 6,20" />
+              </svg>
             </div>
           </div>
 

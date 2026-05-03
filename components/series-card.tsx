@@ -206,6 +206,20 @@ export function SeriesCard({ series, imageSize = 'w780', className }: SeriesCard
               className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[177.78vh] h-[56.25vw] min-w-[130%] min-h-[130%] scale-[1.3] pointer-events-none transition-opacity duration-500 ${videoVisible ? 'opacity-100' : 'opacity-0'}`}
             />
           )}
+
+          {/* Play button overlay (desktop only) */}
+          <div className="hidden sm:flex absolute inset-0 items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+            <div className="relative w-14 h-14 rounded-full overflow-hidden bg-black/30 border-[1.5px] border-white/40 shadow-[0_0_12px_rgba(255,255,255,0.15)] group-hover:bg-black/40 group-hover:shadow-[0_0_14px_rgba(255,255,255,0.2)] transition-all duration-300 flex items-center justify-center">
+              {/* Shine sweep */}
+              <div
+                className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out"
+                style={{ background: 'linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.1) 45%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.1) 55%, transparent 62%)' }}
+              />
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+                <polygon points="6,4 20,12 6,20" />
+              </svg>
+            </div>
+          </div>
         </div>
 
         {/* Always-visible title strip */}
