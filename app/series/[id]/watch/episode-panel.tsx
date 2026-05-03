@@ -188,6 +188,7 @@ export function EpisodePanel({
                         key={ep.id}
                         href={`/series/${seriesId}/watch?s=${ep.season_number}&e=${ep.episode_number}`}
                         prefetch={false}
+                        replace
                         onClick={() => setOpen(false)}
                         className={`flex gap-3 items-center px-4 py-2.5 text-left transition-colors hover:bg-white/5 ${
                           isCurrent ? 'bg-white/10' : ''
