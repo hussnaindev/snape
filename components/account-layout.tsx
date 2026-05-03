@@ -28,8 +28,8 @@ export function AccountLayout({ children }: { children: React.ReactNode }) {
     <>
       <Topbar />
 
-      {/* Mobile-only tab strip — sits directly below the 64px topbar */}
-      <div className="md:hidden fixed top-16 inset-x-0 z-40 bg-[#070b08]/95 backdrop-blur-sm border-b border-white/10">
+       {/* Mobile-only tab strip — sits directly below the 64px topbar */}
+       <div className="md:hidden fixed top-16 inset-x-0 z-40 bg-[#070b08] border-b border-white/10">
         <div className="flex">
           {nav.map((item) => {
             const active = pathname === item.href;
