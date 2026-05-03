@@ -21,7 +21,7 @@ export function TrailerModal({ videoKey, onClose }: TrailerModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 animate-fade-in cursor-pointer"
       onClick={onClose}
     >
       <div
@@ -32,7 +32,7 @@ export function TrailerModal({ videoKey, onClose }: TrailerModalProps) {
         <button
           type="button"
           onClick={onClose}
-          className="absolute -top-10 right-0 text-white/70 hover:text-white text-2xl"
+          className="absolute -top-10 right-0 text-white/70 hover:text-white text-2xl cursor-pointer"
         >
           ✕
         </button>

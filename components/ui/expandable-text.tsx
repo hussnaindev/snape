@@ -20,7 +20,7 @@ export function ExpandableText({ text, className }: Props) {
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="mt-1 text-white/50 hover:text-white text-xs transition-colors"
+        className="mt-1 text-white/50 hover:text-white text-xs transition-colors cursor-pointer"
       >
         {expanded ? 'See less' : 'See more'}
       </button>

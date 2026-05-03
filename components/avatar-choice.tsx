@@ -47,12 +47,12 @@ export function AvatarChoice({
       <div className="flex items-center justify-between gap-3">
         <p className="text-white/60 text-xs font-medium">{label}</p>
         {allowClear && (
-          <button
-            type="button"
-            onClick={() => onChange(null)}
-            className="text-[11px] text-white/40 hover:text-white/70 transition-colors"
-            disabled={!value}
-          >
+            <button
+              type="button"
+              onClick={() => onChange(null)}
+              className="text-[11px] text-white/40 hover:text-white/70 transition-colors cursor-pointer"
+              disabled={!value}
+            >
             Remove
           </button>
         )}
@@ -71,19 +71,19 @@ export function AvatarChoice({
         {PRESET_AVATARS.map((src) => {
           const selected = value === src;
           return (
-            <button
-              key={src}
-              type="button"
-              onClick={() => onChange(src)}
-              aria-pressed={selected}
-              className={cn(
-                'relative overflow-hidden border transition-colors',
-                variant === 'portrait' ? 'rounded-xl' : 'rounded-full',
-                selected ? 'border-white' : 'border-white/15 hover:border-white/40',
-              )}
-              style={itemStyle}
-              title={selected ? 'Selected' : 'Select'}
-            >
+              <button
+                key={src}
+                type="button"
+                onClick={() => onChange(src)}
+                aria-pressed={selected}
+                className={cn(
+                  'relative overflow-hidden border transition-colors cursor-pointer',
+                  variant === 'portrait' ? 'rounded-xl' : 'rounded-full',
+                  selected ? 'border-white' : 'border-white/15 hover:border-white/40',
+                )}
+                style={itemStyle}
+                title={selected ? 'Selected' : 'Select'}
+              >
               <Image
                 src={src}
                 alt="Avatar option"

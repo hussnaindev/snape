@@ -232,7 +232,7 @@ export function HeroSection({ movies, trailerKeys }: HeroSectionProps) {
               <button
                 type="button"
                 onClick={() => setExpanded((v) => !v)}
-                className="mt-1 text-white/50 hover:text-white text-xs transition-colors"
+                className="mt-1 text-white/50 hover:text-white text-xs transition-colors cursor-pointer"
               >
                 {expanded ? 'See less' : 'See more'}
               </button>
@@ -260,7 +260,7 @@ export function HeroSection({ movies, trailerKeys }: HeroSectionProps) {
         <button
           type="button"
           onClick={handleMuteToggle}
-          className="absolute bottom-2 right-5 sm:bottom-14 sm:right-4 z-30 flex items-center justify-center w-8 h-8 rounded-full border border-white/40 bg-black/50 text-white/80 hover:text-white hover:border-white/70 transition-colors"
+          className="absolute bottom-2 right-5 sm:bottom-14 sm:right-4 z-30 flex items-center justify-center w-8 h-8 rounded-full border border-white/40 bg-black/50 text-white/80 hover:text-white hover:border-white/70 transition-colors cursor-pointer"
           aria-label={muted ? 'Unmute trailer' : 'Mute trailer'}
         >
           {muted ? (
@@ -278,15 +278,15 @@ export function HeroSection({ movies, trailerKeys }: HeroSectionProps) {
       {/* Dot indicators */}
       <div className="absolute -bottom-3 sm:bottom-2 right-3 sm:right-6 flex gap-2">
         {featured.map((_, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => goTo(i)}
-            aria-label={`Go to slide ${i + 1}`}
-            className={`w-2 h-2 rounded-full transition-all ${
-              i === active ? 'bg-white w-6' : 'bg-white/30 hover:bg-white/60'
-            }`}
-          />
+            <button
+              key={i}
+              type="button"
+              onClick={() => goTo(i)}
+              aria-label={`Go to slide ${i + 1}`}
+              className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
+                i === active ? 'bg-white w-6' : 'bg-white/30 hover:bg-white/60'
+              }`}
+            />
         ))}
       </div>
     </div>

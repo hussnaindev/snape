@@ -141,14 +141,14 @@ export function PwaInstallPrompt({ className }: { className?: string }) {
           <button
             type="button"
             onClick={dismiss}
-            className="rounded-full border border-white/15 bg-transparent px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/10"
+            className="rounded-full border border-white/15 bg-transparent px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/10 cursor-pointer"
           >
             Not now
           </button>
           <button
             type="button"
             onClick={deferred ? install : dismiss}
-            className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-black hover:bg-white/90"
+            className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-black hover:bg-white/90 cursor-pointer"
           >
             {deferred ? 'Install' : 'Got it'}
           </button>

@@ -113,7 +113,7 @@ export function WatchlistButton({ tmdbId, mediaType, className, iconOnly = false
         onClick={toggle}
         aria-label={inList ? 'Remove from watchlist' : 'Add to watchlist'}
         className={cn(
-          'flex items-center justify-center w-9 h-9 rounded-full border transition-all',
+          'flex items-center justify-center w-9 h-9 rounded-full border transition-all cursor-pointer',
           inList
             ? 'bg-white text-black border-white'
             : 'bg-black/40 text-white border-white/30 hover:border-white/70 backdrop-blur-sm',
@@ -132,7 +132,7 @@ export function WatchlistButton({ tmdbId, mediaType, className, iconOnly = false
       onClick={toggle}
       disabled={loading}
       className={cn(
-        'flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all',
+        'flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all cursor-pointer',
         inList
           ? 'bg-white/10 text-white border-white/30 hover:bg-white/15'
           : 'bg-transparent text-white border-white/30 hover:border-white/60',

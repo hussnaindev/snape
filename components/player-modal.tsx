@@ -22,7 +22,7 @@ export function PlayerModal({ embedUrl, onClose }: PlayerModalProps) {
         <button
           type="button"
           onClick={onClose}
-          className="absolute -top-10 right-0 text-white/70 hover:text-white text-2xl z-10"
+          className="absolute -top-10 right-0 text-white/70 hover:text-white text-2xl z-10 cursor-pointer"
         >
           ✕
         </button>

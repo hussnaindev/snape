@@ -84,22 +84,22 @@ export function Topbar() {
         <div className="flex items-center gap-3">
           {/* Browse dropdown */}
           <div className="relative hidden md:block" ref={browseRef}>
-            <button
-              type="button"
-              onClick={() => setBrowseOpen(!browseOpen)}
-              className="text-white/70 hover:text-white transition-colors text-sm font-medium px-2 py-1"
-            >
+              <button
+                type="button"
+                onClick={() => setBrowseOpen(!browseOpen)}
+                className="text-white/70 hover:text-white transition-colors text-sm font-medium px-2 py-1 cursor-pointer"
+              >
               Browse
             </button>
             {browseOpen && (
               <div className="absolute top-full right-0 mt-1 bg-[#1a1a1a] rounded-lg shadow-xl border border-white/10 w-48 overflow-hidden z-50">
                 {GENRES.map((genre) => (
-                  <Link
-                    key={genre.id}
-                    href={`/browse/${genre.id}?name=${encodeURIComponent(genre.name)}`}
-                    onClick={() => setBrowseOpen(false)}
-                    className="block px-4 py-2 text-white/70 hover:text-white hover:bg-white/5 transition-colors text-sm"
-                  >
+                     <Link
+                        key={genre.id}
+                        href={`/browse/${genre.id}?name=${encodeURIComponent(genre.name)}`}
+                        onClick={() => setBrowseOpen(false)}
+                        className="block px-4 py-2 text-white/70 hover:text-white hover:bg-white/5 transition-colors text-sm cursor-pointer"
+                      >
                     {genre.name}
                   </Link>
                 ))}
@@ -119,21 +119,21 @@ export function Topbar() {
                 placeholder="Search movies, TV, cast…"
                 className="bg-black/60 border border-white/20 rounded px-3 py-1.5 text-sm text-white placeholder-white/40 outline-none focus:border-white/60 w-44 md:w-64"
               />
-              <button
-                type="button"
-                onClick={() => setSearchOpen(false)}
-                className="text-white/50 hover:text-white text-lg"
-              >
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(false)}
+                  className="text-white/50 hover:text-white text-lg cursor-pointer"
+                >
                 ✕
               </button>
             </form>
           ) : (
-            <button
-              type="button"
-              onClick={openSearch}
-              aria-label="Search"
-              className="text-white/70 hover:text-white transition-colors p-1"
-            >
+              <button
+                type="button"
+                onClick={openSearch}
+                aria-label="Search"
+                className="text-white/70 hover:text-white transition-colors p-1 cursor-pointer"
+              >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="20"
@@ -153,12 +153,12 @@ export function Topbar() {
           )}
 
           {/* Mobile-only: hamburger (keep as the rightmost action) */}
-          <button
-            type="button"
-            onClick={() => setMobileOpen(true)}
-            className="md:hidden w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center text-white/80"
-            aria-label="Open menu"
-          >
+            <button
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              className="md:hidden w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center text-white/80 cursor-pointer"
+              aria-label="Open menu"
+            >
             <HamburgerIcon />
           </button>
         </div>
@@ -183,12 +183,12 @@ export function Topbar() {
                   <p className="text-white/40 text-xs">Browse & account</p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setMobileOpen(false)}
-                className="ml-2 flex-none w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors"
-                aria-label="Close menu"
-              >
+            <button
+              type="button"
+              onClick={() => setMobileOpen(false)}
+              className="ml-2 flex-none w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              aria-label="Close menu"
+            >
                 <CloseIcon />
               </button>
             </div>
@@ -219,15 +219,15 @@ export function Topbar() {
                 </p>
               </div>
               <div className="px-3 pb-3">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await clearAllWatchHistory();
-                    setMobileOpen(false);
-                    router.refresh();
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/45 hover:text-white/75 hover:bg-white/5 rounded-xl transition-colors text-left"
-                >
+                   <button
+                      type="button"
+                      onClick={async () => {
+                        await clearAllWatchHistory();
+                        setMobileOpen(false);
+                        router.refresh();
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/45 hover:text-white/75 hover:bg-white/5 rounded-xl transition-colors text-left cursor-pointer"
+                    >
                   <ClearHistoryIcon />
                   Clear watch history
                 </button>
@@ -243,54 +243,54 @@ export function Topbar() {
                   <div className="px-4 py-3 rounded-xl bg-white/5 text-white/40 text-sm">Loading…</div>
                 ) : user ? (
                   <>
-                    <Link
-                      href="/profile"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
-                    >
+                     <Link
+                       href="/profile"
+                       onClick={() => setMobileOpen(false)}
+                       className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+                     >
                       <ProfileIcon /> Profile
                     </Link>
-                    <Link
-                      href="/watchlist"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
-                    >
+                     <Link
+                       href="/watchlist"
+                       onClick={() => setMobileOpen(false)}
+                       className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+                     >
                       <BookmarkIcon /> My Watchlist
                     </Link>
-                    <Link
-                      href="/settings"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
-                    >
+                     <Link
+                       href="/settings"
+                       onClick={() => setMobileOpen(false)}
+                       className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+                     >
                       <SettingsIcon /> Settings
                     </Link>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setMobileOpen(false);
-                        await logout();
-                        router.push('/');
-                        router.refresh();
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-400 hover:bg-red-500/10 rounded-xl transition-colors text-left mt-1"
-                    >
+                     <button
+                       type="button"
+                       onClick={async () => {
+                         setMobileOpen(false);
+                         await logout();
+                         router.push('/');
+                         router.refresh();
+                       }}
+                       className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-400 hover:bg-red-500/10 rounded-xl transition-colors text-left mt-1 cursor-pointer"
+                     >
                       <SignOutIcon /> Sign out
                     </button>
                   </>
                 ) : (
                   <>
-                    <Link
-                      href="/auth/login"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
-                    >
+                     <Link
+                       href="/auth/login"
+                       onClick={() => setMobileOpen(false)}
+                       className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+                     >
                       <SignInIcon /> Login
                     </Link>
-                    <Link
-                      href="/auth/signup"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
-                    >
+                     <Link
+                       href="/auth/signup"
+                       onClick={() => setMobileOpen(false)}
+                       className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+                     >
                       <PlusUserIcon /> Create account
                     </Link>
                   </>

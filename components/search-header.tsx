@@ -48,19 +48,19 @@ export function SearchHeader({ query, active, totalResults }: Props) {
         {TABS.map(({ id, label }) => {
           const selected = active === id;
           return (
-            <Link
-              key={id}
-              href={`/search?q=${q}&tab=${id}`}
-              prefetch={false}
-              role="tab"
-              aria-selected={selected}
-              className={cn(
-                'rounded-md px-4 py-1.5 text-xs font-medium transition-all duration-200',
-                selected
-                  ? 'bg-white text-black shadow-[0_2px_8px_rgba(0,0,0,0.3)]'
-                  : 'text-white/50 hover:text-white/80',
-              )}
-            >
+              <Link
+                key={id}
+                href={`/search?q=${q}&tab=${id}`}
+                prefetch={false}
+                role="tab"
+                aria-selected={selected}
+                className={cn(
+                  'rounded-md px-4 py-1.5 text-xs font-medium transition-all duration-200 cursor-pointer',
+                  selected
+                    ? 'bg-white text-black shadow-[0_2px_8px_rgba(0,0,0,0.3)]'
+                    : 'text-white/50 hover:text-white/80',
+                )}
+              >
               {label}
             </Link>
           );

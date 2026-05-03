@@ -45,13 +45,13 @@ export function UserMenu() {
 
   return (
     <div className="relative hidden md:block" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-        aria-label="User menu"
-        aria-expanded={open}
-      >
+    <button
+      type="button"
+      onClick={() => setOpen(!open)}
+      className="flex items-center gap-2 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 cursor-pointer"
+      aria-label="User menu"
+      aria-expanded={open}
+    >
         <UserAvatar name={user.name} avatarUrl={user.avatarUrl} size="sm" />
       </button>
 
@@ -78,7 +78,7 @@ export function UserMenu() {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-white/5 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-white/5 transition-colors text-left cursor-pointer"
               >
                 <SignOutIcon /> Sign out
               </button>
@@ -103,7 +103,7 @@ function DropdownItem({
     <Link
       href={href}
       onClick={onClick}
-      className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+      className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
     >
       {children}
     </Link>

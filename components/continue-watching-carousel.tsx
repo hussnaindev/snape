@@ -206,7 +206,7 @@ export function ContinueWatchingCarousel({ hasHistory }: { hasHistory: boolean }
           type="button"
           onClick={() => void clearAllWatchHistory()}
           aria-label="Clear watch history"
-          className="hidden md:inline-flex flex-none text-xs font-medium text-white/35 hover:text-white/55 transition-colors px-1 py-0.5 -mr-1"
+          className="hidden md:inline-flex flex-none text-xs font-medium text-white/35 hover:text-white/55 transition-colors px-1 py-0.5 -mr-1 cursor-pointer"
         >
           Clear
         </button>
