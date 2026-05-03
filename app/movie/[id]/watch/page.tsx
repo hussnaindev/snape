@@ -31,6 +31,7 @@ export default async function WatchPage({ params }: Props) {
     <div className="fixed inset-0 bg-black">
       <div className="absolute inset-0 player-safe-area">
         <iframe
+          key={embedUrl}
           src={embedUrl}
           className="w-full h-full"
           allowFullScreen
