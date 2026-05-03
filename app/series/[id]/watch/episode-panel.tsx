@@ -66,6 +66,7 @@ export function EpisodePanel({
 
   function handleEpisodeClick(ep: TMDBEpisode) {
     setOpen(false);
+    sessionStorage.setItem('watch-loading', '1');
     router.replace(`/series/${seriesId}/watch?s=${ep.season_number}&e=${ep.episode_number}`);
   }
 

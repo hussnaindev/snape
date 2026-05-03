@@ -5,6 +5,7 @@ import { WatchHistoryRecorder } from '@/components/watch-history-recorder';
 import { getSeriesDetail, getSeriesSeason } from '@/lib/tmdb';
 import { getSeriesEmbedUrl } from '@/lib/vsembed';
 
+import { ClientWatchWrapper } from './client-wrapper';
 import { EpisodePanel } from './episode-panel';
 import { WatchControls } from './watch-controls';
 
@@ -49,42 +50,44 @@ export default async function SeriesWatchPage({ params, searchParams }: Props) {
   const embedUrl = getSeriesEmbedUrl(seriesId, resolvedSeasonNum, resolvedEpisodeNum);
 
   return (
-    <div className="fixed inset-0 bg-black">
-      <div className="absolute inset-0 player-safe-area">
-        <iframe
-          src={embedUrl}
-          className="w-full h-full"
-          allowFullScreen
-          allow="autoplay; fullscreen; accelerometer; gyroscope; picture-in-picture"
-          title="Video player"
+    <ClientWatchWrapper>
+      <div className="fixed inset-0 bg-black">
+        <div className="absolute inset-0 player-safe-area">
+          <iframe
+            src={embedUrl}
+            className="w-full h-full"
+            allowFullScreen
+            allow="autoplay; fullscreen; accelerometer; gyroscope; picture-in-picture"
+            title="Video player"
+          />
+        </div>
+
+        {/* Back button + fullscreen toggle */}
+        <WatchControls seriesId={seriesId} />
+
+        {/* Episode switcher panel */}
+        {resolvedSeason && (
+          <EpisodePanel
+            seriesId={seriesId}
+            seriesName={series.name}
+            seasons={series.seasons}
+            initialSeason={resolvedSeason}
+            currentSeasonNum={resolvedSeasonNum}
+            currentEpisodeNum={resolvedEpisodeNum}
+          />
+        )}
+
+        <WatchHistoryRecorder
+          id={seriesId}
+          type="series"
+          title={series.name}
+          posterPath={series.poster_path}
+          backdropPath={series.backdrop_path}
+          year={series.first_air_date?.slice(0, 4) ?? ''}
+          season={resolvedSeasonNum}
+          episode={resolvedEpisodeNum}
         />
       </div>
-
-      {/* Back button + fullscreen toggle */}
-      <WatchControls seriesId={seriesId} />
-
-      {/* Episode switcher panel */}
-      {resolvedSeason && (
-        <EpisodePanel
-          seriesId={seriesId}
-          seriesName={series.name}
-          seasons={series.seasons}
-          initialSeason={resolvedSeason}
-          currentSeasonNum={resolvedSeasonNum}
-          currentEpisodeNum={resolvedEpisodeNum}
-        />
-      )}
-
-      <WatchHistoryRecorder
-        id={seriesId}
-        type="series"
-        title={series.name}
-        posterPath={series.poster_path}
-        backdropPath={series.backdrop_path}
-        year={series.first_air_date?.slice(0, 4) ?? ''}
-        season={resolvedSeasonNum}
-        episode={resolvedEpisodeNum}
-      />
-    </div>
+    </ClientWatchWrapper>
   );
 }
