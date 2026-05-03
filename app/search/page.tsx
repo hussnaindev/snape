@@ -1,7 +1,8 @@
 import { InfiniteMovieGrid } from '@/components/infinite-movie-grid';
 import { InfiniteSeriesGrid } from '@/components/infinite-series-grid';
 import { SearchActorGrid } from '@/components/search-actor-grid';
-import { SearchTabChips, parseSearchTab } from '@/components/search-tab-chips';
+import { SearchHeader } from '@/components/search-header';
+import { parseSearchTab } from '@/components/search-tab-chips';
 import { Topbar } from '@/components/topbar';
 import { APP_NAME } from '@/lib/config';
 import { searchMovies, searchPeople, searchTvShows } from '@/lib/tmdb';
@@ -10,7 +11,6 @@ import type { TMDBMovie, TMDBPersonSearchHit, TMDBSeries } from '@/types/tmdb';
 import type { Metadata } from 'next';
 
 export const runtime = 'edge';
-/** New `?q=` / `?tab=` values must always hit the server. */
 export const dynamic = 'force-dynamic';
 
 interface Props {
@@ -67,10 +67,7 @@ export default async function SearchPage({ searchParams }: Props) {
       <main className="pt-24 pb-16 px-4 md:px-8">
         {query ? (
           <>
-            <h1 className="text-white text-xl font-semibold mb-2">
-              {totalHits > 0 ? `Results for "${query}"` : `No results for "${query}"`}
-            </h1>
-            <SearchTabChips query={query} active={activeTab} />
+            <SearchHeader query={query} active={activeTab} totalResults={totalHits} />
             {showMovieGrid && movieSearch && (
               <InfiniteMovieGrid
                 key={`${query}-movies`}
@@ -93,7 +90,9 @@ export default async function SearchPage({ searchParams }: Props) {
             {totalHits > 0 && activeTab === 'actors' && <SearchActorGrid people={people} />}
           </>
         ) : (
-          <p className="text-white/50 text-sm">Search movies, TV shows, or cast names.</p>
+          <div className="flex flex-col items-center gap-4">
+            <p className="text-white/50 text-sm">Search movies, TV shows, or cast names.</p>
+          </div>
         )}
       </main>
     </>
