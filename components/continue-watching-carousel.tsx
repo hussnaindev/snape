@@ -26,25 +26,32 @@ function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
   return (
     <div className="group relative flex-none w-[130px] sm:w-[300px] md:w-[340px] lg:w-[380px] rounded-md overflow-hidden bg-white/5">
       <Link href={href} prefetch={false} className="block">
-        {/* Mobile: portrait card with poster */}
-        <div className="sm:hidden aspect-[2/3] relative overflow-hidden">
-          {poster ? (
-            <Image src={poster} alt={entry.title} fill sizes="130px" className="object-cover" />
-          ) : (
-            <div className="absolute inset-0 bg-white/5 flex items-center justify-center text-white/20 text-xs">
-              No Image
+          {/* Mobile: portrait card with poster */}
+          <div className="sm:hidden aspect-[2/3] relative overflow-hidden">
+            {poster ? (
+              <Image src={poster} alt={entry.title} fill sizes="130px" className="object-cover" />
+            ) : (
+              <div className="absolute inset-0 bg-white/5 flex items-center justify-center text-white/20 text-xs">
+                No Image
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 px-2 pb-4 pt-2">
+              <div className="flex items-center gap-1.5">
+                <div className="flex items-center justify-center w-5 h-5 flex-none overflow-hidden rounded-full bg-white/15 border border-white/25 opacity-100 group-hover:w-0 group-hover:h-0 group-hover:opacity-0 group-hover:border-0 transition-all duration-300">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="white" aria-hidden="true" className="flex-none">
+                    <polygon points="6,4 20,12 6,20" />
+                  </svg>
+                </div>
+                <p className="text-white text-[10px] font-medium leading-tight line-clamp-2 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+                  {entry.title}
+                </p>
+              </div>
             </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 px-2 pb-4 pt-2">
-            <p className="text-white text-[10px] font-medium leading-tight line-clamp-2 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-              {entry.title}
-            </p>
+            <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/20">
+              <div className="h-full bg-white" style={{ width: `${entry.progress}%` }} />
+            </div>
           </div>
-          <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/20">
-            <div className="h-full bg-white" style={{ width: `${entry.progress}%` }} />
-          </div>
-        </div>
 
         {/* Desktop: landscape card with backdrop */}
         <div className="hidden sm:block aspect-video relative overflow-hidden">
@@ -78,13 +85,20 @@ function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
             </div>
           </div>
 
-          {/* Title + year */}
+          {/* Title + play icon */}
           <div className="absolute bottom-0 left-0 right-0 px-2.5 pb-5 pt-2">
-            <p className="text-white text-sm font-medium leading-tight line-clamp-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-              {entry.title}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <div className="hidden sm:flex items-center justify-center w-5 h-5 flex-none overflow-hidden rounded-full bg-white/15 border border-white/25 opacity-100 group-hover:w-0 group-hover:h-0 group-hover:opacity-0 group-hover:border-0 transition-all duration-300">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="white" aria-hidden="true" className="flex-none">
+                  <polygon points="6,4 20,12 6,20" />
+                </svg>
+              </div>
+              <p className="text-white text-sm font-medium leading-tight line-clamp-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+                {entry.title}
+              </p>
+            </div>
             {entry.year && (
-              <span className="text-white/50 text-xs">
+              <span className="text-white/50 text-xs mt-0.5">
                 {entry.type === 'series' ? 'Series · ' : ''}
                 {entry.year}
               </span>
