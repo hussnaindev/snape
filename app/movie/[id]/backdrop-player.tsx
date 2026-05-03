@@ -58,9 +58,9 @@ export function BackdropPlayer({ backdropUrl, trailerKey, alt }: Props) {
         const { event, info } = data as { event?: unknown; info?: unknown };
 
         if (event === 'onReady') {
-          // Player is ready — try to set quality to 720p
+          // Player is ready — try to set quality to 1080p
           iframe?.contentWindow?.postMessage(
-            JSON.stringify({ event: 'command', func: 'setPlaybackQuality', args: ['hd720'] }),
+            JSON.stringify({ event: 'command', func: 'setPlaybackQuality', args: ['hd1080'] }),
             'https://www.youtube.com',
           );
         } else if (event === 'onStateChange' && info === 1) {
@@ -90,7 +90,7 @@ export function BackdropPlayer({ backdropUrl, trailerKey, alt }: Props) {
   }, [showVideo, trailerKey]);
 
   const embedUrl = trailerKey
-    ? `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&loop=1&playlist=${trailerKey}&iv_load_policy=3&enablejsapi=1${pageOrigin ? `&origin=${pageOrigin}` : ''}`
+    ? `https://www.youtube.com/embed/${trailerKey}?vq=hd1080&autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&loop=1&playlist=${trailerKey}&iv_load_policy=3&enablejsapi=1${pageOrigin ? `&origin=${pageOrigin}` : ''}`
     : null;
 
   function handleMuteToggle() {
