@@ -220,25 +220,51 @@ export function SeriesCard({ series, imageSize = 'w780', className }: SeriesCard
               </svg>
             </div>
           </div>
-        </div>
 
-        {/* Always-visible title strip */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end px-1.5 py-1 sm:px-3 sm:py-2.5">
-          <p className="text-white text-[11px] sm:text-sm font-medium leading-tight line-clamp-2 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-            {series.name}
-          </p>
-          <div className="flex items-center gap-1 mt-0.5">
-            {year && (
-              <span className="text-white/50 text-[9px] sm:text-xs drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-                {year}
-              </span>
-            )}
-            {series.vote_average > 0 && (
-              <RatingBadge
-                rating={series.vote_average}
-                className="text-[8px] px-0.5 py-0 sm:text-[11px] sm:px-1.5"
-              />
-            )}
+          {/* Desktop: metadata overlay — top edge */}
+          <div className="hidden sm:block absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent p-2.5">
+            <div className="flex justify-end">
+              {series.vote_average > 0 && (
+                <RatingBadge
+                  rating={series.vote_average}
+                  className="text-[11px] px-1.5"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Desktop: title + play icon at bottom */}
+          <div className="hidden sm:block absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2.5">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-5 h-5 flex-none overflow-hidden rounded-full bg-white/15 border border-white/25 opacity-100 group-hover:w-0 group-hover:h-0 group-hover:opacity-0 group-hover:border-0 transition-all duration-300">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="white" aria-hidden="true" className="flex-none">
+                  <polygon points="6,4 20,12 6,20" />
+                </svg>
+              </div>
+              <p className="text-white text-sm font-medium leading-tight line-clamp-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+                {series.name}
+              </p>
+            </div>
+          </div>
+
+          {/* Mobile: bottom title strip */}
+          <div className="absolute inset-0 sm:hidden bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end px-1.5 py-1">
+            <p className="text-white text-[11px] font-medium leading-tight line-clamp-2 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+              {series.name}
+            </p>
+            <div className="flex items-center gap-1 mt-0.5">
+              {year && (
+                <span className="text-white/50 text-[9px] drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+                  {year}
+                </span>
+              )}
+              {series.vote_average > 0 && (
+                <RatingBadge
+                  rating={series.vote_average}
+                  className="text-[8px] px-0.5 py-0"
+                />
+              )}
+            </div>
           </div>
         </div>
       </Link>
