@@ -170,7 +170,7 @@ export function MovieCard({ movie, qualityBadge, imageSize = 'w780', className }
     >
       <Link href={`/movie/${movie.id}`} prefetch={false} className="block h-full w-full">
         {/* Mobile: Poster (portrait) */}
-        <div className="aspect-[2/3] overflow-hidden sm:hidden">
+        <div className="aspect-[2/3] overflow-hidden sm:hidden relative">
           {poster ? (
             <Image
               src={poster}
@@ -184,6 +184,29 @@ export function MovieCard({ movie, qualityBadge, imageSize = 'w780', className }
               No Image
             </div>
           )}
+
+          {/* Mobile: rating top-right with gradient */}
+          {movie.vote_average > 0 && (
+            <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/70 to-transparent p-1.5">
+              <div className="flex justify-end">
+                <RatingBadge rating={movie.vote_average} className="text-[9px] px-1 py-0" />
+              </div>
+            </div>
+          )}
+
+          {/* Mobile: title + play icon at bottom */}
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center justify-center w-5 h-5 flex-none overflow-hidden rounded-full bg-white/15 border border-white/25 opacity-100 group-hover:w-0 group-hover:h-0 group-hover:opacity-0 group-hover:border-0 transition-all duration-300">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="white" aria-hidden="true" className="flex-none">
+                  <polygon points="6,4 20,12 6,20" />
+                </svg>
+              </div>
+              <p className="text-white text-[11px] font-medium leading-tight line-clamp-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+                {movie.title}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Desktop: Backdrop (landscape) */}
@@ -250,26 +273,6 @@ export function MovieCard({ movie, qualityBadge, imageSize = 'w780', className }
               <p className="text-white text-sm font-medium leading-tight line-clamp-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
                 {movie.title}
               </p>
-            </div>
-          </div>
-
-          {/* Mobile: bottom title strip */}
-          <div className="absolute inset-0 sm:hidden bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end px-1.5 py-1">
-            <p className="text-white text-[11px] font-medium leading-tight line-clamp-2 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-              {movie.title}
-            </p>
-            <div className="flex items-center gap-1 mt-0.5">
-              {year && (
-                <span className="text-white/50 text-[9px] drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-                  {year}
-                </span>
-              )}
-              {movie.vote_average > 0 && (
-                <RatingBadge
-                  rating={movie.vote_average}
-                  className="text-[8px] px-0.5 py-0"
-                />
-              )}
             </div>
           </div>
         </div>
