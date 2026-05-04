@@ -240,3 +240,21 @@ export interface TMDBWatchProvidersResult {
   id: number;
   results: Record<string, TMDBWatchProvidersRegion | undefined>;
 }
+
+// ── Collections ────────────────────────────────────────────────────────────
+
+export interface TMDBCollection {
+  id: number;
+  name: string;
+  overview: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  parts: TMDBMovie[];
+}
+
+export interface TMDBCollectionSearchHit {
+  id: number;
+  name: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+}

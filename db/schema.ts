@@ -63,7 +63,7 @@ export const watchlist = sqliteTable(
       .notNull()
       .references(() => profiles.id, { onDelete: 'cascade' }),
     tmdbId: integer('tmdb_id').notNull(),
-    mediaType: text('media_type', { enum: ['movie', 'series'] }).notNull(),
+    mediaType: text('media_type', { enum: ['movie', 'series', 'collection'] }).notNull(),
     addedAt: integer('added_at', { mode: 'timestamp' })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -115,3 +115,39 @@ export const preferences = sqliteTable('preferences', {
     .notNull()
     .$defaultFn(() => new Date()),
 });
+
+export const collections = sqliteTable('collections', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  profileId: text('profile_id')
+    .notNull()
+    .references(() => profiles.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  description: text('description'),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const collectionItems = sqliteTable(
+  'collection_items',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    collectionId: text('collection_id')
+      .notNull()
+      .references(() => collections.id, { onDelete: 'cascade' }),
+    tmdbId: integer('tmdb_id').notNull(),
+    mediaType: text('media_type', { enum: ['movie', 'series'] }).notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    addedAt: integer('added_at', { mode: 'timestamp' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => [unique('collection_items_unique').on(t.collectionId, t.tmdbId, t.mediaType)],
+);

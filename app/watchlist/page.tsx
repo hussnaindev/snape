@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 type WatchlistItem = {
   id: string;
   tmdbId: number;
-  mediaType: 'movie' | 'series';
+  mediaType: 'movie' | 'series' | 'collection';
   addedAt: string;
 };
 
@@ -23,13 +23,17 @@ type TMDBCard = {
   release_date?: string;
   first_air_date?: string;
   vote_average?: number;
-  mediaType: 'movie' | 'series';
+  mediaType: 'movie' | 'series' | 'collection';
+  overview?: string;
 };
+
+type TabId = 'all' | 'movies' | 'series' | 'collections';
 
 export default function WatchlistPage() {
   const { user, isLoading } = useAuth();
   const [cards, setCards] = useState<TMDBCard[]>([]);
   const [fetching, setFetching] = useState(true);
+  const [activeTab, setActiveTab] = useState<TabId>('all');
 
   useEffect(() => {
     if (isLoading) return;
@@ -41,12 +45,23 @@ export default function WatchlistPage() {
         if (!json.ok) return;
         const wl = json.data as WatchlistItem[];
         const results = await Promise.all(
-          wl.map((item) =>
-            fetch(`/api/tmdb/${item.mediaType === 'movie' ? 'movie' : 'tv'}/${item.tmdbId}`)
+          wl.map(async (item) => {
+            if (item.mediaType === 'collection') {
+              try {
+                const res = await fetch(`/api/tmdb/collection/${item.tmdbId}`);
+                const d = await res.json();
+                if (d.ok && d.data) {
+                  const coll = d.data as { id: number; name: string; poster_path: string | null; backdrop_path: string | null; overview: string };
+                  return { ...coll, mediaType: 'collection' as const };
+                }
+              } catch {}
+              return null;
+            }
+            return fetch(`/api/tmdb/${item.mediaType === 'movie' ? 'movie' : 'tv'}/${item.tmdbId}`)
               .then((r) => r.json())
               .then((d) => (d.ok && d.data ? { ...d.data, mediaType: item.mediaType } : null) as TMDBCard | null)
-              .catch(() => null),
-          ),
+              .catch(() => null);
+          }),
         );
         setCards(results.filter((c): c is TMDBCard => c !== null && typeof c.id === 'number'));
       })
@@ -54,7 +69,7 @@ export default function WatchlistPage() {
       .finally(() => setFetching(false));
   }, [user, isLoading]);
 
-  async function removeItem(tmdbId: number, mediaType: 'movie' | 'series') {
+  async function removeItem(tmdbId: number, mediaType: 'movie' | 'series' | 'collection') {
     setCards((prev) => prev.filter((c) => !(c.id === tmdbId && c.mediaType === mediaType)));
     await fetch('/api/watchlist', {
       method: 'DELETE',
@@ -62,6 +77,21 @@ export default function WatchlistPage() {
       body: JSON.stringify({ tmdbId, mediaType }),
     }).catch(() => {});
   }
+
+  const filteredCards = cards.filter((c) => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'movies') return c.mediaType === 'movie';
+    if (activeTab === 'series') return c.mediaType === 'series';
+    if (activeTab === 'collections') return c.mediaType === 'collection';
+    return true;
+  });
+
+  const tabCounts = {
+    all: cards.length,
+    movies: cards.filter((c) => c.mediaType === 'movie').length,
+    series: cards.filter((c) => c.mediaType === 'series').length,
+    collections: cards.filter((c) => c.mediaType === 'collection').length,
+  };
 
   return (
     <AccountLayout>
@@ -86,9 +116,27 @@ export default function WatchlistPage() {
 
         {user && !fetching && cards.length > 0 && (
           <>
-            {/* Match homepage card sizing: fixed widths + wraps */}
+            {/* Tabs */}
+            <div className="flex gap-2 mb-6">
+              {(['all', 'movies', 'series', 'collections'] as TabId[]).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    activeTab === tab
+                      ? 'bg-white text-black'
+                      : 'bg-white/5 text-white/70 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)} ({tabCounts[tab]})
+                </button>
+              ))}
+            </div>
+
+            {/* Cards */}
             <div className="flex flex-wrap gap-2 sm:gap-3">
-              {cards.map((card) => (
+              {filteredCards.map((card) => (
                 <div
                   key={`${card.mediaType}-${card.id}`}
                   className="w-[130px] sm:w-[240px] md:w-[300px] lg:w-[340px]"
@@ -109,11 +157,15 @@ function WatchlistCard({
   onRemove,
 }: {
   card: TMDBCard;
-  onRemove: (id: number, type: 'movie' | 'series') => void;
+  onRemove: (id: number, type: 'movie' | 'series' | 'collection') => void;
 }) {
   const title = card.title ?? card.name ?? '';
   const year = (card.release_date ?? card.first_air_date ?? '').slice(0, 4);
-  const href = card.mediaType === 'movie' ? `/movie/${card.id}` : `/series/${card.id}`;
+  const href = card.mediaType === 'collection'
+    ? `/collection/${card.id}`
+    : card.mediaType === 'movie'
+      ? `/movie/${card.id}`
+      : `/series/${card.id}`;
   const poster = tmdbImage(card.poster_path, 'w342');
   const backdrop = tmdbImage(card.backdrop_path, 'w780');
 
@@ -125,6 +177,14 @@ function WatchlistCard({
           {poster ? (
             <Image
               src={poster}
+              alt={title}
+              fill
+              sizes="50vw"
+              className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+            />
+          ) : backdrop ? (
+            <Image
+              src={backdrop}
               alt={title}
               fill
               sizes="50vw"
@@ -147,6 +207,14 @@ function WatchlistCard({
               sizes="(max-width: 1024px) 33vw, 25vw"
               className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
             />
+          ) : poster ? (
+            <Image
+              src={poster}
+              alt={title}
+              fill
+              sizes="(max-width: 1024px) 33vw, 25vw"
+              className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+            />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-white/5 text-white/20 text-sm">
               No Image
@@ -154,7 +222,7 @@ function WatchlistCard({
           )}
         </div>
 
-        {/* Always-visible title strip (matches homepage style) */}
+        {/* Title strip */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end px-1.5 py-1 sm:px-3 sm:py-2.5">
           <p className="text-white text-[11px] sm:text-sm font-medium leading-tight line-clamp-2 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
             {title}
@@ -162,6 +230,11 @@ function WatchlistCard({
           {year && (
             <span className="text-white/50 text-[9px] sm:text-xs mt-0.5 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
               {year}
+            </span>
+          )}
+          {card.mediaType === 'collection' && (
+            <span className="text-white/50 text-[9px] sm:text-xs mt-0.5">
+              Collection
             </span>
           )}
         </div>

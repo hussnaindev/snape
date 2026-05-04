@@ -1,18 +1,19 @@
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
-export const SEARCH_TAB_IDS = ['movies', 'series', 'actors'] as const;
+export const SEARCH_TAB_IDS = ['movies', 'series', 'actors', 'collections'] as const;
 export type SearchTabId = (typeof SEARCH_TAB_IDS)[number];
 
 export function parseSearchTab(raw: string | undefined): SearchTabId {
-  if (raw === 'series' || raw === 'actors') return raw;
+  if (raw === 'series' || raw === 'actors' || raw === 'collections') return raw;
   return 'movies';
 }
 
 const LABELS: Record<SearchTabId, string> = {
   movies: 'Movies',
   series: 'Series',
-  actors: 'Actor',
+  actors: 'Actors',
+  collections: 'Collections',
 };
 
 interface SearchTabChipsProps {

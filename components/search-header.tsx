@@ -2,15 +2,17 @@
 
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { SEARCH_TAB_IDS, type SearchTabId } from './search-tab-chips';
 
-const SEARCH_TAB_IDS = ['movies', 'series', 'actors'] as const;
-type SearchTabId = (typeof SEARCH_TAB_IDS)[number];
-
-const TABS: { id: SearchTabId; label: string }[] = [
-  { id: 'movies', label: 'Movies' },
-  { id: 'series', label: 'Series' },
-  { id: 'actors', label: 'Actors' },
-];
+const TABS: { id: SearchTabId; label: string }[] = SEARCH_TAB_IDS.map((id) => {
+  const labels: Record<SearchTabId, string> = {
+    movies: 'Movies',
+    series: 'Series',
+    actors: 'Actors',
+    collections: 'Collections',
+  };
+  return { id, label: labels[id] };
+});
 
 interface Props {
   query: string;

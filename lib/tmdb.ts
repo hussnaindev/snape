@@ -3,6 +3,8 @@
  * Never import this file from client components.
  */
 import type {
+  TMDBCollection,
+  TMDBCollectionSearchHit,
   TMDBCredits,
   TMDBListResult,
   TMDBMovie,
@@ -168,6 +170,8 @@ export async function searchMovies(
       { query: resolvedQuery, page: String(page) },
       600,
     );
+    // Filter out collections that may appear in movie search
+    data.results = data.results.filter((item) => (item as { media_type?: string }).media_type !== 'collection');
     return { ...data, resolvedQuery };
   }
   if (page !== 1) {
@@ -179,7 +183,10 @@ export async function searchMovies(
       { query: variant, page: '1' },
       600,
     );
-    if (data.results.length > 0) return { ...data, resolvedQuery: variant };
+    if (data.results.length > 0) {
+      data.results = data.results.filter((item) => (item as { media_type?: string }).media_type !== 'collection');
+      return { ...data, resolvedQuery: variant };
+    }
   }
   return { page: 1, results: [], total_pages: 0, total_results: 0, resolvedQuery: null };
 }
@@ -195,6 +202,8 @@ export async function searchTvShows(
       { query: resolvedQuery, page: String(page) },
       600,
     );
+    // Filter out collections that may appear in TV search
+    data.results = data.results.filter((item) => (item as { media_type?: string }).media_type !== 'collection');
     return { ...data, resolvedQuery };
   }
   if (page !== 1) {
@@ -206,7 +215,10 @@ export async function searchTvShows(
       { query: variant, page: '1' },
       600,
     );
-    if (data.results.length > 0) return { ...data, resolvedQuery: variant };
+    if (data.results.length > 0) {
+      data.results = data.results.filter((item) => (item as { media_type?: string }).media_type !== 'collection');
+      return { ...data, resolvedQuery: variant };
+    }
   }
   return { page: 1, results: [], total_pages: 0, total_results: 0, resolvedQuery: null };
 }
@@ -288,4 +300,14 @@ export async function getEmbeddableTrailerKey(videos: TMDBVideosResult): Promise
     }
   }
   return null;
+}
+
+// ── Collections ─────────────────────────────────────────────────────────
+
+export async function getCollection(id: number): Promise<TMDBCollection> {
+  return tmdbFetch<TMDBCollection>(`/collection/${id}`);
+}
+
+export async function searchCollections(query: string): Promise<TMDBCollectionSearchHit[]> {
+  return searchTmdbListWithFallback<TMDBCollectionSearchHit>('/search/collection', query);
 }
