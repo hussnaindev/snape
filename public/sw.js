@@ -79,12 +79,6 @@ define(['./workbox-1e826536'], (function (workbox) { 'use strict';
    * See https://goo.gl/S9QRab
    */
   workbox.precacheAndRoute([{
-    "url": "/_next/static/I6GejoVK7qiitpvF0nac6/_buildManifest.js",
-    "revision": "c5ba3280ef2edd154400c4592ebaf6a6"
-  }, {
-    "url": "/_next/static/I6GejoVK7qiitpvF0nac6/_ssgManifest.js",
-    "revision": "b6652df95db52feb4daf4eca35380933"
-  }, {
     "url": "/_next/static/chunks/4336-fb1d883413d7ca75.js",
     "revision": "fb1d883413d7ca75"
   }, {
@@ -187,8 +181,8 @@ define(['./workbox-1e826536'], (function (workbox) { 'use strict';
     "url": "/_next/static/chunks/app/browse/%5Bid%5D/page-75dee3ee8d3cc70b.js",
     "revision": "75dee3ee8d3cc70b"
   }, {
-    "url": "/_next/static/chunks/app/collection/%5Bid%5D/page-64a9e3f55314e739.js",
-    "revision": "64a9e3f55314e739"
+    "url": "/_next/static/chunks/app/collection/%5Bid%5D/page-45ad462b11af763d.js",
+    "revision": "45ad462b11af763d"
   }, {
     "url": "/_next/static/chunks/app/layout-572f157677ad8c0f.js",
     "revision": "572f157677ad8c0f"
@@ -262,11 +256,17 @@ define(['./workbox-1e826536'], (function (workbox) { 'use strict';
     "url": "/_next/static/chunks/webpack-3196a5467293eefe.js",
     "revision": "3196a5467293eefe"
   }, {
-    "url": "/_next/static/css/0848f74fb228f91f.css",
-    "revision": "0848f74fb228f91f"
-  }, {
     "url": "/_next/static/css/19eaccec0335b55f.css",
     "revision": "19eaccec0335b55f"
+  }, {
+    "url": "/_next/static/css/797a2aee4a3d26d1.css",
+    "revision": "797a2aee4a3d26d1"
+  }, {
+    "url": "/_next/static/it9m5YTyVICJmqiIawwrN/_buildManifest.js",
+    "revision": "c5ba3280ef2edd154400c4592ebaf6a6"
+  }, {
+    "url": "/_next/static/it9m5YTyVICJmqiIawwrN/_ssgManifest.js",
+    "revision": "b6652df95db52feb4daf4eca35380933"
   }, {
     "url": "/_next/static/media/024ead497118aa23-s.woff2",
     "revision": "04a76b62d183d06a851464a83dc06856"
