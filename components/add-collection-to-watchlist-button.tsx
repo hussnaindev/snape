@@ -9,9 +9,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 interface Props {
   collection: TMDBCollection;
   className?: string;
+  iconOnly?: boolean;
 }
 
-export function AddCollectionToWatchlistButton({ collection, className }: Props) {
+export function AddCollectionToWatchlistButton({ collection, className, iconOnly }: Props) {
   const { user } = useAuth();
   const [inList, setInList] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -68,6 +69,21 @@ export function AddCollectionToWatchlistButton({ collection, className }: Props)
   }, [loading, user, inList, collection]);
 
   if (!user) {
+    if (iconOnly) {
+      return (
+        <Link
+          href="/auth/login"
+          aria-label="Login to add to watchlist"
+          className={cn(
+            'flex items-center justify-center w-9 h-9 rounded-full border transition-all bg-black/40 text-white border-white/30 hover:border-white/70 backdrop-blur-sm',
+            className,
+          )}
+        >
+          <PlusIcon />
+        </Link>
+      );
+    }
+
     return (
       <Link
         href="/auth/login"
@@ -85,8 +101,34 @@ export function AddCollectionToWatchlistButton({ collection, className }: Props)
   if (initializing) {
     return (
       <div
-        className={cn('h-10 w-48 rounded-lg bg-white/10 animate-pulse', className)}
+        className={cn(
+          iconOnly
+            ? 'w-9 h-9 rounded-full bg-white/10 animate-pulse'
+            : 'h-10 w-48 rounded-lg bg-white/10 animate-pulse',
+          className,
+        )}
       />
+    );
+  }
+
+  if (iconOnly) {
+    return (
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={loading}
+        aria-label={inList ? 'Remove from watchlist' : 'Add to watchlist'}
+        className={cn(
+          'flex items-center justify-center w-9 h-9 rounded-full border transition-all cursor-pointer',
+          inList
+            ? 'bg-white text-black border-white'
+            : 'bg-black/40 text-white border-white/30 hover:border-white/70 backdrop-blur-sm',
+          loading && 'opacity-50 cursor-wait',
+          className,
+        )}
+      >
+        {inList ? <CheckIcon /> : <PlusIcon />}
+      </button>
     );
   }
 
