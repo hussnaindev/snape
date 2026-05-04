@@ -1,4 +1,5 @@
 import { AuthProvider } from '@/components/auth/auth-provider';
+import { PlayerControlsProvider } from '@/lib/player-controls-context';
 import { FullStoryInit } from '@/components/fullstory-init';
 import { PwaInstallPrompt } from '@/components/pwa-install-prompt';
 import { APP_NAME } from '@/lib/config';
@@ -65,7 +66,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <NextTopLoader color="#ffffff" height={2} showSpinner={false} />
         <FullStoryInit />
         <PwaInstallPrompt />
-        <AuthProvider>{children}</AuthProvider>
+        <PlayerControlsProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </PlayerControlsProvider>
       </body>
       <GoogleAnalytics gaId="G-J9LY8F7YKQ" />
     </html>
