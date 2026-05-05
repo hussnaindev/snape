@@ -257,7 +257,7 @@ export function SeriesDetailHero({
           'relative overflow-hidden bg-black transition-[height] duration-500',
           playerActive
             ? 'h-[calc(45vh+4rem)] md:h-screen min-h-[200px]'
-            : 'h-[calc(45vh+4rem)] md:h-[calc(55vh+9rem)] min-h-[200px] md:min-h-[320px]',
+            : 'h-[calc(30vh+4rem)] md:h-[calc(55vh+9rem)] min-h-[200px] md:min-h-[320px]',
         )}
       >
         {backdropUrl ? (

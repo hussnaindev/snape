@@ -68,11 +68,14 @@ export function Topbar() {
   }
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 h-16 flex items-center px-4 md:px-8">
-      {/* gradient fade background */}
+    <header
+      className="fixed inset-x-0 top-0 z-50"
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}
+    >
+      {/* gradient covers safe-area + content bar */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/80 to-transparent pointer-events-none" />
 
-      <div className="relative flex w-full items-center justify-between">
+      <div className="relative h-16 flex items-center justify-between px-4 md:px-8">
         {/* Wordmark */}
         <Link href="/" className="flex items-center gap-2 text-white">
           <Logo className="w-5 h-5 md:w-7 md:h-7 text-white" />
@@ -212,7 +215,10 @@ export function Topbar() {
             aria-hidden="true"
           />
           <div className="md:hidden fixed top-0 right-0 bottom-0 w-80 max-w-[85vw] bg-[#0f0f10] z-[61] border-l border-white/10 flex flex-col shadow-2xl animate-slide-in-right">
-            <div className="flex items-center justify-between px-5 pt-10 pb-5 border-b border-white/10">
+            <div
+              className="flex items-center justify-between px-5 pb-5 border-b border-white/10"
+              style={{ paddingTop: 'max(2.5rem, calc(env(safe-area-inset-top) + 0.75rem))' }}
+            >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
                   <Logo className="w-5 h-5 text-white" />

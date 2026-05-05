@@ -3,7 +3,7 @@ import { PlayerControlsProvider } from '@/lib/player-controls-context';
 import { FullStoryInit } from '@/components/fullstory-init';
 import { PwaInstallPrompt } from '@/components/pwa-install-prompt';
 import { APP_NAME } from '@/lib/config';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Bungee, Cormorant_Garamond, DM_Sans, Syne } from 'next/font/google';
 import NextTopLoader from 'nextjs-toploader';
 import './globals.css';
@@ -37,6 +37,12 @@ const cormorantGaramond = Cormorant_Garamond({
   variable: '--font-cormorant',
   display: 'swap',
 });
+
+export const viewport: Viewport = {
+  viewportFit: 'cover',
+  width: 'device-width',
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
   title: {
