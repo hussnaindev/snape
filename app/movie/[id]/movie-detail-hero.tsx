@@ -143,13 +143,16 @@ export function MovieDetailHero({
     if (!playerActive) return;
 
     function onFsChange() {
-      setIsFullscreen(!!document.fullscreenElement);
+      const inFs = !!document.fullscreenElement;
+      setIsFullscreen(inFs);
+      if (!inFs) screen.orientation.unlock();
     }
     document.addEventListener('fullscreenchange', onFsChange);
 
     return () => {
       document.removeEventListener('fullscreenchange', onFsChange);
       document.exitFullscreen().catch(() => {});
+      screen.orientation.unlock();
     };
   }, [playerActive]);
 
@@ -172,7 +175,14 @@ export function MovieDetailHero({
     if (isFullscreen) {
       document.exitFullscreen().catch(() => {});
     } else {
-      playerContainerRef.current?.requestFullscreen().catch(() => {});
+      playerContainerRef.current
+        ?.requestFullscreen()
+        .then(() =>
+          (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock?.(
+            'landscape',
+          )?.catch(() => {}),
+        )
+        .catch(() => {});
     }
   }, [isFullscreen]);
 

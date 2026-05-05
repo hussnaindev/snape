@@ -4,7 +4,6 @@ import { apiFetch } from '@/lib/api';
 import { tmdbImage } from '@/lib/tmdb-image';
 import type { TMDBEpisode, TMDBSeason, TMDBSeasonSummary } from '@/types/tmdb';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -17,9 +16,10 @@ interface Props {
   seriesId: number;
   seasons: TMDBSeasonSummary[];
   initialSeason: TMDBSeason;
+  onSelect?: (season: number, episode: number) => void;
 }
 
-export function EpisodeGuide({ seriesId, seasons, initialSeason }: Props) {
+export function EpisodeGuide({ seriesId, seasons, initialSeason, onSelect }: Props) {
   // Filter out specials (season 0) unless it's the only season
   const mainSeasons = seasons.filter((s) => s.season_number !== 0 && s.episode_count > 0);
   const hasSpecials = seasons.some((s) => s.season_number === 0 && s.episode_count > 0);
@@ -105,6 +105,7 @@ export function EpisodeGuide({ seriesId, seasons, initialSeason }: Props) {
                 episode={ep}
                 seriesId={seriesId}
                 selectedSeason={selectedSeason}
+                {...(onSelect ? { onSelect } : {})}
               />
             ))}
           </div>
@@ -128,19 +129,34 @@ function EpisodeRow({
   episode,
   seriesId,
   selectedSeason,
+  onSelect,
 }: {
   episode: TMDBEpisode;
   seriesId: number;
   selectedSeason: number;
+  onSelect?: (season: number, episode: number) => void;
 }) {
   const still = tmdbImage(episode.still_path, 'w300');
   const runtime = episode.runtime ? `${episode.runtime}m` : null;
 
+  function handleClick() {
+    if (onSelect) {
+      onSelect(selectedSeason, episode.episode_number);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      window.dispatchEvent(
+        new CustomEvent('heroflix:play-episode', {
+          detail: { season: selectedSeason, episode: episode.episode_number },
+        }),
+      );
+    }
+  }
+
   return (
-    <Link
-      href={`/series/${seriesId}/watch?s=${selectedSeason}&e=${episode.episode_number}`}
-      prefetch={false}
-      className="group flex gap-2 sm:gap-3 rounded-lg p-1.5 sm:p-2 -mx-1.5 sm:-mx-2 hover:bg-white/5 transition-colors"
+    <button
+      type="button"
+      onClick={handleClick}
+      className="group flex gap-2 sm:gap-3 rounded-lg p-1.5 sm:p-2 -mx-1.5 sm:-mx-2 hover:bg-white/5 transition-colors text-left w-full cursor-pointer"
     >
       {/* Thumbnail */}
       <div className="flex-none w-20 sm:w-[160px] aspect-video rounded overflow-hidden bg-white/5 relative">
@@ -186,6 +202,6 @@ function EpisodeRow({
           </p>
         )}
       </div>
-    </Link>
+    </button>
   );
 }

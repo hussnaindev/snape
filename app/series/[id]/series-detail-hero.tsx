@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { usePlayerControls } from '@/lib/player-controls-context';
+import { getSeriesEmbedUrl } from '@/lib/vsembed';
 
 import { ExpandableText } from '@/components/ui/expandable-text';
 import { RatingBadge } from '@/components/ui/rating-badge';
@@ -75,6 +76,9 @@ export function SeriesDetailHero({
   const [playerVisible, setPlayerVisible] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [episodePanelOpen, setEpisodePanelOpen] = useState(false);
+  const [currentEmbedUrl, setCurrentEmbedUrl] = useState(embedUrl);
+  const [currentSeason, setCurrentSeason] = useState(firstEpisodeSeason);
+  const [currentEpisode, setCurrentEpisode] = useState(firstEpisodeNumber);
   const { setControls } = usePlayerControls();
 
   // YouTube trailer state
@@ -159,13 +163,16 @@ export function SeriesDetailHero({
     if (!playerActive) return;
 
     function onFsChange() {
-      setIsFullscreen(!!document.fullscreenElement);
+      const inFs = !!document.fullscreenElement;
+      setIsFullscreen(inFs);
+      if (!inFs) screen.orientation.unlock();
     }
     document.addEventListener('fullscreenchange', onFsChange);
 
     return () => {
       document.removeEventListener('fullscreenchange', onFsChange);
       document.exitFullscreen().catch(() => {});
+      screen.orientation.unlock();
     };
   }, [playerActive]);
 
@@ -188,13 +195,40 @@ export function SeriesDetailHero({
     if (isFullscreen) {
       document.exitFullscreen().catch(() => {});
     } else {
-      playerContainerRef.current?.requestFullscreen().catch(() => {});
+      playerContainerRef.current
+        ?.requestFullscreen()
+        .then(() =>
+          (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock?.(
+            'landscape',
+          )?.catch(() => {}),
+        )
+        .catch(() => {});
     }
   }, [isFullscreen]);
 
   const handleEpisodes = useCallback(() => {
     setEpisodePanelOpen((v) => !v);
   }, []);
+
+  const handleEpisodeSelect = useCallback(
+    (season: number, episode: number) => {
+      setCurrentEmbedUrl(getSeriesEmbedUrl(seriesId, season, episode));
+      setCurrentSeason(season);
+      setCurrentEpisode(episode);
+      setPlayerActive(true);
+      setEpisodePanelOpen(false);
+    },
+    [seriesId],
+  );
+
+  useEffect(() => {
+    function onPlayEpisode(e: Event) {
+      const { season, episode } = (e as CustomEvent<{ season: number; episode: number }>).detail;
+      handleEpisodeSelect(season, episode);
+    }
+    window.addEventListener('heroflix:play-episode', onPlayEpisode);
+    return () => window.removeEventListener('heroflix:play-episode', onPlayEpisode);
+  }, [handleEpisodeSelect]);
 
   function handleWatchClick() {
     setPlayerActive(true);
@@ -257,7 +291,8 @@ export function SeriesDetailHero({
 
         {playerActive && (
           <iframe
-            src={embedUrl}
+            key={currentEmbedUrl}
+            src={currentEmbedUrl}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             allowFullScreen
             title={`${alt} — watch`}
@@ -360,14 +395,15 @@ export function SeriesDetailHero({
 
         {playerActive && (
           <WatchHistoryRecorder
+            key={`${currentSeason}-${currentEpisode}`}
             id={seriesId}
             type="series"
             title={name}
             posterPath={posterPath}
             backdropPath={backdropPath}
             year={yearRange.slice(0, 4)}
-            season={firstEpisodeSeason}
-            episode={firstEpisodeNumber}
+            season={currentSeason}
+            episode={currentEpisode}
           />
         )}
 
@@ -395,7 +431,12 @@ export function SeriesDetailHero({
                 </button>
               </div>
               <div className="overflow-y-auto flex-1 px-4 py-4">
-                <EpisodeGuide seriesId={seriesId} seasons={seasons} initialSeason={initialSeason} />
+                <EpisodeGuide
+                  seriesId={seriesId}
+                  seasons={seasons}
+                  initialSeason={initialSeason}
+                  onSelect={handleEpisodeSelect}
+                />
               </div>
             </div>
           </>
