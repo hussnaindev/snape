@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { usePlayerControls } from '@/lib/player-controls-context';
@@ -80,15 +81,34 @@ export function SeriesDetailHero({
   const [currentSeason, setCurrentSeason] = useState(firstEpisodeSeason);
   const [currentEpisode, setCurrentEpisode] = useState(firstEpisodeNumber);
   const { setControls } = usePlayerControls();
+  const searchParams = useSearchParams();
 
-  // YouTube trailer state
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
+  const autoPlayRef = useRef(false);
+
+  // Auto-trigger player when navigated from watch history (?autoplay=true)
+  useEffect(() => {
+    if (searchParams.get('autoplay') === 'true' && !autoPlayRef.current) {
+      autoPlayRef.current = true;
+      setPlayerActive(true);
+      setTimeout(() => {
+        playerContainerRef.current
+          ?.requestFullscreen()
+          .then(() =>
+            (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock?.(
+              'landscape',
+            )?.catch(() => {}),
+          )
+          .catch(() => {});
+      }, 300);
+    }
+  }, [searchParams]);
+
   const [showVideo, setShowVideo] = useState(false);
   const [videoVisible, setVideoVisible] = useState(false);
   const [muted, setMuted] = useState(true);
   const [pageOrigin, setPageOrigin] = useState('');
-
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const playerContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setPageOrigin(window.location.origin);
