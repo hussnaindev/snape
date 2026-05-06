@@ -1,10 +1,9 @@
 import type { Viewport } from 'next';
 import { notFound } from 'next/navigation';
 
-import { VideoPlayerShell } from '@/components/video-player-shell';
 import { WatchHistoryRecorder } from '@/components/watch-history-recorder';
 import { getSeriesDetail, getSeriesSeason } from '@/lib/tmdb';
-import { getSeriesEmbedUrl, getSeriesStreamUrl } from '@/lib/vsembed';
+import { getSeriesEmbedUrl } from '@/lib/vsembed';
 
 import { EpisodePanel } from './episode-panel';
 import { WatchControls } from './watch-controls';
@@ -48,16 +47,17 @@ export default async function SeriesWatchPage({ params, searchParams }: Props) {
   const resolvedEpisodeNum = Math.min(Math.max(1, episodeNum), maxEpisode);
 
   const embedUrl = getSeriesEmbedUrl(seriesId, resolvedSeasonNum, resolvedEpisodeNum);
-  const streamUrl = getSeriesStreamUrl(seriesId, resolvedSeasonNum, resolvedEpisodeNum);
 
   return (
     <div className="fixed inset-0 bg-black">
       <div className="absolute inset-0 player-safe-area">
-        <VideoPlayerShell
-          streamApiUrl={streamUrl}
-          fallbackEmbedUrl={embedUrl}
+        <iframe
+          key={embedUrl}
+          src={embedUrl}
           className="w-full h-full"
-          autoPlay
+          allowFullScreen
+          allow="autoplay; fullscreen; accelerometer; gyroscope; picture-in-picture"
+          title="Video player"
         />
       </div>
 

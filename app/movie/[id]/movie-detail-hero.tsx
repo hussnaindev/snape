@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { VideoPlayerShell } from '@/components/video-player-shell';
 import { usePlayerControls } from '@/lib/player-controls-context';
 
 import { ExpandableText } from '@/components/ui/expandable-text';
@@ -22,7 +21,6 @@ interface Props {
   trailerKey: string | null;
   alt: string;
   embedUrl: string;
-  streamApiUrl: string;
   movieId: number;
   poster: string;
   posterPath: string | null;
@@ -42,7 +40,6 @@ export function MovieDetailHero({
   trailerKey,
   alt,
   embedUrl,
-  streamApiUrl,
   movieId,
   poster,
   posterPath,
@@ -266,12 +263,13 @@ export function MovieDetailHero({
           />
         )}
 
-        {/* Inline player */}
+        {/* vidsrc inline player */}
         {playerActive && (
-          <VideoPlayerShell
-            streamApiUrl={streamApiUrl}
-            fallbackEmbedUrl={embedUrl}
-            autoPlay
+          <iframe
+            src={embedUrl}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowFullScreen
+            title={`${alt} — watch`}
             className={cn(
               'absolute inset-0 w-full h-full transition-opacity duration-700',
               playerVisible ? 'opacity-100' : 'opacity-0',

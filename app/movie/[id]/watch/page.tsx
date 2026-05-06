@@ -1,7 +1,6 @@
-import { VideoPlayerShell } from '@/components/video-player-shell';
 import { WatchHistoryRecorder } from '@/components/watch-history-recorder';
 import { getMovieDetail } from '@/lib/tmdb';
-import { getMovieEmbedUrl, getMovieStreamUrl } from '@/lib/vsembed';
+import { getMovieEmbedUrl } from '@/lib/vsembed';
 import type { Viewport } from 'next';
 import { notFound } from 'next/navigation';
 import { WatchControls } from './watch-controls';
@@ -26,17 +25,18 @@ export default async function WatchPage({ params }: Props) {
   if (Number.isNaN(movieId)) notFound();
 
   const embedUrl = getMovieEmbedUrl(movieId);
-  const streamUrl = getMovieStreamUrl(movieId);
   const movie = await getMovieDetail(movieId).catch(() => null);
 
   return (
     <div className="fixed inset-0 bg-black">
       <div className="absolute inset-0 player-safe-area">
-        <VideoPlayerShell
-          streamApiUrl={streamUrl}
-          fallbackEmbedUrl={embedUrl}
+        <iframe
+          key={embedUrl}
+          src={embedUrl}
           className="w-full h-full"
-          autoPlay
+          allowFullScreen
+          allow="autoplay; fullscreen; accelerometer; gyroscope; picture-in-picture"
+          title="Video player"
         />
       </div>
 
