@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { VideoPlayerShell } from '@/components/video-player-shell';
 import { usePlayerControls } from '@/lib/player-controls-context';
-import { getSeriesEmbedUrl } from '@/lib/vsembed';
+import { getSeriesEmbedUrl, getSeriesStreamUrl } from '@/lib/vsembed';
 
 import { ExpandableText } from '@/components/ui/expandable-text';
 import { RatingBadge } from '@/components/ui/rating-badge';
@@ -25,6 +26,7 @@ interface Props {
   trailerKey: string | null;
   alt: string;
   embedUrl: string;
+  streamApiUrl: string;
   seriesId: number;
   poster: string;
   posterPath: string | null;
@@ -52,6 +54,7 @@ export function SeriesDetailHero({
   trailerKey,
   alt,
   embedUrl,
+  streamApiUrl,
   seriesId,
   poster,
   posterPath,
@@ -78,6 +81,7 @@ export function SeriesDetailHero({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [episodePanelOpen, setEpisodePanelOpen] = useState(false);
   const [currentEmbedUrl, setCurrentEmbedUrl] = useState(embedUrl);
+  const [currentStreamApiUrl, setCurrentStreamApiUrl] = useState(streamApiUrl);
   const [currentSeason, setCurrentSeason] = useState(firstEpisodeSeason);
   const [currentEpisode, setCurrentEpisode] = useState(firstEpisodeNumber);
   const { setControls } = usePlayerControls();
@@ -233,6 +237,7 @@ export function SeriesDetailHero({
   const handleEpisodeSelect = useCallback(
     (season: number, episode: number) => {
       setCurrentEmbedUrl(getSeriesEmbedUrl(seriesId, season, episode));
+      setCurrentStreamApiUrl(getSeriesStreamUrl(seriesId, season, episode));
       setCurrentSeason(season);
       setCurrentEpisode(episode);
       setPlayerActive(true);
@@ -310,12 +315,10 @@ export function SeriesDetailHero({
         )}
 
         {playerActive && (
-          <iframe
-            key={currentEmbedUrl}
-            src={currentEmbedUrl}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-            allowFullScreen
-            title={`${alt} — watch`}
+          <VideoPlayerShell
+            streamApiUrl={currentStreamApiUrl}
+            fallbackEmbedUrl={currentEmbedUrl}
+            autoPlay
             className={cn(
               'absolute inset-0 w-full h-full transition-opacity duration-700',
               playerVisible ? 'opacity-100' : 'opacity-0',

@@ -13,7 +13,7 @@ import {
   getMovieWatchProviders,
 } from '@/lib/tmdb';
 import { tmdbImage } from '@/lib/tmdb-image';
-import { getMovieEmbedUrl } from '@/lib/vsembed';
+import { getMovieEmbedUrl, getMovieStreamUrl } from '@/lib/vsembed';
 import { pickPreferredProvidersWithFallback } from '@/lib/watch-providers';
 
 import { MovieDetailHero } from './movie-detail-hero';
@@ -64,6 +64,7 @@ export default async function MoviePage({ params }: Props) {
 
   const preferredProviders = pickPreferredProvidersWithFallback(providers?.results, country);
   const embedUrl = getMovieEmbedUrl(movieId);
+  const streamUrl = getMovieStreamUrl(movieId);
 
   return (
     <>
@@ -75,6 +76,7 @@ export default async function MoviePage({ params }: Props) {
           trailerKey={trailerKey}
           alt={movie.title}
           embedUrl={embedUrl}
+          streamApiUrl={streamUrl}
           movieId={movieId}
           poster={poster}
           posterPath={movie.poster_path}
