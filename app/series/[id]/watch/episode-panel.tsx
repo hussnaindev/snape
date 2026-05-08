@@ -28,8 +28,9 @@ export function EpisodePanel({
   currentEpisodeNum,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const [selectedSeason, setSelectedSeason] = useState(currentSeasonNum);
+  const [selectedSeason, setSelectedSeason] = useState(initialSeason.season_number);
   const [seasonData, setSeasonData] = useState<TMDBSeason>(initialSeason);
+  const [initialized, setInitialized] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const mainSeasons = seasons.filter((s) => s.season_number !== 0 && s.episode_count > 0);
@@ -60,11 +61,20 @@ export function EpisodePanel({
     };
   }, [selectedSeason, seriesId, initialSeason]);
 
-  const airedEpisodes = seasonData.episodes.filter(
+  useEffect(() => {
+    if (open && !initialized) {
+      setInitialized(true);
+      if (currentSeasonNum !== initialSeason.season_number) {
+        setSelectedSeason(currentSeasonNum);
+      }
+    }
+  }, [open, initialized, currentSeasonNum, initialSeason.season_number]);
+
+  const airedEpisodes = seasonData.episodes?.filter(
     (e) => e.air_date !== null && e.air_date <= TODAY,
   );
 
-  const currentEp = seasonData.episodes.find(
+  const currentEp = seasonData.episodes?.find(
     (e) => e.season_number === currentSeasonNum && e.episode_number === currentEpisodeNum,
   );
 
@@ -175,9 +185,13 @@ export function EpisodePanel({
                     </div>
                   ))}
                 </div>
+              ) : !seasonData.episodes ? (
+                <div className="flex items-center justify-center p-8">
+                  <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                </div>
               ) : (
                 <div className="flex flex-col">
-                  {airedEpisodes.map((ep) => {
+                  {airedEpisodes?.map((ep) => {
                     const isCurrent =
                       ep.season_number === currentSeasonNum &&
                       ep.episode_number === currentEpisodeNum;
