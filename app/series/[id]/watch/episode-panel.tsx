@@ -117,7 +117,7 @@ export function EpisodePanel({
               <div>
                 <p className="text-white font-semibold text-sm line-clamp-1">{seriesName}</p>
                 <p className="text-white/40 text-xs mt-0.5">
-                  {allVisibleSeasons.length > 1 ? `Season ${selectedSeason}` : seasonData.name}
+                  {allVisibleSeasons.length > 1 ? `Season ${selectedSeason}` : seasonData?.name ?? 'Loading...'}
                 </p>
               </div>
               <button
