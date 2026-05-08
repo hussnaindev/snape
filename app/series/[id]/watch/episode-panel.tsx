@@ -73,12 +73,7 @@ export function EpisodePanel({
       {/* Toggle button */}
       <button
         type="button"
-        onClick={() => {
-          setOpen((o) => {
-            if (!o) setSelectedSeason(currentSeasonNum);
-            return !o;
-          });
-        }}
+        onClick={() => setOpen((o) => !o)}
         className="absolute z-20 flex items-center gap-1.5 bg-black/70 text-white text-xs font-medium px-3 py-1.5 rounded-full border border-white/20 hover:border-white/50 transition-colors"
         style={{
           top: 'max(12px, env(safe-area-inset-top))',
