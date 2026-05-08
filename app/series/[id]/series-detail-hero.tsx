@@ -462,6 +462,7 @@ export function SeriesDetailHero({
                   seriesId={seriesId}
                   seasons={seasons}
                   initialSeason={initialSeason}
+                  initialSelectedSeason={currentSeason}
                   onSelect={handleEpisodeSelect}
                 />
               </div>

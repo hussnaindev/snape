@@ -16,10 +16,11 @@ interface Props {
   seriesId: number;
   seasons: TMDBSeasonSummary[];
   initialSeason: TMDBSeason;
+  initialSelectedSeason?: number;
   onSelect?: (season: number, episode: number) => void;
 }
 
-export function EpisodeGuide({ seriesId, seasons, initialSeason, onSelect }: Props) {
+export function EpisodeGuide({ seriesId, seasons, initialSeason, initialSelectedSeason, onSelect }: Props) {
   // Filter out specials (season 0) unless it's the only season
   const mainSeasons = seasons.filter((s) => s.season_number !== 0 && s.episode_count > 0);
   const hasSpecials = seasons.some((s) => s.season_number === 0 && s.episode_count > 0);
@@ -27,9 +28,12 @@ export function EpisodeGuide({ seriesId, seasons, initialSeason, onSelect }: Pro
     ? [...mainSeasons, seasons.find((s) => s.season_number === 0)!]
     : mainSeasons;
 
-  const defaultSeasonNum = initialSeason.season_number;
+  const defaultSeasonNum = initialSelectedSeason ?? initialSeason.season_number;
   const [selectedSeason, setSelectedSeason] = useState(defaultSeasonNum);
-  const [seasonData, setSeasonData] = useState<TMDBSeason>(initialSeason);
+  const [seasonData, setSeasonData] = useState<TMDBSeason>(
+    initialSelectedSeason === initialSeason.season_number ? initialSeason : ({} as TMDBSeason),
+  );
+  const [initialized, setInitialized] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -54,8 +58,17 @@ export function EpisodeGuide({ seriesId, seasons, initialSeason, onSelect }: Pro
     };
   }, [selectedSeason, seriesId, initialSeason]);
 
-  const episodes = seasonData.episodes.filter(isAired);
-  const upcomingCount = seasonData.episodes.length - episodes.length;
+  useEffect(() => {
+    if (!initialized && initialSelectedSeason !== undefined) {
+      setInitialized(true);
+      if (initialSelectedSeason !== initialSeason.season_number) {
+        setSelectedSeason(initialSelectedSeason);
+      }
+    }
+  }, [initialized, initialSelectedSeason, initialSeason.season_number]);
+
+  const episodes = seasonData.episodes?.filter(isAired) ?? [];
+  const upcomingCount = (seasonData.episodes?.length ?? 0) - episodes.length;
 
   return (
     <div>
