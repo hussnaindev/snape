@@ -87,10 +87,17 @@ export function SeriesDetailHero({
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const autoPlayRef = useRef(false);
 
-  // Auto-trigger player when navigated from watch history (?autoplay=true)
+  // Auto-trigger player when navigated from watch history (?autoplay=true&s=X&e=Y)
   useEffect(() => {
     if (searchParams.get('autoplay') === 'true' && !autoPlayRef.current) {
       autoPlayRef.current = true;
+      const s = Number(searchParams.get('s'));
+      const e = Number(searchParams.get('e'));
+      if (s > 0 && e > 0) {
+        setCurrentSeason(s);
+        setCurrentEpisode(e);
+        setCurrentEmbedUrl(getSeriesEmbedUrl(seriesId, s, e));
+      }
       setPlayerActive(true);
       setTimeout(() => {
         playerContainerRef.current
