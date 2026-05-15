@@ -77,7 +77,7 @@ export function Topbar() {
 
       <div className="relative h-16 flex items-center justify-between px-4 md:px-8">
         {/* Wordmark */}
-        <Link href="/" className="flex items-center gap-2 text-white">
+        <Link href="/" target="_top" className="flex items-center gap-2 text-white">
           <Logo className="w-5 h-5 md:w-7 md:h-7 text-white" />
           {/** Keeping it commented for future use */}
           {/* <span className="font-body text-sm md:text-xl font-bold tracking-widest uppercase">
