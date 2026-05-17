@@ -1,9 +1,11 @@
 'use client';
 
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 type Slide = {
+  id: string | null;
   bgColor: string;
   desktopSrc: string;
   mobileSrc: string;
@@ -21,6 +23,7 @@ type Slide = {
 
 const SLIDES: Slide[] = [
   {
+    id: null,
     bgColor: 'rgb(29,15,11)',
     desktopSrc: '/apple-tv/slide-1-desktop.webp',
     mobileSrc: '/apple-tv/slide-1-mobile.webp',
@@ -36,6 +39,7 @@ const SLIDES: Slide[] = [
     rating: null,
   },
   {
+    id: '248830',
     bgColor: 'rgb(218,217,209)',
     desktopSrc: '/apple-tv/slide-4-desktop.webp',
     mobileSrc: '/apple-tv/slide-4-desktop.webp',
@@ -52,6 +56,7 @@ const SLIDES: Slide[] = [
     rating: 'TV-MA',
   },
   {
+    id: '241609',
     bgColor: 'rgb(203,205,197)',
     desktopSrc: '/apple-tv/slide-5-desktop.webp',
     mobileSrc: '/apple-tv/slide-5-desktop.webp',
@@ -67,12 +72,13 @@ const SLIDES: Slide[] = [
     rating: 'TV-MA',
   },
   {
+    id: '245318',
     bgColor: 'rgb(181,149,95)',
     desktopSrc: '/apple-tv/slide-6-desktop.webp',
     mobileSrc: '/apple-tv/slide-6-desktop.webp',
-    title: 'Margo’s Got Money Troubles',
+    title: "Margo's Got Money Troubles",
     logoSrc: '/apple-tv/slide-6-logo.webp',
-    logoAlt: 'Margo’s Got Money Troubles',
+    logoAlt: "Margo's Got Money Troubles",
     badge: 'New Episode Every Wednesday',
     description:
       'Elle Fanning, Michelle Pfeiffer, Nick Offerman, and Nicole Kidman star in a story of family, dysfunction, and wrestling.',
@@ -83,6 +89,7 @@ const SLIDES: Slide[] = [
     rating: 'TV-MA',
   },
   {
+    id: '108181',
     bgColor: 'rgb(25,24,23)',
     desktopSrc: '/apple-tv/slide-7-desktop.webp',
     mobileSrc: '/apple-tv/slide-7-desktop.webp',
@@ -99,6 +106,7 @@ const SLIDES: Slide[] = [
     rating: 'TV-MA',
   },
   {
+    id: '202411',
     bgColor: 'rgb(5,16,32)',
     desktopSrc: '/apple-tv/slide-8-desktop.webp',
     mobileSrc: '/apple-tv/slide-8-desktop.webp',
@@ -115,15 +123,16 @@ const SLIDES: Slide[] = [
     rating: 'TV-14',
   },
   {
+    id: '270476',
     bgColor: 'rgb(230,236,227)',
     desktopSrc: '/apple-tv/slide-9-desktop.webp',
     mobileSrc: '/apple-tv/slide-9-desktop.webp',
-    title: 'Widow’s Bay',
+    title: "Widow's Bay",
     logoSrc: '/apple-tv/slide-9-logo.webp',
-    logoAlt: 'Widow’s Bay',
+    logoAlt: "Widow's Bay",
     badge: 'New Episode Every Wednesday',
     description:
-      'Welcome to the island, please enjoy your stay. Just don’t ask too many questions.',
+      "Welcome to the island, please enjoy your stay. Just don't ask too many questions.",
     explainability: null,
     primaryLabel: 'Watch',
     moreInfo: true,
@@ -131,6 +140,7 @@ const SLIDES: Slide[] = [
     rating: 'TV-MA',
   },
   {
+    id: '136311',
     bgColor: 'rgb(47,45,32)',
     desktopSrc: '/apple-tv/slide-10-desktop.webp',
     mobileSrc: '/apple-tv/slide-10-desktop.webp',
@@ -139,7 +149,7 @@ const SLIDES: Slide[] = [
     logoAlt: 'Shrinking',
     badge: null,
     description:
-      'Jason Segel, Harrison Ford, and Jessica Williams navigate life’s ups and downs in this heartwarming, hilarious hit.',
+      "Jason Segel, Harrison Ford, and Jessica Williams navigate life's ups and downs in this heartwarming, hilarious hit.",
     explainability: null,
     primaryLabel: 'Watch',
     moreInfo: true,
@@ -147,6 +157,7 @@ const SLIDES: Slide[] = [
     rating: 'TV-MA',
   },
   {
+    id: '87917',
     bgColor: 'rgb(220,206,199)',
     desktopSrc: '/apple-tv/slide-11-desktop.webp',
     mobileSrc: '/apple-tv/slide-11-desktop.webp',
@@ -179,6 +190,7 @@ const APPLE_FONT =
   '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif';
 
 export function HeroSection() {
+  const router = useRouter();
   const [current, setCurrent] = useState(0);
   const currentRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -276,6 +288,20 @@ export function HeroSection() {
   function handleDotClick(i: number) {
     navigate(i);
     resetTimer();
+  }
+
+  function handlePrimaryClick(s: Slide) {
+    if (s.primaryLabel === 'Sign In') {
+      router.push('/auth/login');
+    } else if (s.id) {
+      router.push(`/series/${s.id}`);
+    }
+  }
+
+  function handleMoreInfoClick(s: Slide) {
+    if (s.id) {
+      router.push(`/series/${s.id}`);
+    }
   }
 
   function handleTouchStart(e: React.TouchEvent) {
@@ -471,6 +497,7 @@ export function HeroSection() {
                     paddingRight: 22,
                     border: 'none',
                   }}
+                  onClick={() => handlePrimaryClick(s)}
                 >
                   {s.primaryLabel === 'Sign In' ? (
                     <svg
@@ -517,6 +544,7 @@ export function HeroSection() {
                       paddingRight: 22,
                       border: 'none',
                     }}
+                    onClick={() => handleMoreInfoClick(s)}
                   >
                     <svg
                       width="13"
@@ -592,6 +620,7 @@ export function HeroSection() {
                   paddingRight: 16,
                   border: 'none',
                 }}
+                onClick={() => handlePrimaryClick(s)}
               >
                 {s.primaryLabel === 'Sign In' ? (
                   <svg
