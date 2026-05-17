@@ -57,6 +57,7 @@ export default async function SeriesWatchPage({ params, searchParams }: Props) {
           className="w-full h-full"
           allowFullScreen
           allow="autoplay; fullscreen; accelerometer; gyroscope; picture-in-picture"
+          sandbox="allow-scripts allow-same-origin allow-presentation allow-fullscreen"
           title="Video player"
         />
       </div>
