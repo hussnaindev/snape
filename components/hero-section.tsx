@@ -1,142 +1,286 @@
 'use client';
 
-import { tmdbImage } from '@/lib/tmdb-image';
-import type { TMDBMovie } from '@/types/tmdb';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { RatingBadge } from './ui/rating-badge';
 
-interface HeroSectionProps {
-  movies: TMDBMovie[];
-  trailerKeys?: Record<number, string | null>;
-}
+type Slide = {
+  bgColor: string;
+  desktopSrc: string;
+  mobileSrc: string;
+  title: string;
+  logoSrc: string | null;
+  logoAlt: string;
+  badge: string | null;
+  description: string;
+  explainability: string | null;
+  primaryLabel: string;
+  moreInfo: boolean;
+  metadata: string | null;
+  rating: string | null;
+};
 
-export function HeroSection({ movies, trailerKeys }: HeroSectionProps) {
-  const [active, setActive] = useState(0);
+const SLIDES: Slide[] = [
+  {
+    bgColor: 'rgb(29,15,11)',
+    desktopSrc: '/apple-tv/slide-1-desktop.webp',
+    mobileSrc: '/apple-tv/slide-1-mobile.webp',
+    title: 'Watch anything. Completely free.',
+    logoSrc: null,
+    logoAlt: '',
+    badge: null,
+    description: 'Thousands of movies and shows, streaming instantly. New releases every week.',
+    explainability: null,
+    primaryLabel: 'Sign In',
+    moreInfo: false,
+    metadata: null,
+    rating: null,
+  },
+  {
+    bgColor: 'rgb(26,16,25)',
+    desktopSrc: '/apple-tv/slide-3-desktop.webp',
+    mobileSrc: '/apple-tv/slide-3-desktop.webp',
+    title: 'Apple Music Live: Lady Gaga MAYHEM Requiem',
+    logoSrc: '/apple-tv/slide-3-logo.webp',
+    logoAlt: 'Apple Music Live: Lady Gaga MAYHEM Requiem',
+    badge: 'New',
+    description: 'The pop icon reimagines her album MAYHEM from the rubble of her opera house.',
+    explainability: '#1 Movie on Apple TV',
+    primaryLabel: 'Watch',
+    moreInfo: true,
+    metadata: 'Movie · Music',
+    rating: 'TV-MA',
+  },
+  {
+    bgColor: 'rgb(218,217,209)',
+    desktopSrc: '/apple-tv/slide-4-desktop.webp',
+    mobileSrc: '/apple-tv/slide-4-desktop.webp',
+    title: 'Stick',
+    logoSrc: '/apple-tv/slide-4-logo.webp',
+    logoAlt: 'Stick',
+    badge: null,
+    description:
+      'Owen Wilson is an ex–pro golfer taking a big swing at his second chance in this feel-good comeback story.',
+    explainability: null,
+    primaryLabel: 'Watch',
+    moreInfo: true,
+    metadata: 'TV Show',
+    rating: 'TV-MA',
+  },
+  {
+    bgColor: 'rgb(203,205,197)',
+    desktopSrc: '/apple-tv/slide-5-desktop.webp',
+    mobileSrc: '/apple-tv/slide-5-desktop.webp',
+    title: 'Your Friends & Neighbors',
+    logoSrc: '/apple-tv/slide-5-logo.webp',
+    logoAlt: 'Your Friends & Neighbors',
+    badge: 'New Episode Every Friday',
+    description: 'Jon Hamm stars in the irresistible hit about affairs, money, and murder.',
+    explainability: '#1 Show on Apple TV',
+    primaryLabel: 'Watch',
+    moreInfo: true,
+    metadata: 'TV Show',
+    rating: 'TV-MA',
+  },
+  {
+    bgColor: 'rgb(181,149,95)',
+    desktopSrc: '/apple-tv/slide-6-desktop.webp',
+    mobileSrc: '/apple-tv/slide-6-desktop.webp',
+    title: 'Margo’s Got Money Troubles',
+    logoSrc: '/apple-tv/slide-6-logo.webp',
+    logoAlt: 'Margo’s Got Money Troubles',
+    badge: 'New Episode Every Wednesday',
+    description:
+      'Elle Fanning, Michelle Pfeiffer, Nick Offerman, and Nicole Kidman star in a story of family, dysfunction, and wrestling.',
+    explainability: 'Top Rated on Rotten Tomatoes',
+    primaryLabel: 'Watch',
+    moreInfo: true,
+    metadata: 'TV Show',
+    rating: 'TV-MA',
+  },
+  {
+    bgColor: 'rgb(25,24,23)',
+    desktopSrc: '/apple-tv/slide-7-desktop.webp',
+    mobileSrc: '/apple-tv/slide-7-desktop.webp',
+    title: 'Imperfect Women',
+    logoSrc: '/apple-tv/slide-7-logo.webp',
+    logoAlt: 'Imperfect Women',
+    badge: null,
+    description:
+      'The secret lives of three best friends turn deadly in this scandalous murder mystery.',
+    explainability: null,
+    primaryLabel: 'Watch',
+    moreInfo: true,
+    metadata: 'TV Show',
+    rating: 'TV-MA',
+  },
+  {
+    bgColor: 'rgb(5,16,32)',
+    desktopSrc: '/apple-tv/slide-8-desktop.webp',
+    mobileSrc: '/apple-tv/slide-8-desktop.webp',
+    title: 'Monarch: Legacy of Monsters',
+    logoSrc: '/apple-tv/slide-8-logo.webp',
+    logoAlt: 'Monarch: Legacy of Monsters',
+    badge: null,
+    description:
+      'A secret family legacy. A mysterious organization. And the legendary Titan that ties them together: Godzilla.',
+    explainability: '#1 in Adventure on Apple TV',
+    primaryLabel: 'Watch',
+    moreInfo: true,
+    metadata: 'TV Show',
+    rating: 'TV-14',
+  },
+  {
+    bgColor: 'rgb(230,236,227)',
+    desktopSrc: '/apple-tv/slide-9-desktop.webp',
+    mobileSrc: '/apple-tv/slide-9-desktop.webp',
+    title: 'Widow’s Bay',
+    logoSrc: '/apple-tv/slide-9-logo.webp',
+    logoAlt: 'Widow’s Bay',
+    badge: 'New Episode Every Wednesday',
+    description:
+      'Welcome to the island, please enjoy your stay. Just don’t ask too many questions.',
+    explainability: null,
+    primaryLabel: 'Watch',
+    moreInfo: true,
+    metadata: 'TV Show',
+    rating: 'TV-MA',
+  },
+  {
+    bgColor: 'rgb(47,45,32)',
+    desktopSrc: '/apple-tv/slide-10-desktop.webp',
+    mobileSrc: '/apple-tv/slide-10-desktop.webp',
+    title: 'Shrinking',
+    logoSrc: '/apple-tv/slide-10-logo.webp',
+    logoAlt: 'Shrinking',
+    badge: null,
+    description:
+      'Jason Segel, Harrison Ford, and Jessica Williams navigate life’s ups and downs in this heartwarming, hilarious hit.',
+    explainability: null,
+    primaryLabel: 'Watch',
+    moreInfo: true,
+    metadata: 'TV Show',
+    rating: 'TV-MA',
+  },
+  {
+    bgColor: 'rgb(220,206,199)',
+    desktopSrc: '/apple-tv/slide-11-desktop.webp',
+    mobileSrc: '/apple-tv/slide-11-desktop.webp',
+    title: 'For All Mankind',
+    logoSrc: '/apple-tv/slide-11-logo.webp',
+    logoAlt: 'For All Mankind',
+    badge: 'New Episode Every Friday',
+    description: 'The fight to dominate space continues. Pick a side: Earth vs. Mars.',
+    explainability: null,
+    primaryLabel: 'Watch',
+    moreInfo: true,
+    metadata: 'TV Show',
+    rating: 'TV-MA',
+  },
+];
+
+const FADE_MS = 420;
+const CYCLE_MS = 8000;
+const WHEEL_DEBOUNCE_MS = 800;
+
+const DESKTOP_GRADIENT = [
+  'linear-gradient(0deg, rgba(0,0,0,.45) 0%, rgba(0,0,0,.36) 5%, rgba(0,0,0,.27) 9%, rgba(0,0,0,.18) 16%, rgba(0,0,0,.09) 22%, rgba(0,0,0,.02) 29%, transparent 36%)',
+  'linear-gradient(80deg, rgba(0,0,0,.14), transparent 41%)',
+  'radial-gradient(circle 100vmax at 66.7% 0%, transparent 0%, rgba(0,0,0,.04) 19%, rgba(0,0,0,.15) 36%, rgba(0,0,0,.3) 51%, rgba(0,0,0,.33) 53%, rgba(0,0,0,.49) 65%, rgba(0,0,0,.67) 77%, rgba(0,0,0,.85) 89%, #000 100%)',
+].join(', ');
+
+const MOBILE_MASK = 'linear-gradient(180deg, transparent 0%, transparent 50%, #000 75%, #000 100%)';
+
+const APPLE_FONT =
+  '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif';
+
+export function HeroSection() {
+  const [current, setCurrent] = useState(0);
   const [fading, setFading] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [showVideo, setShowVideo] = useState(false);
-  const [videoVisible, setVideoVisible] = useState(false);
-  const [muted, setMuted] = useState(true);
-  const [pageOrigin, setPageOrigin] = useState('');
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
-  useEffect(() => {
-    setPageOrigin(window.location.origin);
-  }, []);
-  const featured = movies.slice(0, 5).reverse();
-
-  function goTo(index: number) {
-    if (index === active) return;
-    setFading(true);
-    setExpanded(false);
-    setTimeout(() => {
-      setActive(index);
-      setFading(false);
-    }, 300);
-  }
-
-  // Auto-cycle every 60s
-  useEffect(() => {
-    const id = setInterval(() => {
-      setFading(true);
-      setExpanded(false);
-      setTimeout(() => {
-        setActive((prev) => (prev + 1) % featured.length);
-        setFading(false);
-      }, 300);
-    }, 60000);
-    return () => clearInterval(id);
-  }, [featured.length]);
-
-  // Reset video state when slide changes
-  useEffect(() => {
-    setShowVideo(false);
-    setVideoVisible(false);
-    setMuted(true);
-  }, [active]);
-
-  const movie = featured[active];
-  const trailerKey = movie && trailerKeys ? (trailerKeys[movie.id] ?? null) : null;
-
-  // Step 1 — mount the iframe immediately to start loading ASAP
-  useEffect(() => {
-    if (!trailerKey) return;
-    const t = setTimeout(() => setShowVideo(true), 100);
-    return () => clearTimeout(t);
-  }, [trailerKey]);
-
-  // Step 2 — YouTube handshake + event listening
-  useEffect(() => {
-    if (!showVideo || !trailerKey) {
-      setVideoVisible(false);
-      return;
-    }
-
-    const iframe = iframeRef.current;
-    if (!iframe) return;
-
-    function initPlayer() {
-      iframe?.contentWindow?.postMessage(
-        JSON.stringify({ event: 'listening' }),
-        'https://www.youtube.com',
-      );
-    }
-
-    const fallback = setTimeout(() => setVideoVisible(true), 8000);
-
-    function onMessage(e: MessageEvent) {
-      try {
-        const data: unknown = typeof e.data === 'string' ? (JSON.parse(e.data) as unknown) : e.data;
-        if (!data || typeof data !== 'object') return;
-        const { event, info } = data as { event?: unknown; info?: unknown };
-
-        if (event === 'onReady') {
-          // Player is ready — try to set quality to 1080p
-          iframe?.contentWindow?.postMessage(
-            JSON.stringify({ event: 'command', func: 'setPlaybackQuality', args: ['hd1080'] }),
-            'https://www.youtube.com',
-          );
-        } else if (event === 'onStateChange' && info === 1) {
-          clearTimeout(fallback);
-          setVideoVisible(true);
-        } else if (event === 'onError' && (info === 101 || info === 150)) {
-          clearTimeout(fallback);
-          setShowVideo(false);
-        }
-      } catch {
-        // not a YouTube message
-      }
-    }
-
-    iframe.addEventListener('load', initPlayer);
-    initPlayer();
-    window.addEventListener('message', onMessage);
-
-    return () => {
-      clearTimeout(fallback);
-      iframe.removeEventListener('load', initPlayer);
-      window.removeEventListener('message', onMessage);
-    };
-  }, [showVideo, trailerKey]);
-
-  function handleMuteToggle() {
-    if (iframeRef.current?.contentWindow) {
-      const func = muted ? 'unMute' : 'mute';
-      iframeRef.current.contentWindow.postMessage(
-        JSON.stringify({ event: 'command', func, args: [] }),
-        'https://www.youtube.com',
-      );
-    }
-    setMuted((m) => !m);
-  }
-
-  const embedUrl = trailerKey
-    ? `https://www.youtube.com/embed/${trailerKey}?vq=hd1080&autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&loop=1&playlist=${trailerKey}&iv_load_policy=3&enablejsapi=1${pageOrigin ? `&origin=${pageOrigin}` : ''}`
-    : null;
-
+  const [bgColor, setBgColor] = useState((SLIDES[0] ?? { bgColor: '#000' }).bgColor);
+  const busyRef = useRef(false);
+  const currentRef = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const dotsRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const touchStartX = useRef<number | null>(null);
+  const wheelDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function navigate(idx: number) {
+    if (idx === currentRef.current || busyRef.current) return;
+    busyRef.current = true;
+    setBgColor((SLIDES[idx] ?? SLIDES[0] ?? { bgColor: '#000' }).bgColor);
+    setFading(true);
+    setTimeout(() => {
+      setCurrent(idx);
+      currentRef.current = idx;
+      setFading(false);
+      setTimeout(() => {
+        busyRef.current = false;
+      }, FADE_MS);
+    }, FADE_MS);
+  }
+
+  function resetTimer() {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      navigate((currentRef.current + 1) % SLIDES.length);
+    }, CYCLE_MS);
+  }
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once on mount; navigate/resetTimer read only refs
+  useEffect(() => {
+    resetTimer();
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  // Touchpad horizontal swipe via wheel events (pointer events don't fire for touchpad)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once on mount; navigate/resetTimer read only refs
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const handleWheel = (e: WheelEvent) => {
+      // Ignore if mostly vertical scroll
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+      // Ignore tiny nudges
+      if (Math.abs(e.deltaX) < 20) return;
+      e.preventDefault();
+      // Debounce: ignore rapid-fire wheel ticks from a single swipe gesture
+      if (wheelDebounceRef.current) return;
+      const next =
+        e.deltaX > 0
+          ? (currentRef.current + 1) % SLIDES.length
+          : (currentRef.current - 1 + SLIDES.length) % SLIDES.length;
+      navigate(next);
+      resetTimer();
+      wheelDebounceRef.current = setTimeout(() => {
+        wheelDebounceRef.current = null;
+      }, WHEEL_DEBOUNCE_MS);
+    };
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+      if (wheelDebounceRef.current) clearTimeout(wheelDebounceRef.current);
+    };
+  }, []);
+
+  // Scroll dots container to keep active dot centered
+  useEffect(() => {
+    const el = dotsRef.current;
+    if (!el) return;
+    const child = el.children[current] as HTMLElement | undefined;
+    if (!child) return;
+    el.scrollTo({
+      left: child.offsetLeft - el.offsetWidth / 2 + child.offsetWidth / 2,
+      behavior: 'smooth',
+    });
+  }, [current]);
+
+  function handleDotClick(i: number) {
+    navigate(i);
+    resetTimer();
+  }
 
   function handleTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0]?.clientX ?? null;
@@ -146,148 +290,334 @@ export function HeroSection({ movies, trailerKeys }: HeroSectionProps) {
     if (touchStartX.current === null) return;
     const dx = touchStartX.current - (e.changedTouches[0]?.clientX ?? touchStartX.current);
     if (Math.abs(dx) > 50) {
-      goTo(
-        dx > 0 ? (active + 1) % featured.length : (active - 1 + featured.length) % featured.length,
-      );
+      const next =
+        dx > 0
+          ? (currentRef.current + 1) % SLIDES.length
+          : (currentRef.current - 1 + SLIDES.length) % SLIDES.length;
+      navigate(next);
+      resetTimer();
     }
     touchStartX.current = null;
   }
 
-  if (!movie) return null;
-
-  const backdrop = tmdbImage(movie.backdrop_path, 'original');
-  const poster = tmdbImage(movie.poster_path, 'w500');
-  const year = movie.release_date?.slice(0, 4) ?? '';
+  const slide = (SLIDES[current] ?? SLIDES[0]) as Slide;
+  const fadeClass = fading ? 'opacity-0' : 'opacity-100';
+  const tc = 'transition-opacity duration-[420ms] ease-[cubic-bezier(0.33,1,0.68,1)]';
 
   return (
     <div
-      className="relative h-[30vh] sm:h-[80vh] min-h-[260px] sm:min-h-[480px]"
+      ref={containerRef}
+      className="relative h-[30vh] sm:h-screen min-h-[260px] overflow-hidden"
+      style={{ backgroundColor: bgColor, transition: `background-color ${FADE_MS}ms ease` }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Backdrop / Video — extends below hero bounds so it bleeds into carousel */}
-      <div
-        className={`absolute top-0 left-0 right-0 bottom-[-6rem] overflow-hidden -z-10 transition-opacity duration-300 ${fading ? 'opacity-0' : 'opacity-100'}`}
-      >
-        {/* Mobile: poster (portrait) */}
-        {(poster || backdrop) && (
-          <Image
-            src={poster || backdrop!}
-            alt={movie.title}
-            fill
-            priority
-            sizes="100vw"
-            className={`object-cover object-top sm:hidden transition-opacity duration-1000 ${videoVisible ? 'opacity-0' : 'opacity-100'}`}
-          />
-        )}
-        {/* Desktop: backdrop — fades out when video is playing */}
-        {(backdrop || poster) && (
-          <Image
-            src={backdrop || poster!}
-            alt={movie.title}
-            fill
-            priority
-            sizes="100vw"
-            className={`object-cover hidden sm:block transition-opacity duration-1000 ${videoVisible ? 'opacity-0' : 'opacity-100'}`}
-          />
-        )}
-
-        {/* YouTube trailer — desktop only, invisible until confirmed playing */}
-        {embedUrl && showVideo && (
-          <iframe
-            ref={iframeRef}
-            src={embedUrl}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            title={`${movie.title} trailer`}
-            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[177.78vh] h-[56.25vw] min-w-[130%] min-h-[130%] scale-[1.3] pointer-events-none transition-opacity duration-1000 ${videoVisible ? 'opacity-100' : 'opacity-0'}`}
-          />
-        )}
-
-        {!backdrop && !poster && <div className="absolute inset-0 bg-white/5" />}
-
-        {/* Gradient overlays */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
+      {/* ── Background images ── */}
+      <div className={`absolute inset-0 ${tc} ${fadeClass}`}>
+        <Image
+          src={slide.mobileSrc}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="sm:hidden object-cover object-top"
+        />
+        <Image
+          src={slide.desktopSrc}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="hidden sm:block object-cover object-center"
+        />
+        <div
+          className="absolute inset-0 hidden sm:block"
+          style={{ background: DESKTOP_GRADIENT }}
+        />
       </div>
 
-      {/* Content */}
+      {/* ── Mobile bottom blur scrim ── */}
       <div
-        className={`absolute -bottom-3 sm:bottom-0 left-0 right-0 px-3 sm:px-4 md:px-12 pb-0 sm:pb-2 transition-opacity duration-300 ${fading ? 'opacity-0' : 'opacity-100'}`}
-      >
-        <div className="max-w-xl">
-          <h1 className="font-body font-bold text-lg sm:text-3xl md:text-5xl text-white leading-tight">
-            {movie.title}
-          </h1>
-          <div className="flex items-center gap-2 sm:gap-3 mt-2 sm:mt-3">
-            {year && <span className="text-white/60 text-xs sm:text-sm">{year}</span>}
-            {movie.vote_average > 0 && <RatingBadge rating={movie.vote_average} />}
-          </div>
-          {movie.overview && (
-            <div className="hidden sm:block mt-3 max-w-md">
-              <p
-                className={`text-white/70 text-sm leading-relaxed ${expanded ? '' : 'line-clamp-3'}`}
-              >
-                {movie.overview}
-              </p>
-              <button
-                type="button"
-                onClick={() => setExpanded((v) => !v)}
-                className="mt-1 text-white/50 hover:text-white text-xs transition-colors cursor-pointer"
-              >
-                {expanded ? 'See less' : 'See more'}
-              </button>
+        className="absolute inset-0 sm:hidden pointer-events-none"
+        style={{
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          backgroundColor: 'rgba(0,0,0,.3)',
+          WebkitMaskImage: MOBILE_MASK,
+          maskImage: MOBILE_MASK,
+        }}
+      />
+
+      {/* ── Content (fades with slide) ── */}
+      <div className={`absolute inset-0 pointer-events-none ${tc} ${fadeClass}`}>
+        {/* Desktop: bottom-left layout */}
+        <div
+          className="absolute hidden sm:flex flex-col items-start"
+          style={{ bottom: 75, left: 40, right: 40 }}
+        >
+          {slide.badge && (
+            <span
+              className="inline-flex items-center mb-3 text-white font-semibold"
+              style={{
+                fontFamily: APPLE_FONT,
+                fontSize: 13,
+                padding: '5px 12px',
+                borderRadius: 20,
+                background: 'rgba(255,255,255,0.15)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+              }}
+            >
+              {slide.badge}
+            </span>
+          )}
+
+          {slide.logoSrc ? (
+            <div className="mb-3">
+              <Image
+                src={slide.logoSrc}
+                alt={slide.logoAlt}
+                width={432}
+                height={162}
+                className="object-contain object-left-bottom"
+                style={{ maxWidth: 216, height: 'auto' }}
+              />
+            </div>
+          ) : (
+            <h1
+              className="text-white font-bold mb-3 leading-[1.1]"
+              style={{
+                fontFamily: APPLE_FONT,
+                fontSize: '2.125rem',
+                letterSpacing: '-0.5px',
+                maxWidth: 560,
+              }}
+            >
+              {slide.title}
+            </h1>
+          )}
+
+          {(slide.metadata ?? slide.rating) && (
+            <div className="flex items-center gap-2 mb-2">
+              {slide.metadata && (
+                <span className="text-white/80 text-sm" style={{ fontFamily: APPLE_FONT }}>
+                  {slide.metadata}
+                </span>
+              )}
+              {slide.rating && (
+                <span
+                  className="text-white/80 font-medium"
+                  style={{
+                    fontFamily: APPLE_FONT,
+                    fontSize: 10,
+                    border: '1px solid rgba(255,255,255,0.5)',
+                    borderRadius: 3,
+                    padding: '1px 5px',
+                  }}
+                >
+                  {slide.rating.replace('_', '-').toUpperCase()}
+                </span>
+              )}
             </div>
           )}
-          <div className="flex gap-2 sm:gap-3 mt-3 sm:mt-5">
-            <Link
-              href={`/movie/${movie.id}`}
-              className="inline-flex items-center gap-1 sm:gap-2 bg-white text-black font-semibold text-[11px] sm:text-sm px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-md sm:rounded-lg hover:bg-gray-200 transition-colors"
+
+          <p
+            className="text-white/80 leading-relaxed line-clamp-3"
+            style={{ fontFamily: APPLE_FONT, fontSize: 17, maxWidth: 420 }}
+          >
+            {slide.description}
+          </p>
+
+          {slide.explainability && (
+            <p className="text-white/60 mt-2" style={{ fontFamily: APPLE_FONT, fontSize: 14 }}>
+              {slide.explainability}
+            </p>
+          )}
+
+          <div className="flex items-center gap-2.5 mt-3.5 pointer-events-auto">
+            <button
+              type="button"
+              className="inline-flex items-center justify-center gap-1.5 text-black font-semibold cursor-pointer"
+              style={{
+                fontFamily: APPLE_FONT,
+                fontSize: 14,
+                height: 42,
+                borderRadius: 42,
+                backgroundColor: 'white',
+                minWidth: 120,
+                paddingLeft: 18,
+                paddingRight: 22,
+                border: 'none',
+              }}
             >
-              <span>▶</span> Watch
-            </Link>
-            <Link
-              href={`/movie/${movie.id}`}
-              className="inline-flex items-center gap-1 sm:gap-2 bg-white/10 text-white font-semibold text-[11px] sm:text-sm px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-md sm:rounded-lg border border-white/20 hover:bg-white/20 transition-colors"
-            >
-              More Info
-            </Link>
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 12 12"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M2 1.5a.5.5 0 0 1 .765-.424l8 4.5a.5.5 0 0 1 0 .848l-8 4.5A.5.5 0 0 1 2 10.5z" />
+              </svg>
+              {slide.primaryLabel}
+            </button>
+            {slide.moreInfo && (
+              <button
+                type="button"
+                className="inline-flex items-center justify-center gap-1.5 font-semibold cursor-pointer text-white"
+                style={{
+                  fontFamily: APPLE_FONT,
+                  fontSize: 14,
+                  height: 42,
+                  borderRadius: 42,
+                  background: 'rgba(255,255,255,0.15)',
+                  backdropFilter: 'blur(60px) saturate(220%)',
+                  WebkitBackdropFilter: 'blur(60px) saturate(220%)',
+                  paddingLeft: 18,
+                  paddingRight: 22,
+                  border: 'none',
+                }}
+              >
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 12 12"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M6 1a.5.5 0 0 1 .5.5V5.5H10.5a.5.5 0 0 1 0 1H6.5V10.5a.5.5 0 0 1-1 0V6.5H1.5a.5.5 0 0 1 0-1H5.5V1.5A.5.5 0 0 1 6 1z" />
+                </svg>
+                More Info
+              </button>
+            )}
           </div>
+        </div>
+
+        {/* Mobile: bottom-center layout */}
+        <div
+          className="absolute sm:hidden left-0 right-0 flex flex-col items-center text-center px-4 pointer-events-auto"
+          style={{ bottom: 44 }}
+        >
+          {slide.badge && (
+            <span
+              className="inline-flex items-center mb-1.5 text-white font-semibold"
+              style={{
+                fontFamily: APPLE_FONT,
+                fontSize: 10,
+                padding: '3px 10px',
+                borderRadius: 20,
+                background: 'rgba(255,255,255,0.15)',
+              }}
+            >
+              {slide.badge}
+            </span>
+          )}
+
+          {slide.logoSrc ? (
+            <div className="mb-1.5">
+              <Image
+                src={slide.logoSrc}
+                alt={slide.logoAlt}
+                width={216}
+                height={81}
+                className="object-contain"
+                style={{ maxHeight: 52, height: 'auto' }}
+              />
+            </div>
+          ) : (
+            <h1
+              className="text-white font-bold text-base leading-tight mb-1.5"
+              style={{ fontFamily: APPLE_FONT }}
+            >
+              {slide.title}
+            </h1>
+          )}
+
+          <p
+            className="text-white/70 text-xs leading-relaxed line-clamp-2 mb-2"
+            style={{ maxWidth: 260, fontFamily: APPLE_FONT }}
+          >
+            {slide.description}
+          </p>
+
+          <button
+            type="button"
+            className="inline-flex items-center justify-center gap-1 font-semibold cursor-pointer text-black text-xs"
+            style={{
+              fontFamily: APPLE_FONT,
+              height: 34,
+              borderRadius: 34,
+              backgroundColor: 'white',
+              paddingLeft: 16,
+              paddingRight: 16,
+              border: 'none',
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
+              <path d="M2 1.5a.5.5 0 0 1 .765-.424l8 4.5a.5.5 0 0 1 0 .848l-8 4.5A.5.5 0 0 1 2 10.5z" />
+            </svg>
+            {slide.primaryLabel}
+          </button>
         </div>
       </div>
 
-      {/* Mute toggle — desktop only, shown when video is playing */}
-      {videoVisible && trailerKey && (
-        <button
-          type="button"
-          onClick={handleMuteToggle}
-          className="absolute bottom-2 right-5 sm:bottom-14 sm:right-4 z-30 flex items-center justify-center w-8 h-8 rounded-full border border-white/40 bg-black/50 text-white/80 hover:text-white hover:border-white/70 transition-colors cursor-pointer"
-          aria-label={muted ? 'Unmute trailer' : 'Mute trailer'}
+      {/* ── Pagination indicator ── */}
+      <div className="absolute bottom-2.5 left-0 right-0 flex justify-center items-center h-[55px] pointer-events-none z-10">
+        <div
+          className="pointer-events-auto"
+          style={{
+            borderRadius: 20,
+            padding: '6px 8px',
+            backdropFilter: 'saturate(180%) blur(10px)',
+            WebkitBackdropFilter: 'saturate(180%) blur(10px)',
+            backgroundColor: 'rgba(0,0,0,.3)',
+          }}
         >
-          {muted ? (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M16.5 12A4.5 4.5 0 0 0 14 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
-            </svg>
-          ) : (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
-            </svg>
-          )}
-        </button>
-      )}
-
-      {/* Dot indicators */}
-      <div className="absolute -bottom-3 sm:bottom-2 right-3 sm:right-6 flex gap-2">
-        {featured.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => goTo(i)}
-              aria-label={`Go to slide ${i + 1}`}
-              className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
-                i === active ? 'bg-white w-6' : 'bg-white/30 hover:bg-white/60'
-              }`}
-            />
-        ))}
+          <div
+            ref={dotsRef}
+            className="inline-flex shrink-0 overflow-hidden"
+            style={{ maxWidth: 160, scrollBehavior: 'smooth' }}
+          >
+            {SLIDES.map((s, i) => {
+              const dist = Math.abs(i - current);
+              const isActive = i === current;
+              const scale = isActive ? 0.45 : dist === 1 ? 0.35 : dist === 2 ? 0.25 : 0.2;
+              return (
+                <button
+                  key={s.desktopSrc}
+                  type="button"
+                  onClick={() => handleDotClick(i)}
+                  aria-label={`Go to slide ${i + 1}`}
+                  style={{
+                    width: 20,
+                    height: 20,
+                    padding: 0,
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <span
+                    style={{
+                      display: 'block',
+                      width: 20,
+                      height: 20,
+                      borderRadius: '50%',
+                      backgroundColor: isActive ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)',
+                      transform: `scale3d(${scale},${scale},${scale})`,
+                      transition: 'transform 0.1s, background-color 0.3s',
+                      willChange: 'transform',
+                    }}
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

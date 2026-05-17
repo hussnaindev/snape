@@ -6,8 +6,6 @@ import { Topbar } from '@/components/topbar';
 import { APP_NAME } from '@/lib/config';
 import {
   getBollywoodMovies,
-  getEmbeddableTrailerKey,
-  getMovieVideos,
   getMoviesByGenre,
   getNowPlayingMovies,
   getPopularSeries,
@@ -94,25 +92,13 @@ export default async function HomePage() {
   const topRatedSeries = filterHasImages(topRatedSeriesRaw);
   const animationMovies = filterHasImages(animationMoviesRaw.results);
 
-  // Fetch trailer keys for the 5 featured hero movies in parallel
-  const featuredMovies = trendingFiltered.slice(0, 5);
-  const trailerKeys = Object.fromEntries(
-    await Promise.all(
-      featuredMovies.map(async (m) => {
-        const videos = await getMovieVideos(m.id).catch(() => ({ results: [] }));
-        const key = await getEmbeddableTrailerKey(videos);
-        return [m.id, key] as const;
-      }),
-    ),
-  );
-
   return (
     <>
       <Topbar />
 
       <div>
         {/* Hero */}
-        <HeroSection movies={trendingFiltered} trailerKeys={trailerKeys} />
+        <HeroSection />
 
         {/* Continue Watching — client-only, reads localStorage, shows from 1 entry */}
         <ContinueWatchingCarousel hasHistory={hasHistory} />
