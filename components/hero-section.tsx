@@ -163,9 +163,9 @@ const SLIDES: Slide[] = [
   },
 ];
 
-const SLIDE_MS = 480;
+const SLIDE_MS = 380;
 const CYCLE_MS = 8000;
-const WHEEL_DEBOUNCE_MS = 700;
+const WHEEL_DEBOUNCE_MS = SLIDE_MS + 100;
 
 const DESKTOP_GRADIENT = [
   'linear-gradient(0deg, rgba(0,0,0,.45) 0%, rgba(0,0,0,.36) 5%, rgba(0,0,0,.27) 9%, rgba(0,0,0,.18) 16%, rgba(0,0,0,.09) 22%, rgba(0,0,0,.02) 29%, transparent 36%)',
@@ -184,14 +184,27 @@ export function HeroSection() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const dotsRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const touchStartX = useRef<number | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState(0);
+  const trackRef = useRef<HTMLDivElement | null>(null);
   const dragStartX = useRef<number | null>(null);
+  const dragBaseOffset = useRef(0);
   const wheelDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function trackWidth() {
+    return containerRef.current?.offsetWidth ?? 0;
+  }
+
+  function setTrackStyle(px: number, animated: boolean) {
+    const el = trackRef.current;
+    if (!el) return;
+    el.style.transition = animated
+      ? `transform ${SLIDE_MS}ms cubic-bezier(0.25, 1, 0.5, 1)`
+      : 'none';
+    el.style.transform = `translateX(${px}px)`;
+  }
 
   function navigate(idx: number) {
     if (idx === currentRef.current) return;
+    setTrackStyle(-(idx * trackWidth()), true);
     setCurrent(idx);
     currentRef.current = idx;
   }
@@ -250,44 +263,58 @@ export function HeroSection() {
     });
   }, [current]);
 
+  // Recalculate pixel offset on resize so the track stays on the right slide
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only needs to read refs
+  useEffect(() => {
+    const handleResize = () => {
+      setTrackStyle(-(currentRef.current * trackWidth()), false);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   function handleDotClick(i: number) {
     navigate(i);
     resetTimer();
   }
 
   function handleTouchStart(e: React.TouchEvent) {
-    touchStartX.current = e.touches[0]?.clientX ?? null;
-    dragStartX.current = e.touches[0]?.clientX ?? null;
-    setIsDragging(true);
-    setDragOffset(0);
+    const x = e.touches[0]?.clientX;
+    if (x === undefined) return;
+    dragStartX.current = x;
+    dragBaseOffset.current = -(currentRef.current * trackWidth());
+    // Kill transition so the track follows the finger instantly
+    const el = trackRef.current;
+    if (el) el.style.transition = 'none';
   }
 
   function handleTouchMove(e: React.TouchEvent) {
-    if (touchStartX.current === null || dragStartX.current === null) return;
-    const currentX = e.touches[0]?.clientX ?? touchStartX.current;
-    const dx = currentX - dragStartX.current;
-    setDragOffset(dx);
+    if (dragStartX.current === null) return;
+    const dx = (e.touches[0]?.clientX ?? dragStartX.current) - dragStartX.current;
+    // Direct DOM write — no React re-render on every frame
+    const el = trackRef.current;
+    if (el) el.style.transform = `translateX(${dragBaseOffset.current + dx}px)`;
   }
 
   function handleTouchEnd(e: React.TouchEvent) {
-    if (touchStartX.current === null || dragStartX.current === null) {
-      setIsDragging(false);
-      setDragOffset(0);
-      return;
-    }
-    const dx = touchStartX.current - (e.changedTouches[0]?.clientX ?? touchStartX.current);
-    if (Math.abs(dx) > 50) {
-      const next =
-        dx > 0
-          ? (currentRef.current + 1) % SLIDES.length
-          : (currentRef.current - 1 + SLIDES.length) % SLIDES.length;
-      navigate(next);
+    if (dragStartX.current === null) return;
+    const dx = (e.changedTouches[0]?.clientX ?? dragStartX.current) - dragStartX.current;
+    dragStartX.current = null;
+
+    const w = trackWidth();
+    const threshold = w * 0.2;
+    let nextIdx = currentRef.current;
+    if (dx < -threshold) nextIdx = Math.min(currentRef.current + 1, SLIDES.length - 1);
+    else if (dx > threshold) nextIdx = Math.max(currentRef.current - 1, 0);
+
+    // Snap to target with transition
+    setTrackStyle(-(nextIdx * w), true);
+
+    if (nextIdx !== currentRef.current) {
+      setCurrent(nextIdx);
+      currentRef.current = nextIdx;
       resetTimer();
     }
-    setIsDragging(false);
-    setDragOffset(0);
-    touchStartX.current = null;
-    dragStartX.current = null;
   }
 
   return (
@@ -298,14 +325,11 @@ export function HeroSection() {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* ── Slide track: all slides side-by-side, translateX moves between them ── */}
+      {/* ── Slide track: all slides side-by-side; transform managed via trackRef (no re-renders during drag) ── */}
       <div
+        ref={trackRef}
         className="absolute inset-0 flex h-full"
-        style={{
-          transform: `translateX(calc(-${current * 100}% + ${dragOffset}px))`,
-          transition: isDragging ? 'none' : `transform ${SLIDE_MS}ms cubic-bezier(0.25, 1, 0.5, 1)`,
-          willChange: 'transform',
-        }}
+        style={{ willChange: 'transform' }}
       >
         {SLIDES.map((s, i) => (
           <div
