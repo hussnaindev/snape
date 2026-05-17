@@ -604,12 +604,12 @@ export function HeroSection() {
       </div>
 
       {/* ── Pagination indicator (fixed to container, above the track) ── */}
-      <div className="absolute bottom-2.5 left-0 right-0 flex justify-center items-center h-10 pointer-events-none z-10">
+      <div className="absolute bottom-3 left-0 right-0 flex justify-center items-center pointer-events-none z-10">
         <div
-          className="pointer-events-auto"
+          className="pointer-events-auto flex items-center"
           style={{
             borderRadius: 20,
-            padding: '6px 8px',
+            padding: '3px 6px',
             backdropFilter: 'saturate(180%) blur(10px)',
             WebkitBackdropFilter: 'saturate(180%) blur(10px)',
             backgroundColor: 'rgba(0,0,0,.3)',
@@ -617,7 +617,7 @@ export function HeroSection() {
         >
           <div
             ref={dotsRef}
-            className="inline-flex shrink-0 overflow-hidden"
+            className="inline-flex items-center shrink-0 overflow-hidden"
             style={{ maxWidth: 160, scrollBehavior: 'smooth' }}
           >
             {SLIDES.map((s, i) => {
