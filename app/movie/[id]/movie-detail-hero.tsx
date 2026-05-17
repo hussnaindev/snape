@@ -148,7 +148,7 @@ export function MovieDetailHero({
     };
   }, [showVideo, trailerKey, playerActive]);
 
-  // vidsrc player: fade in after mount
+  // peachify player: fade in after mount
   useEffect(() => {
     if (!playerActive) {
       setPlayerVisible(false);
@@ -263,7 +263,7 @@ export function MovieDetailHero({
           />
         )}
 
-        {/* vidsrc inline player */}
+        {/* peachify inline player */}
         {playerActive && (
           <iframe
             src={embedUrl}
