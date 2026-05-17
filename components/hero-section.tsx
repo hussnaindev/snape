@@ -36,21 +36,6 @@ const SLIDES: Slide[] = [
     rating: null,
   },
   {
-    bgColor: 'rgb(26,16,25)',
-    desktopSrc: '/apple-tv/slide-3-desktop.webp',
-    mobileSrc: '/apple-tv/slide-3-desktop.webp',
-    title: 'Apple Music Live: Lady Gaga MAYHEM Requiem',
-    logoSrc: '/apple-tv/slide-3-logo.webp',
-    logoAlt: 'Apple Music Live: Lady Gaga MAYHEM Requiem',
-    badge: 'New',
-    description: 'The pop icon reimagines her album MAYHEM from the rubble of her opera house.',
-    explainability: '#1 Movie on Apple TV',
-    primaryLabel: 'Watch',
-    moreInfo: true,
-    metadata: 'Movie · Music',
-    rating: 'TV-MA',
-  },
-  {
     bgColor: 'rgb(218,217,209)',
     desktopSrc: '/apple-tv/slide-4-desktop.webp',
     mobileSrc: '/apple-tv/slide-4-desktop.webp',
@@ -178,9 +163,9 @@ const SLIDES: Slide[] = [
   },
 ];
 
-const FADE_MS = 420;
+const SLIDE_MS = 480;
 const CYCLE_MS = 8000;
-const WHEEL_DEBOUNCE_MS = 800;
+const WHEEL_DEBOUNCE_MS = 700;
 
 const DESKTOP_GRADIENT = [
   'linear-gradient(0deg, rgba(0,0,0,.45) 0%, rgba(0,0,0,.36) 5%, rgba(0,0,0,.27) 9%, rgba(0,0,0,.18) 16%, rgba(0,0,0,.09) 22%, rgba(0,0,0,.02) 29%, transparent 36%)',
@@ -195,29 +180,20 @@ const APPLE_FONT =
 
 export function HeroSection() {
   const [current, setCurrent] = useState(0);
-  const [fading, setFading] = useState(false);
-  const [bgColor, setBgColor] = useState((SLIDES[0] ?? { bgColor: '#000' }).bgColor);
-  const busyRef = useRef(false);
   const currentRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const dotsRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const touchStartX = useRef<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
+  const dragStartX = useRef<number | null>(null);
   const wheelDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function navigate(idx: number) {
-    if (idx === currentRef.current || busyRef.current) return;
-    busyRef.current = true;
-    setBgColor((SLIDES[idx] ?? SLIDES[0] ?? { bgColor: '#000' }).bgColor);
-    setFading(true);
-    setTimeout(() => {
-      setCurrent(idx);
-      currentRef.current = idx;
-      setFading(false);
-      setTimeout(() => {
-        busyRef.current = false;
-      }, FADE_MS);
-    }, FADE_MS);
+    if (idx === currentRef.current) return;
+    setCurrent(idx);
+    currentRef.current = idx;
   }
 
   function resetTimer() {
@@ -235,18 +211,15 @@ export function HeroSection() {
     };
   }, []);
 
-  // Touchpad horizontal swipe via wheel events (pointer events don't fire for touchpad)
+  // Touchpad horizontal swipe — fires WheelEvent with deltaX, not pointer events
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs once on mount; navigate/resetTimer read only refs
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const handleWheel = (e: WheelEvent) => {
-      // Ignore if mostly vertical scroll
       if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
-      // Ignore tiny nudges
       if (Math.abs(e.deltaX) < 20) return;
       e.preventDefault();
-      // Debounce: ignore rapid-fire wheel ticks from a single swipe gesture
       if (wheelDebounceRef.current) return;
       const next =
         e.deltaX > 0
@@ -265,7 +238,7 @@ export function HeroSection() {
     };
   }, []);
 
-  // Scroll dots container to keep active dot centered
+  // Keep active dot visible in the pill
   useEffect(() => {
     const el = dotsRef.current;
     if (!el) return;
@@ -284,10 +257,24 @@ export function HeroSection() {
 
   function handleTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0]?.clientX ?? null;
+    dragStartX.current = e.touches[0]?.clientX ?? null;
+    setIsDragging(true);
+    setDragOffset(0);
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    if (touchStartX.current === null || dragStartX.current === null) return;
+    const currentX = e.touches[0]?.clientX ?? touchStartX.current;
+    const dx = currentX - dragStartX.current;
+    setDragOffset(dx);
   }
 
   function handleTouchEnd(e: React.TouchEvent) {
-    if (touchStartX.current === null) return;
+    if (touchStartX.current === null || dragStartX.current === null) {
+      setIsDragging(false);
+      setDragOffset(0);
+      return;
+    }
     const dx = touchStartX.current - (e.changedTouches[0]?.clientX ?? touchStartX.current);
     if (Math.abs(dx) > 50) {
       const next =
@@ -297,272 +284,327 @@ export function HeroSection() {
       navigate(next);
       resetTimer();
     }
+    setIsDragging(false);
+    setDragOffset(0);
     touchStartX.current = null;
+    dragStartX.current = null;
   }
-
-  const slide = (SLIDES[current] ?? SLIDES[0]) as Slide;
-  const fadeClass = fading ? 'opacity-0' : 'opacity-100';
-  const tc = 'transition-opacity duration-[420ms] ease-[cubic-bezier(0.33,1,0.68,1)]';
 
   return (
     <div
       ref={containerRef}
       className="relative h-[30vh] sm:h-screen min-h-[260px] overflow-hidden"
-      style={{ backgroundColor: bgColor, transition: `background-color ${FADE_MS}ms ease` }}
       onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* ── Background images ── */}
-      <div className={`absolute inset-0 ${tc} ${fadeClass}`}>
-        <Image
-          src={slide.mobileSrc}
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="sm:hidden object-cover object-top"
-        />
-        <Image
-          src={slide.desktopSrc}
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="hidden sm:block object-cover object-center"
-        />
-        <div
-          className="absolute inset-0 hidden sm:block"
-          style={{ background: DESKTOP_GRADIENT }}
-        />
-      </div>
-
-      {/* ── Mobile bottom blur scrim ── */}
+      {/* ── Slide track: all slides side-by-side, translateX moves between them ── */}
       <div
-        className="absolute inset-0 sm:hidden pointer-events-none"
+        className="absolute inset-0 flex h-full"
         style={{
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-          backgroundColor: 'rgba(0,0,0,.3)',
-          WebkitMaskImage: MOBILE_MASK,
-          maskImage: MOBILE_MASK,
+          transform: `translateX(calc(-${current * 100}% + ${dragOffset}px))`,
+          transition: isDragging ? 'none' : `transform ${SLIDE_MS}ms cubic-bezier(0.25, 1, 0.5, 1)`,
+          willChange: 'transform',
         }}
-      />
+      >
+        {SLIDES.map((s, i) => (
+          <div
+            key={s.desktopSrc}
+            className="relative h-full w-full flex-shrink-0"
+            style={{ backgroundColor: s.bgColor }}
+          >
+            {/* Background images */}
+            <Image
+              src={s.mobileSrc}
+              alt=""
+              fill
+              priority={i === 0}
+              sizes="100vw"
+              className="sm:hidden object-cover object-top"
+            />
+            <Image
+              src={s.desktopSrc}
+              alt=""
+              fill
+              priority={i === 0}
+              sizes="100vw"
+              className="hidden sm:block object-cover object-center"
+            />
+            {/* Desktop gradient scrim */}
+            <div
+              className="absolute inset-0 hidden sm:block"
+              style={{ background: DESKTOP_GRADIENT }}
+            />
 
-      {/* ── Content (fades with slide) ── */}
-      <div className={`absolute inset-0 pointer-events-none ${tc} ${fadeClass}`}>
-        {/* Desktop: bottom-left layout */}
-        <div
-          className="absolute hidden sm:flex flex-col items-start"
-          style={{ bottom: 75, left: 40, right: 40 }}
-        >
-          {slide.badge && (
-            <span
-              className="inline-flex items-center mb-3 text-white font-semibold"
+            {/* Mobile bottom blur scrim */}
+            <div
+              className="absolute inset-0 sm:hidden pointer-events-none"
               style={{
-                fontFamily: APPLE_FONT,
-                fontSize: 13,
-                padding: '5px 12px',
-                borderRadius: 20,
-                background: 'rgba(255,255,255,0.15)',
                 backdropFilter: 'blur(10px)',
                 WebkitBackdropFilter: 'blur(10px)',
+                backgroundColor: 'rgba(0,0,0,.3)',
+                WebkitMaskImage: MOBILE_MASK,
+                maskImage: MOBILE_MASK,
               }}
-            >
-              {slide.badge}
-            </span>
-          )}
+            />
 
-          {slide.logoSrc ? (
-            <div className="mb-3">
-              <Image
-                src={slide.logoSrc}
-                alt={slide.logoAlt}
-                width={432}
-                height={162}
-                className="object-contain object-left-bottom"
-                style={{ maxWidth: 216, height: 'auto' }}
-              />
-            </div>
-          ) : (
-            <h1
-              className="text-white font-bold mb-3 leading-[1.1]"
-              style={{
-                fontFamily: APPLE_FONT,
-                fontSize: '2.125rem',
-                letterSpacing: '-0.5px',
-                maxWidth: 560,
-              }}
+            {/* Desktop content — bottom-left */}
+            <div
+              className="absolute hidden sm:flex flex-col items-start"
+              style={{ bottom: 75, left: 40, right: 40 }}
             >
-              {slide.title}
-            </h1>
-          )}
-
-          {(slide.metadata ?? slide.rating) && (
-            <div className="flex items-center gap-2 mb-2">
-              {slide.metadata && (
-                <span className="text-white/80 text-sm" style={{ fontFamily: APPLE_FONT }}>
-                  {slide.metadata}
+              {s.badge && (
+                <span
+                  className="inline-flex items-center mb-3 text-white font-semibold"
+                  style={{
+                    fontFamily: APPLE_FONT,
+                    fontSize: 13,
+                    padding: '5px 12px',
+                    borderRadius: 20,
+                    background: 'rgba(255,255,255,0.15)',
+                    backdropFilter: 'blur(10px)',
+                    WebkitBackdropFilter: 'blur(10px)',
+                  }}
+                >
+                  {s.badge}
                 </span>
               )}
-              {slide.rating && (
+
+              {s.logoSrc ? (
+                <div className="mb-3">
+                  <Image
+                    src={s.logoSrc}
+                    alt={s.logoAlt}
+                    width={432}
+                    height={162}
+                    className="object-contain object-left-bottom"
+                    style={{ maxWidth: 216, height: 'auto' }}
+                  />
+                </div>
+              ) : (
+                <h1
+                  className="text-white font-bold mb-3 leading-[1.1]"
+                  style={{
+                    fontFamily: APPLE_FONT,
+                    fontSize: '2.125rem',
+                    letterSpacing: '-0.5px',
+                    maxWidth: 560,
+                  }}
+                >
+                  {s.title}
+                </h1>
+              )}
+
+              {(s.metadata ?? s.rating) && (
+                <div className="flex items-center gap-2 mb-2">
+                  {s.metadata && (
+                    <span className="text-white/80 text-sm" style={{ fontFamily: APPLE_FONT }}>
+                      {s.metadata}
+                    </span>
+                  )}
+                  {s.rating && (
+                    <span
+                      className="text-white/80 font-medium"
+                      style={{
+                        fontFamily: APPLE_FONT,
+                        fontSize: 10,
+                        border: '1px solid rgba(255,255,255,0.5)',
+                        borderRadius: 3,
+                        padding: '1px 5px',
+                      }}
+                    >
+                      {s.rating.replace('_', '-').toUpperCase()}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              <p
+                className="text-white/80 leading-relaxed line-clamp-3"
+                style={{ fontFamily: APPLE_FONT, fontSize: 17, maxWidth: 420 }}
+              >
+                {s.description}
+              </p>
+
+              {s.explainability && (
+                <p className="text-white/60 mt-2" style={{ fontFamily: APPLE_FONT, fontSize: 14 }}>
+                  {s.explainability}
+                </p>
+              )}
+
+              <div className="flex items-center gap-2.5 mt-3.5">
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-1.5 text-black font-semibold cursor-pointer"
+                  style={{
+                    fontFamily: APPLE_FONT,
+                    fontSize: 14,
+                    height: 42,
+                    borderRadius: 42,
+                    backgroundColor: 'white',
+                    minWidth: 120,
+                    paddingLeft: 18,
+                    paddingRight: 22,
+                    border: 'none',
+                  }}
+                >
+                  {s.primaryLabel === 'Sign In' ? (
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                      <polyline points="10 17 15 12 10 7" />
+                      <line x1="15" y1="12" x2="3" y2="12" />
+                    </svg>
+                  ) : (
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 12 12"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M2 1.5a.5.5 0 0 1 .765-.424l8 4.5a.5.5 0 0 1 0 .848l-8 4.5A.5.5 0 0 1 2 10.5z" />
+                    </svg>
+                  )}
+                  {s.primaryLabel}
+                </button>
+                {s.moreInfo && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center gap-1.5 font-semibold cursor-pointer text-white"
+                    style={{
+                      fontFamily: APPLE_FONT,
+                      fontSize: 14,
+                      height: 42,
+                      borderRadius: 42,
+                      background: 'rgba(255,255,255,0.15)',
+                      backdropFilter: 'blur(60px) saturate(220%)',
+                      WebkitBackdropFilter: 'blur(60px) saturate(220%)',
+                      paddingLeft: 18,
+                      paddingRight: 22,
+                      border: 'none',
+                    }}
+                  >
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 12 12"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M6 1a.5.5 0 0 1 .5.5V5.5H10.5a.5.5 0 0 1 0 1H6.5V10.5a.5.5 0 0 1-1 0V6.5H1.5a.5.5 0 0 1 0-1H5.5V1.5A.5.5 0 0 1 6 1z" />
+                    </svg>
+                    More Info
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Mobile content — bottom-center */}
+            <div
+              className="absolute sm:hidden left-0 right-0 flex flex-col items-center text-center px-4"
+              style={{ bottom: 44 }}
+            >
+              {s.badge && (
                 <span
-                  className="text-white/80 font-medium"
+                  className="inline-flex items-center mb-1.5 text-white font-semibold"
                   style={{
                     fontFamily: APPLE_FONT,
                     fontSize: 10,
-                    border: '1px solid rgba(255,255,255,0.5)',
-                    borderRadius: 3,
-                    padding: '1px 5px',
+                    padding: '3px 10px',
+                    borderRadius: 20,
+                    background: 'rgba(255,255,255,0.15)',
                   }}
                 >
-                  {slide.rating.replace('_', '-').toUpperCase()}
+                  {s.badge}
                 </span>
               )}
-            </div>
-          )}
 
-          <p
-            className="text-white/80 leading-relaxed line-clamp-3"
-            style={{ fontFamily: APPLE_FONT, fontSize: 17, maxWidth: 420 }}
-          >
-            {slide.description}
-          </p>
+              {s.logoSrc ? (
+                <div className="mb-1.5">
+                  <Image
+                    src={s.logoSrc}
+                    alt={s.logoAlt}
+                    width={216}
+                    height={81}
+                    className="object-contain"
+                    style={{ maxHeight: 52, height: 'auto' }}
+                  />
+                </div>
+              ) : (
+                <h1
+                  className="text-white font-bold text-base leading-tight mb-1.5"
+                  style={{ fontFamily: APPLE_FONT }}
+                >
+                  {s.title}
+                </h1>
+              )}
 
-          {slide.explainability && (
-            <p className="text-white/60 mt-2" style={{ fontFamily: APPLE_FONT, fontSize: 14 }}>
-              {slide.explainability}
-            </p>
-          )}
-
-          <div className="flex items-center gap-2.5 mt-3.5 pointer-events-auto">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center gap-1.5 text-black font-semibold cursor-pointer"
-              style={{
-                fontFamily: APPLE_FONT,
-                fontSize: 14,
-                height: 42,
-                borderRadius: 42,
-                backgroundColor: 'white',
-                minWidth: 120,
-                paddingLeft: 18,
-                paddingRight: 22,
-                border: 'none',
-              }}
-            >
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 12 12"
-                fill="currentColor"
-                aria-hidden="true"
+              <p
+                className="text-white/70 text-xs leading-relaxed line-clamp-2 mb-2"
+                style={{ maxWidth: 260, fontFamily: APPLE_FONT }}
               >
-                <path d="M2 1.5a.5.5 0 0 1 .765-.424l8 4.5a.5.5 0 0 1 0 .848l-8 4.5A.5.5 0 0 1 2 10.5z" />
-              </svg>
-              {slide.primaryLabel}
-            </button>
-            {slide.moreInfo && (
+                {s.description}
+              </p>
+
               <button
                 type="button"
-                className="inline-flex items-center justify-center gap-1.5 font-semibold cursor-pointer text-white"
+                className="inline-flex items-center justify-center gap-1 font-semibold cursor-pointer text-black text-xs"
                 style={{
                   fontFamily: APPLE_FONT,
-                  fontSize: 14,
-                  height: 42,
-                  borderRadius: 42,
-                  background: 'rgba(255,255,255,0.15)',
-                  backdropFilter: 'blur(60px) saturate(220%)',
-                  WebkitBackdropFilter: 'blur(60px) saturate(220%)',
-                  paddingLeft: 18,
-                  paddingRight: 22,
+                  height: 34,
+                  borderRadius: 34,
+                  backgroundColor: 'white',
+                  paddingLeft: 16,
+                  paddingRight: 16,
                   border: 'none',
                 }}
               >
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 12 12"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path d="M6 1a.5.5 0 0 1 .5.5V5.5H10.5a.5.5 0 0 1 0 1H6.5V10.5a.5.5 0 0 1-1 0V6.5H1.5a.5.5 0 0 1 0-1H5.5V1.5A.5.5 0 0 1 6 1z" />
-                </svg>
-                More Info
+                {s.primaryLabel === 'Sign In' ? (
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                    <polyline points="10 17 15 12 10 7" />
+                    <line x1="15" y1="12" x2="3" y2="12" />
+                  </svg>
+                ) : (
+                  <svg
+                    width="11"
+                    height="11"
+                    viewBox="0 0 12 12"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path d="M2 1.5a.5.5 0 0 1 .765-.424l8 4.5a.5.5 0 0 1 0 .848l-8 4.5A.5.5 0 0 1 2 10.5z" />
+                  </svg>
+                )}
+                {s.primaryLabel}
               </button>
-            )}
-          </div>
-        </div>
-
-        {/* Mobile: bottom-center layout */}
-        <div
-          className="absolute sm:hidden left-0 right-0 flex flex-col items-center text-center px-4 pointer-events-auto"
-          style={{ bottom: 44 }}
-        >
-          {slide.badge && (
-            <span
-              className="inline-flex items-center mb-1.5 text-white font-semibold"
-              style={{
-                fontFamily: APPLE_FONT,
-                fontSize: 10,
-                padding: '3px 10px',
-                borderRadius: 20,
-                background: 'rgba(255,255,255,0.15)',
-              }}
-            >
-              {slide.badge}
-            </span>
-          )}
-
-          {slide.logoSrc ? (
-            <div className="mb-1.5">
-              <Image
-                src={slide.logoSrc}
-                alt={slide.logoAlt}
-                width={216}
-                height={81}
-                className="object-contain"
-                style={{ maxHeight: 52, height: 'auto' }}
-              />
             </div>
-          ) : (
-            <h1
-              className="text-white font-bold text-base leading-tight mb-1.5"
-              style={{ fontFamily: APPLE_FONT }}
-            >
-              {slide.title}
-            </h1>
-          )}
-
-          <p
-            className="text-white/70 text-xs leading-relaxed line-clamp-2 mb-2"
-            style={{ maxWidth: 260, fontFamily: APPLE_FONT }}
-          >
-            {slide.description}
-          </p>
-
-          <button
-            type="button"
-            className="inline-flex items-center justify-center gap-1 font-semibold cursor-pointer text-black text-xs"
-            style={{
-              fontFamily: APPLE_FONT,
-              height: 34,
-              borderRadius: 34,
-              backgroundColor: 'white',
-              paddingLeft: 16,
-              paddingRight: 16,
-              border: 'none',
-            }}
-          >
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
-              <path d="M2 1.5a.5.5 0 0 1 .765-.424l8 4.5a.5.5 0 0 1 0 .848l-8 4.5A.5.5 0 0 1 2 10.5z" />
-            </svg>
-            {slide.primaryLabel}
-          </button>
-        </div>
+          </div>
+        ))}
       </div>
 
-      {/* ── Pagination indicator ── */}
-      <div className="absolute bottom-2.5 left-0 right-0 flex justify-center items-center h-[55px] pointer-events-none z-10">
+      {/* ── Pagination indicator (fixed to container, above the track) ── */}
+      <div className="absolute bottom-2.5 left-0 right-0 flex justify-center items-center h-10 pointer-events-none z-10">
         <div
           className="pointer-events-auto"
           style={{
