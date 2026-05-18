@@ -34,7 +34,7 @@ export function Banner() {
             letterSpacing: '-0.5px',
           }}
         >
-          <span className="sm:hidden">Free streaming. No sign-up.</span>
+          <span className="sm:hidden">Free streaming.</span>
           <span className="hidden sm:inline">Watch anything. Completely free.</span>
         </h2>
         <p
