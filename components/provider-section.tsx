@@ -115,7 +115,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
           alt=""
           fill
           sizes="(max-width: 640px) 70vw, 60vw"
-          className="object-contain object-right-bottom scale-105"
+          className="object-cover object-top scale-105 sm:object-contain sm:object-right-bottom"
           style={{ filter: 'drop-shadow(-32px 0 56px rgba(0,0,0,0.9))' }}
         />
         {/* Bottom feather into cards */}
@@ -175,7 +175,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
             </Link>
             <Link
               href={`/browse/provider/${providerKey}`}
-              className="px-4 sm:px-6 py-1.5 sm:py-2 rounded-full border border-white/30 text-white text-xs sm:text-sm font-semibold hover:bg-white/10 transition-colors"
+              className="px-4 sm:px-6 py-1.5 sm:py-2 rounded-full border border-white/70 bg-white/15 text-white text-xs sm:text-sm font-semibold hover:bg-white/25 transition-colors sm:border-white/30 sm:bg-transparent"
             >
               Explore {label}
             </Link>
