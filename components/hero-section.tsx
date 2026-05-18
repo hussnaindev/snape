@@ -1,5 +1,6 @@
 'use client';
 
+import Hls from 'hls.js';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -19,6 +20,7 @@ type Slide = {
   moreInfo: boolean;
   metadata: string | null;
   rating: string | null;
+  trailerUrl: string;
 };
 
 const SLIDES: Slide[] = [
@@ -38,6 +40,7 @@ const SLIDES: Slide[] = [
     moreInfo: true,
     metadata: 'TV Show',
     rating: 'TV-MA',
+    trailerUrl: 'https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?cc=US&svcId=tvs.vds.4105&a=1815366977&isExternal=true&brandId=tvs.sbd.4000&id=1131292652&l=en-US&aec=UHD',
   },
   {
     id: '241609',
@@ -54,6 +57,7 @@ const SLIDES: Slide[] = [
     moreInfo: true,
     metadata: 'TV Show',
     rating: 'TV-MA',
+    trailerUrl: 'https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?cc=US&svcId=tvs.vds.4105&a=1875429673&isExternal=true&brandId=tvs.sbd.4000&id=1283390014&l=en-US&aec=UHD',
   },
   {
     id: '202411',
@@ -71,6 +75,7 @@ const SLIDES: Slide[] = [
     moreInfo: true,
     metadata: 'TV Show',
     rating: 'TV-14',
+    trailerUrl: 'https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?cc=US&svcId=tvs.vds.4105&a=1867658901&isExternal=true&brandId=tvs.sbd.4000&id=1283929122&l=en-US&aec=UHD',
   },
   {
     id: '270476',
@@ -88,6 +93,7 @@ const SLIDES: Slide[] = [
     moreInfo: true,
     metadata: 'TV Show',
     rating: 'TV-MA',
+    trailerUrl: 'https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?cc=US&svcId=tvs.vds.4105&a=1888549019&isExternal=true&brandId=tvs.sbd.4000&id=1327736478&l=en-US&aec=UHD',
   },
   {
     id: '136311',
@@ -105,6 +111,7 @@ const SLIDES: Slide[] = [
     moreInfo: true,
     metadata: 'TV Show',
     rating: 'TV-MA',
+    trailerUrl: 'https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?cc=US&svcId=tvs.vds.4105&a=1855667906&isExternal=true&brandId=tvs.sbd.4000&id=1235227606&l=en-US&aec=UHD',
   },
   {
     id: '87917',
@@ -121,11 +128,11 @@ const SLIDES: Slide[] = [
     moreInfo: true,
     metadata: 'TV Show',
     rating: 'TV-MA',
+    trailerUrl: 'https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?cc=US&svcId=tvs.vds.4105&a=1873096122&isExternal=true&brandId=tvs.sbd.4000&id=1269359171&l=en-US&aec=UHD',
   },
 ];
 
 const SLIDE_MS = 380;
-const CYCLE_MS = 8000;
 const WHEEL_DEBOUNCE_MS = SLIDE_MS + 100;
 
 const DESKTOP_GRADIENT = [
@@ -142,13 +149,16 @@ export function HeroSection() {
   const router = useRouter();
   const [current, setCurrent] = useState(0);
   const currentRef = useRef(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const dotsRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const dragStartX = useRef<number | null>(null);
   const dragBaseOffset = useRef(0);
   const wheelDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+  const hlsRef = useRef<Hls | null>(null);
+  const trailerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showVideo, setShowVideo] = useState(false);
 
   function trackWidth() {
     return containerRef.current?.offsetWidth ?? 0;
@@ -163,30 +173,56 @@ export function HeroSection() {
     el.style.transform = `translateX(${px}px)`;
   }
 
+  function attachHls(idx: number) {
+    const video = videoRefs.current[idx];
+    const slide = SLIDES[idx];
+    if (!video || !slide) return;
+    hlsRef.current?.destroy();
+    hlsRef.current = null;
+    if (Hls.isSupported()) {
+      const hls = new Hls({ autoStartLoad: true });
+      hlsRef.current = hls;
+      hls.loadSource(slide.trailerUrl);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        hls.currentLevel = hls.levels.length - 1;
+        video.play().catch(() => {});
+      });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = slide.trailerUrl;
+      video.play().catch(() => {});
+    }
+  }
+
+  function resetTrailerTimer(idx: number) {
+    if (trailerTimerRef.current) clearTimeout(trailerTimerRef.current);
+    setShowVideo(false);
+    for (const v of videoRefs.current) v?.pause();
+    trailerTimerRef.current = setTimeout(() => {
+      setShowVideo(true);
+      attachHls(idx);
+    }, 2000);
+  }
+
   function navigate(idx: number) {
     if (idx === currentRef.current) return;
     setTrackStyle(-(idx * trackWidth()), true);
     setCurrent(idx);
     currentRef.current = idx;
+    resetTrailerTimer(idx);
   }
 
-  function resetTimer() {
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => {
-      navigate((currentRef.current + 1) % SLIDES.length);
-    }, CYCLE_MS);
-  }
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once on mount; navigate/resetTimer read only refs
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once on mount; resetTrailerTimer reads only refs
   useEffect(() => {
-    resetTimer();
+    resetTrailerTimer(0);
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (trailerTimerRef.current) clearTimeout(trailerTimerRef.current);
+      hlsRef.current?.destroy();
     };
   }, []);
 
   // Touchpad horizontal swipe — fires WheelEvent with deltaX, not pointer events
-  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once on mount; navigate/resetTimer read only refs
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once on mount; navigate reads only refs
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -200,7 +236,6 @@ export function HeroSection() {
           ? (currentRef.current + 1) % SLIDES.length
           : (currentRef.current - 1 + SLIDES.length) % SLIDES.length;
       navigate(next);
-      resetTimer();
       wheelDebounceRef.current = setTimeout(() => {
         wheelDebounceRef.current = null;
       }, WHEEL_DEBOUNCE_MS);
@@ -236,7 +271,6 @@ export function HeroSection() {
 
   function handleDotClick(i: number) {
     navigate(i);
-    resetTimer();
   }
 
   function handlePrimaryClick(s: Slide) {
@@ -288,7 +322,7 @@ export function HeroSection() {
     if (nextIdx !== currentRef.current) {
       setCurrent(nextIdx);
       currentRef.current = nextIdx;
-      resetTimer();
+      resetTrailerTimer(nextIdx);
     }
   }
 
@@ -328,6 +362,14 @@ export function HeroSection() {
               priority={i === 0}
               sizes="100vw"
               className="hidden sm:block object-cover object-center"
+            />
+            {/* Trailer video */}
+            <video
+              ref={(el) => { videoRefs.current[i] = el; }}
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${i === current && showVideo ? 'opacity-100' : 'opacity-0'}`}
+              muted
+              playsInline
+              onEnded={() => { if (i === currentRef.current) navigate((i + 1) % SLIDES.length); }}
             />
             {/* Desktop gradient scrim */}
             <div
