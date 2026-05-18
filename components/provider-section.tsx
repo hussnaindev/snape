@@ -174,7 +174,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
               Watch
             </Link>
             <Link
-              href={HERO_TYPE[providerKey] === 'Movie' ? `/movie/${HERO_ID[providerKey]}` : `/series/${HERO_ID[providerKey]}`}
+              href={`/browse/provider/${providerKey}`}
               className="px-4 sm:px-6 py-1.5 sm:py-2 rounded-full border border-white/30 text-white text-xs sm:text-sm font-semibold hover:bg-white/10 transition-colors"
             >
               Explore {label}
