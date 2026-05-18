@@ -34,7 +34,8 @@ export function Banner() {
             letterSpacing: '-0.5px',
           }}
         >
-          Watch anything. Completely free.
+          <span className="sm:hidden">Free streaming. No sign-up.</span>
+          <span className="hidden sm:inline">Watch anything. Completely free.</span>
         </h2>
         <p
           className="text-white/80 mb-4 leading-snug sm:mb-5 sm:leading-relaxed"
@@ -44,7 +45,8 @@ export function Banner() {
             fontSize: 'clamp(0.8125rem, 3.5vw, 1rem)',
           }}
         >
-          Thousands of movies and shows, streaming instantly. New releases every week.
+          <span className="sm:hidden">Thousands of movies & shows, free.</span>
+          <span className="hidden sm:inline">Thousands of movies and shows, streaming instantly. New releases every week.</span>
         </p>
 
         <div className="flex items-center gap-3">
