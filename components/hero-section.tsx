@@ -635,19 +635,13 @@ export function HeroSection() {
                     onClick={() => handleMoreInfoClick(s)}
                   >
                     <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                      width="13"
+                      height="13"
+                      viewBox="0 0 12 12"
+                      fill="currentColor"
                       aria-hidden="true"
                     >
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M12 16v-4" />
-                      <path d="M12 8h.01" />
+                      <path d="M6 1a.5.5 0 0 1 .5.5V5.5H10.5a.5.5 0 0 1 0 1H6.5V10.5a.5.5 0 0 1-1 0V6.5H1.5a.5.5 0 0 1 0-1H5.5V1.5A.5.5 0 0 1 6 1z" />
                     </svg>
                     More Info
                   </button>
