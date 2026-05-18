@@ -570,50 +570,89 @@ export function HeroSection() {
                 </div>
               )}
 
-              <button
-                type="button"
-                className="inline-flex items-center justify-center gap-1 font-semibold cursor-pointer text-black"
-                style={{
-                  fontFamily: APPLE_FONT,
-                  fontSize: 12,
-                  height: 30,
-                  borderRadius: 30,
-                  backgroundColor: 'white',
-                  paddingLeft: 14,
-                  paddingRight: 14,
-                  border: 'none',
-                }}
-                onClick={() => handlePrimaryClick(s)}
-              >
-                {s.primaryLabel === 'Sign In' ? (
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-1 font-semibold cursor-pointer text-black"
+                  style={{
+                    fontFamily: APPLE_FONT,
+                    fontSize: 12,
+                    height: 30,
+                    borderRadius: 30,
+                    backgroundColor: 'white',
+                    paddingLeft: 14,
+                    paddingRight: 14,
+                    border: 'none',
+                  }}
+                  onClick={() => handlePrimaryClick(s)}
+                >
+                  {s.primaryLabel === 'Sign In' ? (
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                      <polyline points="10 17 15 12 10 7" />
+                      <line x1="15" y1="12" x2="3" y2="12" />
+                    </svg>
+                  ) : (
+                    <svg
+                      width="11"
+                      height="11"
+                      viewBox="0 0 12 12"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M2 1.5a.5.5 0 0 1 .765-.424l8 4.5a.5.5 0 0 1 0 .848l-8 4.5A.5.5 0 0 1 2 10.5z" />
+                    </svg>
+                  )}
+                  {s.primaryLabel}
+                </button>
+
+                {s.moreInfo && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center gap-1 font-semibold cursor-pointer text-white"
+                    style={{
+                      fontFamily: APPLE_FONT,
+                      fontSize: 12,
+                      height: 30,
+                      borderRadius: 30,
+                      background: 'rgba(255,255,255,0.15)',
+                      backdropFilter: 'blur(60px) saturate(220%)',
+                      WebkitBackdropFilter: 'blur(60px) saturate(220%)',
+                      paddingLeft: 12,
+                      paddingRight: 12,
+                      border: 'none',
+                    }}
+                    onClick={() => handleMoreInfoClick(s)}
                   >
-                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                    <polyline points="10 17 15 12 10 7" />
-                    <line x1="15" y1="12" x2="3" y2="12" />
-                  </svg>
-                ) : (
-                  <svg
-                    width="11"
-                    height="11"
-                    viewBox="0 0 12 12"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path d="M2 1.5a.5.5 0 0 1 .765-.424l8 4.5a.5.5 0 0 1 0 .848l-8 4.5A.5.5 0 0 1 2 10.5z" />
-                  </svg>
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 16v-4" />
+                      <path d="M12 8h.01" />
+                    </svg>
+                    More Info
+                  </button>
                 )}
-                {s.primaryLabel}
-              </button>
+              </div>
             </div>
           </div>
         ))}
