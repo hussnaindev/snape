@@ -26,7 +26,7 @@ const HERO_TITLE: Record<PreferredProviderKey, string> = {
   netflix:       'Stranger Things',
   max:           'House of the Dragon',
   primevideo:    'The Boys',
-  disneyplus:    'Zootopia 2',
+  disneyplus:    'Loki',
   paramountplus: 'Yellowstone',
   appletv:       'Dune',
 };
@@ -35,7 +35,7 @@ const HERO_TYPE: Record<PreferredProviderKey, 'Series' | 'Movie'> = {
   netflix:       'Series',
   max:           'Series',
   primevideo:    'Series',
-  disneyplus:    'Movie',
+  disneyplus:    'Series',
   paramountplus: 'Series',
   appletv:       'Movie',
 };
@@ -44,7 +44,7 @@ const HERO_ID: Record<PreferredProviderKey, number> = {
   netflix:       66732,
   max:           94997,
   primevideo:    71593,
-  disneyplus:    1084242,
+  disneyplus:    84958,
   paramountplus: 73586,
   appletv:       438631,
 };
@@ -53,7 +53,7 @@ const HERO_RATING: Record<PreferredProviderKey, string> = {
   netflix:       '8.7',
   max:           '8.4',
   primevideo:    '8.6',
-  disneyplus:    '7.6',
+  disneyplus:    '8.5',
   paramountplus: '8.6',
   appletv:       '8.6',
 };
