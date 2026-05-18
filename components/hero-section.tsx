@@ -181,10 +181,9 @@ const WHEEL_DEBOUNCE_MS = SLIDE_MS + 100;
 const DESKTOP_GRADIENT = [
   'linear-gradient(0deg, rgba(0,0,0,.45) 0%, rgba(0,0,0,.36) 5%, rgba(0,0,0,.27) 9%, rgba(0,0,0,.18) 16%, rgba(0,0,0,.09) 22%, rgba(0,0,0,.02) 29%, transparent 36%)',
   'linear-gradient(80deg, rgba(0,0,0,.14), transparent 41%)',
-  'radial-gradient(circle 100vmax at 66.7% 0%, transparent 0%, rgba(0,0,0,.04) 19%, rgba(0,0,0,.15) 36%, rgba(0,0,0,.3) 51%, rgba(0,0,0,.33) 53%, rgba(0,0,0,.49) 65%, rgba(0,0,0,.67) 77%, rgba(0,0,0,.85) 89%, #000 100%)',
+  'radial-gradient(circle 100vmax at 66.7% 0%, transparent 0%, rgba(7,11,8,.04) 19%, rgba(7,11,8,.15) 36%, rgba(7,11,8,.3) 51%, rgba(7,11,8,.33) 53%, rgba(7,11,8,.49) 65%, rgba(7,11,8,.67) 77%, rgba(7,11,8,.85) 89%, #070b08 100%)',
 ].join(', ');
 
-const MOBILE_MASK = 'linear-gradient(180deg, transparent 0%, transparent 50%, #000 75%, #000 100%)';
 
 const APPLE_FONT =
   '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif';
@@ -346,7 +345,7 @@ export function HeroSection() {
   return (
     <div
       ref={containerRef}
-      className="relative h-[30vh] sm:h-screen min-h-[260px] overflow-hidden"
+      className="relative h-[55vh] sm:h-screen min-h-[320px] overflow-hidden"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -386,15 +385,11 @@ export function HeroSection() {
               style={{ background: DESKTOP_GRADIENT }}
             />
 
-            {/* Mobile bottom blur scrim */}
+            {/* Mobile gradient scrim — fades image into the section below */}
             <div
               className="absolute inset-0 sm:hidden pointer-events-none"
               style={{
-                backdropFilter: 'blur(10px)',
-                WebkitBackdropFilter: 'blur(10px)',
-                backgroundColor: 'rgba(0,0,0,.3)',
-                WebkitMaskImage: MOBILE_MASK,
-                maskImage: MOBILE_MASK,
+                background: 'linear-gradient(180deg, transparent 0%, transparent 38%, rgba(7,11,8,0.55) 65%, #070b08 90%)',
               }}
             />
 
@@ -561,18 +556,18 @@ export function HeroSection() {
               </div>
             </div>
 
-            {/* Mobile content — bottom-center */}
+            {/* Mobile content — bottom-left */}
             <div
-              className="absolute sm:hidden left-0 right-0 flex flex-col items-center text-center px-4"
+              className="absolute sm:hidden left-0 right-0 flex flex-col items-start px-5"
               style={{ bottom: 44 }}
             >
               {s.badge && (
                 <span
-                  className="inline-flex items-center mb-1.5 text-white font-semibold"
+                  className="inline-flex items-center mb-2 text-white font-semibold"
                   style={{
                     fontFamily: APPLE_FONT,
-                    fontSize: 10,
-                    padding: '3px 10px',
+                    fontSize: 9,
+                    padding: '2px 8px',
                     borderRadius: 20,
                     background: 'rgba(255,255,255,0.15)',
                   }}
@@ -582,42 +577,60 @@ export function HeroSection() {
               )}
 
               {s.logoSrc ? (
-                <div className="mb-1.5">
+                <div className="mb-2">
                   <Image
                     src={s.logoSrc}
                     alt={s.logoAlt}
                     width={216}
                     height={81}
-                    className="object-contain"
-                    style={{ maxHeight: 52, height: 'auto' }}
+                    className="object-contain object-left"
+                    style={{ maxHeight: 42, height: 'auto' }}
                   />
                 </div>
               ) : (
                 <h1
-                  className="text-white font-bold text-base leading-tight mb-1.5"
+                  className="text-white font-bold text-sm leading-tight mb-2"
                   style={{ fontFamily: APPLE_FONT }}
                 >
                   {s.title}
                 </h1>
               )}
 
-              <p
-                className="text-white/70 text-xs leading-relaxed line-clamp-2 mb-2"
-                style={{ maxWidth: 260, fontFamily: APPLE_FONT }}
-              >
-                {s.description}
-              </p>
+              {(s.metadata ?? s.rating) && (
+                <div className="flex items-center gap-1.5 mb-2.5">
+                  {s.metadata && (
+                    <span className="text-white/70" style={{ fontFamily: APPLE_FONT, fontSize: 10 }}>
+                      {s.metadata}
+                    </span>
+                  )}
+                  {s.rating && (
+                    <span
+                      className="text-white/70 font-medium"
+                      style={{
+                        fontFamily: APPLE_FONT,
+                        fontSize: 9,
+                        border: '1px solid rgba(255,255,255,0.4)',
+                        borderRadius: 2,
+                        padding: '0px 4px',
+                      }}
+                    >
+                      {s.rating.replace('_', '-').toUpperCase()}
+                    </span>
+                  )}
+                </div>
+              )}
 
               <button
                 type="button"
-                className="inline-flex items-center justify-center gap-1 font-semibold cursor-pointer text-black text-xs"
+                className="inline-flex items-center justify-center gap-1 font-semibold cursor-pointer text-black"
                 style={{
                   fontFamily: APPLE_FONT,
-                  height: 34,
-                  borderRadius: 34,
+                  fontSize: 12,
+                  height: 30,
+                  borderRadius: 30,
                   backgroundColor: 'white',
-                  paddingLeft: 16,
-                  paddingRight: 16,
+                  paddingLeft: 14,
+                  paddingRight: 14,
                   border: 'none',
                 }}
                 onClick={() => handlePrimaryClick(s)}
