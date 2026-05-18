@@ -2,6 +2,7 @@ import { tmdbImage } from '@/lib/tmdb-image';
 import type { PreferredProviderKey } from '@/lib/watch-providers';
 import type { TMDBMovie, TMDBSeries } from '@/types/tmdb';
 import Image from 'next/image';
+import { ParallaxBackdrop } from './parallax-backdrop';
 import { ProviderCard, type MediaItem } from './provider-card';
 import Link from 'next/link';
 
@@ -168,20 +169,12 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
           }}
         />
 
-        {/* Character art — clipped naturally by overflow-hidden */}
-        <div
-          className={`absolute inset-y-0 right-0 ${providerKey === 'disneyplus' ? 'w-5/5 sm:w-[62%]' : 'w-3/5 sm:w-[62%]'} pointer-events-none ${artTranslate}`}
-          style={{ maskImage: 'linear-gradient(to right, transparent 8%, black 42%)' }}
-        >
-          <Image
-            src={backdropArt}
-            alt=""
-            fill
-            sizes="(max-width: 640px) 70vw, 60vw"
-            className="object-cover object-top sm:object-contain sm:object-right-bottom"
-            style={{ filter: 'drop-shadow(-32px 0 56px rgba(0,0,0,0.9))' }}
-          />
-        </div>
+        {/* Character art with parallax */}
+        <ParallaxBackdrop
+          src={backdropArt}
+          wrapperClassName={`absolute inset-y-0 right-0 ${providerKey === 'disneyplus' ? 'w-5/5 sm:w-[62%]' : 'w-3/5 sm:w-[62%]'} pointer-events-none ${artTranslate}`}
+          imageClassName="object-cover object-top sm:object-contain sm:object-right-bottom"
+        />
 
         {/* Top vignette — exact page-bg color so section top is invisible against page */}
         <div className="absolute inset-x-0 top-0 h-1/5 bg-gradient-to-b from-[#070b08] to-transparent" />

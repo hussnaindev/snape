@@ -64,7 +64,9 @@
   to { transform: translateX(0); }
 }
 
+
 /* ── Custom utilities ── */
+
 @utility no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
