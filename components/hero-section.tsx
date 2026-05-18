@@ -23,22 +23,6 @@ type Slide = {
 
 const SLIDES: Slide[] = [
   {
-    id: null,
-    bgColor: 'rgb(29,15,11)',
-    desktopSrc: '/apple-tv/slide-1-desktop.webp',
-    mobileSrc: '/apple-tv/slide-1-mobile.webp',
-    title: 'Watch anything. Completely free.',
-    logoSrc: null,
-    logoAlt: '',
-    badge: null,
-    description: 'Thousands of movies and shows, streaming instantly. New releases every week.',
-    explainability: null,
-    primaryLabel: 'Sign In',
-    moreInfo: false,
-    metadata: null,
-    rating: null,
-  },
-  {
     id: '248830',
     bgColor: 'rgb(218,217,209)',
     desktopSrc: '/apple-tv/slide-4-desktop.webp',

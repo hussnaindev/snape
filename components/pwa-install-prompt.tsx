@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type UserChoiceOutcome = 'accepted' | 'dismissed';
 
@@ -43,6 +43,7 @@ export function PwaInstallPrompt({ className }: { className?: string }) {
   const [ready, setReady] = useState(false);
   const [show, setShow] = useState(false);
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
+  const deferredRef = useRef<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [iosA2hs, setIosA2hs] = useState(false);
 
@@ -62,7 +63,9 @@ export function PwaInstallPrompt({ className }: { className?: string }) {
     const onBeforeInstallPrompt = (e: Event) => {
       // Chromium: capture the event so we can show a custom UI.
       e.preventDefault?.();
-      setDeferred(e as BeforeInstallPromptEvent);
+      const event = e as BeforeInstallPromptEvent;
+      setDeferred(event);
+      deferredRef.current = event;
       setShow(true);
     };
 
@@ -76,6 +79,21 @@ export function PwaInstallPrompt({ className }: { className?: string }) {
     window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt as EventListener);
     window.addEventListener('appinstalled', onAppInstalled);
 
+    // Listen for external trigger from banner
+    const onExternalTrigger = async () => {
+      if (deferredRef.current) {
+        try {
+          await deferredRef.current.prompt();
+          const { outcome } = await deferredRef.current.userChoice;
+          if (outcome === 'accepted') {
+            window.localStorage.setItem(INSTALLED_KEY, '1');
+            setIsInstalled(true);
+          }
+        } catch {}
+      }
+    };
+    window.addEventListener('pwa-install-trigger', onExternalTrigger);
+
     // iOS Safari: no `beforeinstallprompt`, so show A2HS hint once.
     if (isIos() && isIosSafari() && !isInStandaloneMode()) {
       setIosA2hs(true);
@@ -85,6 +103,7 @@ export function PwaInstallPrompt({ className }: { className?: string }) {
     return () => {
       window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt as EventListener);
       window.removeEventListener('appinstalled', onAppInstalled);
+      window.removeEventListener('pwa-install-trigger', onExternalTrigger);
     };
   }, [dismissed]);
 

@@ -1,3 +1,4 @@
+import { Banner } from '@/components/banner';
 import { ContinueWatchingCarousel } from '@/components/continue-watching-carousel';
 import { HeroSection } from '@/components/hero-section';
 import { MovieCarousel } from '@/components/movie-carousel';
@@ -145,6 +146,8 @@ export default async function HomePage() {
             <MovieCarousel title="Animation" movies={animationMovies.slice(0, CAROUSEL_LIMIT)} />
           )}
         </div>
+
+        <Banner />
       </div>
     </>
   );
