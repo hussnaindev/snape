@@ -3,6 +3,8 @@ import type { PreferredProviderKey } from '@/lib/watch-providers';
 import type { TMDBMovie, TMDBSeries } from '@/types/tmdb';
 import Image from 'next/image';
 import { ParallaxBackdrop } from './parallax-backdrop';
+import { ParallaxCarousel } from './parallax-carousel';
+import { ParallaxMeta } from './parallax-meta';
 import { ProviderCard, type MediaItem } from './provider-card';
 import Link from 'next/link';
 
@@ -182,7 +184,9 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
         <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-[#070b08] via-[#070b08]/60 to-transparent" />
 
         {/* Provider hero — upper-left */}
-        <div className="absolute left-6 sm:left-12 top-[41%] -translate-y-1/2 z-20 flex flex-col items-start gap-3 sm:gap-4">
+        <div className="absolute left-6 sm:left-12 top-[41%] -translate-y-1/2 z-20">
+        <ParallaxMeta>
+        <div className="flex flex-col items-start gap-3 sm:gap-4">
           <div className={`relative ${logo.h} ${logo.w}`}>
             <Image
               src={assetPath}
@@ -305,14 +309,16 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
             </Link>
           </div>
         </div>
+        </ParallaxMeta>
+        </div>
       </div>
 
       {/* ── Card carousel ── */}
-      <div className="-mt-14 sm:-mt-20 relative z-30 flex gap-1.5 px-5 sm:px-10 overflow-x-auto no-scrollbar pb-2 sm:pb-4 pt-4 sm:pt-6">
+      <ParallaxCarousel className="-mt-14 sm:-mt-20 relative z-30 flex gap-1.5 px-5 sm:px-10 overflow-x-auto no-scrollbar pb-2 sm:pb-4 pt-4 sm:pt-6">
         {items.map((item, i) => (
           <ProviderCard key={`${item.kind}-${item.id}`} item={item} rank={i + 1} />
         ))}
-      </div>
+      </ParallaxCarousel>
     </section>
   );
 }
