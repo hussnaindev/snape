@@ -123,7 +123,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
       </div>
 
       {/* ── Backdrop — single seamless gradient, no separate overlay divs ── */}
-      <div className="relative h-[300px] sm:h-[500px] overflow-hidden">
+      <div className="relative h-[300px] sm:h-[420px] overflow-hidden">
         {/* One smooth gradient: dark left → brand colour right. No hard seam. */}
         <div
           className="absolute inset-0"
