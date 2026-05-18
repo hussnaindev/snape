@@ -12,8 +12,8 @@ export const PREFERRED_PROVIDERS: ReadonlyArray<{
   { key: 'netflix', label: 'Netflix', assetPath: '/providers/netflix.svg', tmdbId: 8, brandColor: '#E50914' },
   { key: 'max', label: 'Max', assetPath: '/providers/max.svg', tmdbId: 1899, brandColor: '#8A2BE2' },
   { key: 'primevideo', label: 'Prime Video', assetPath: '/providers/primevideo.svg', tmdbId: 9, brandColor: '#00A8E0' },
-  { key: 'disneyplus', label: 'Disney+', assetPath: '/providers/disneyplus.svg', tmdbId: 337, brandColor: '#113CCF' },
-  { key: 'paramountplus', label: 'Paramount+', assetPath: '/providers/paramountplus.svg', tmdbId: 531, brandColor: '#0064FF' },
+  { key: 'disneyplus', label: 'Disney+', assetPath: '/providers/disneyplus.svg', tmdbId: 337, brandColor: '#166534' },
+  { key: 'paramountplus', label: 'Paramount+', assetPath: '/providers/paramountplus.svg', tmdbId: 531, brandColor: '#CA8A04' },
   { key: 'appletv', label: 'Apple TV+', assetPath: '/providers/appletv.svg', tmdbId: 350, brandColor: '#6E6E73' },
 ] as const;
 
