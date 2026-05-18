@@ -13,7 +13,12 @@ const BACKDROP_ART: Partial<Record<PreferredProviderKey, string>> = {
   disneyplus: '/backdrop-disneyplus.avif',
 };
 
-const BACKDROP_ART_SIZE: Partial<Record<PreferredProviderKey, string>> = {};
+const BACKDROP_ART_SIZE: Partial<Record<PreferredProviderKey, string>> = {
+  netflix:       'h-[300px] sm:h-[610px] w-[58%] sm:w-[62%]',
+  primevideo:    'h-[300px] sm:h-[610px] w-[58%] sm:w-[62%]',
+  disneyplus:    'h-[300px] sm:h-[610px] w-[58%] sm:w-[62%]',
+  paramountplus: 'h-[300px] sm:h-[610px] w-[58%] sm:w-[62%]',
+};
 
 const BACKDROP_ART_RIGHT: Partial<Record<PreferredProviderKey, string>> = {
   netflix: '-right-10 sm:-right-32',
@@ -33,38 +38,38 @@ const LOGO_SIZE: Record<PreferredProviderKey, { h: string; w: string }> = {
 
 // ── Hardcoded hero data per provider ──
 const HERO_TITLE: Record<PreferredProviderKey, string> = {
-  netflix:       'Dune',
+  netflix:       'Stranger Things',
   max:           'House of the Dragon',
-  primevideo:    'Dune',
-  disneyplus:    'Harry Potter and the Philosopher\u2019s Stone',
-  paramountplus: 'Naked and Afraid',
+  primevideo:    'The Boys',
+  disneyplus:    'Zootopia 2',
+  paramountplus: 'Yellowstone',
   appletv:       'Dune',
 };
 
 const HERO_TYPE: Record<PreferredProviderKey, 'Series' | 'Movie'> = {
-  netflix:       'Movie',
+  netflix:       'Series',
   max:           'Series',
-  primevideo:    'Movie',
+  primevideo:    'Series',
   disneyplus:    'Movie',
   paramountplus: 'Series',
   appletv:       'Movie',
 };
 
 const HERO_ID: Record<PreferredProviderKey, number> = {
-  netflix:       438631,
+  netflix:       66732,
   max:           94997,
-  primevideo:    438631,
-  disneyplus:    671,
-  paramountplus: 58832,
+  primevideo:    71593,
+  disneyplus:    1084242,
+  paramountplus: 73586,
   appletv:       438631,
 };
 
 const HERO_RATING: Record<PreferredProviderKey, string> = {
-  netflix:       '8.6',
+  netflix:       '8.7',
   max:           '8.4',
   primevideo:    '8.6',
   disneyplus:    '7.6',
-  paramountplus: '6.6',
+  paramountplus: '8.6',
   appletv:       '8.6',
 };
 
