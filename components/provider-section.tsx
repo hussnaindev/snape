@@ -6,6 +6,7 @@ import { ProviderCard, type MediaItem } from './provider-card';
 import Link from 'next/link';
 
 const BACKDROP_ART: Partial<Record<PreferredProviderKey, string>> = {
+  netflix: '/backdrop-netflix.avif',
   max: '/backdrop-max.avif',
   paramountplus: '/backdrop-paramountplus.avif',
   disneyplus: '/backdrop-disneyplus.avif',
@@ -13,6 +14,10 @@ const BACKDROP_ART: Partial<Record<PreferredProviderKey, string>> = {
 
 const BACKDROP_ART_SIZE: Partial<Record<PreferredProviderKey, string>> = {
   paramountplus: 'h-[500px] sm:h-[860px] w-[88%] sm:w-[76%]',
+};
+
+const BACKDROP_ART_RIGHT: Partial<Record<PreferredProviderKey, string>> = {
+  netflix: '-right-10 sm:-right-32',
 };
 
 const LOGO_SIZE: Record<PreferredProviderKey, { h: string; w: string }> = {
@@ -101,13 +106,14 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
   const logo = LOGO_SIZE[providerKey];
   const backdropArt = BACKDROP_ART[providerKey] ?? '/test-character.avif';
   const backdropArtSize = BACKDROP_ART_SIZE[providerKey] ?? 'h-[440px] sm:h-[610px] w-[72%] sm:w-[62%]';
+  const backdropArtRight = BACKDROP_ART_RIGHT[providerKey] ?? 'right-0';
 
   return (
     <section className="relative pt-12 sm:pt-[180px]">
 
       {/* ── Character art — billboard style, pops above section, aligns with cards ── */}
       <div
-        className={`absolute top-[-56px] sm:top-[-80px] right-0 ${backdropArtSize} pointer-events-none z-10`}
+        className={`absolute top-[-56px] sm:top-[-80px] ${backdropArtRight} ${backdropArtSize} pointer-events-none z-10`}
         style={{ maskImage: 'linear-gradient(to right, transparent 8%, black 42%)' }}
       >
         <Image
