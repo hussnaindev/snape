@@ -205,7 +205,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <span
-              className="text-white/70 font-medium"
+              className="hidden sm:inline text-white/70 font-medium"
               style={{
                 fontSize: 11,
                 border: '1px solid rgba(255,255,255,0.35)',
@@ -216,7 +216,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
               {HERO_TYPE[providerKey]}
             </span>
             <span
-              className="text-white/70 font-medium"
+              className="hidden sm:inline text-white/70 font-medium"
               style={{
                 fontSize: 11,
                 border: '1px solid rgba(255,255,255,0.35)',
@@ -249,16 +249,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
               {HERO_RUNTIME[providerKey]}
             </span>
           </div>
-
-          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-            {HERO_AWARD[providerKey] && (
-              <span className="text-white/70 font-medium" style={{ fontSize: 11 }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="inline-block mr-1 -mt-0.5">
-                  <path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4zM7 4H5a2 2 0 0 0-2 2v1a3 3 0 0 0 3 3M17 4h2a2 2 0 0 1 2 2v1a3 3 0 0 1-3 3"/>
-                </svg>
-                {HERO_AWARD[providerKey]}
-              </span>
-            )}
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <span className="text-white/70 font-medium" style={{ fontSize: 11 }}>
               HD
             </span>
@@ -275,7 +266,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
                   alt="Rotten Tomatoes"
                   width={13}
                   height={13}
-                  className="object-contain"
+                  className="inline object-contain"
                 />
                 {HERO_RT[providerKey].score}%
               </span>
@@ -283,10 +274,25 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
           </div>
 
           {HERO_OVERVIEW[providerKey] && (
-            <p className="hidden sm:block text-white/60 text-sm leading-snug max-w-[400px]" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            <p
+              className="hero-desc text-white/60 text-sm leading-snug max-w-[400px]"
+              style={{
+                display: 'none',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}
+            >
               {HERO_OVERVIEW[providerKey]}
             </p>
           )}
+          <style>{`
+            @media (min-width: 640px) {
+              .hero-desc {
+                display: -webkit-box !important;
+              }
+            }
+          `}</style>
 
           <div className="flex gap-2 sm:gap-3">
             <Link
