@@ -20,28 +20,28 @@ export function Banner() {
         className="absolute inset-0"
         style={{
           background:
-            'linear-gradient(180deg, #070b08 0%, rgba(7,11,8,0.6) 25%, transparent 50%, transparent 100%)',
+            'linear-gradient(180deg, #070b08 0%, rgba(7,11,8,0.6) 25%, transparent 50%, #070b08 100%)',
         }}
       />
 
       <div className="absolute bottom-0 left-0 right-0 px-4 pb-8">
         <h2
-          className="text-white font-bold mb-3 leading-tight"
+          className="text-white font-bold mb-2 leading-tight sm:mb-3"
           style={{
             fontFamily:
               '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif',
-            fontSize: '1.75rem',
+            fontSize: 'clamp(1.125rem, 5vw, 1.75rem)',
             letterSpacing: '-0.5px',
           }}
         >
           Watch anything. Completely free.
         </h2>
         <p
-          className="text-white/80 mb-5 leading-relaxed"
+          className="text-white/80 mb-4 leading-snug sm:mb-5 sm:leading-relaxed"
           style={{
             fontFamily:
               '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif',
-            fontSize: '1rem',
+            fontSize: 'clamp(0.8125rem, 3.5vw, 1rem)',
           }}
         >
           Thousands of movies and shows, streaming instantly. New releases every week.
