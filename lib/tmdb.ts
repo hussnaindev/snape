@@ -107,6 +107,24 @@ export async function getMoviesByGenre(
   });
 }
 
+export async function getMoviesByProvider(providerId: number, region = 'US'): Promise<TMDBMovie[]> {
+  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>('/discover/movie', {
+    with_watch_providers: String(providerId),
+    watch_region: region,
+    sort_by: 'popularity.desc',
+  });
+  return data.results;
+}
+
+export async function getSeriesByProvider(providerId: number, region = 'US'): Promise<TMDBSeries[]> {
+  const data = await tmdbFetch<TMDBListResult<TMDBSeries>>('/discover/tv', {
+    with_watch_providers: String(providerId),
+    watch_region: region,
+    sort_by: 'popularity.desc',
+  });
+  return data.results;
+}
+
 export async function getBollywoodMovies(page = 1): Promise<TMDBMovie[]> {
   const data = await tmdbFetch<TMDBListResult<TMDBMovie>>('/discover/movie', {
     with_original_language: 'hi',
