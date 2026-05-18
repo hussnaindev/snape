@@ -129,8 +129,8 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
           />
         </div>
 
-        {/* Top vignette */}
-        <div className="absolute inset-x-0 top-0 h-1/4 bg-gradient-to-b from-black/45 to-transparent" />
+        {/* Top vignette — exact page-bg color so section top is invisible against page */}
+        <div className="absolute inset-x-0 top-0 h-1/5 bg-gradient-to-b from-[#070b08] to-transparent" />
         {/* Bottom fade into page bg */}
         <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-[#070b08] via-[#070b08]/60 to-transparent" />
 
@@ -182,7 +182,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
       </div>
 
       {/* ── Card carousel ── */}
-      <div className="-mt-14 sm:-mt-20 relative z-30 flex gap-1.5 px-5 sm:px-10 overflow-x-auto no-scrollbar pb-6 sm:pb-16 pt-6 sm:pt-8">
+      <div className="-mt-14 sm:-mt-20 relative z-30 flex gap-1.5 px-5 sm:px-10 overflow-x-auto no-scrollbar pb-2 sm:pb-4 pt-4 sm:pt-6">
         {items.map((item, i) => (
           <ProviderCard key={`${item.kind}-${item.id}`} item={item} rank={i + 1} />
         ))}
