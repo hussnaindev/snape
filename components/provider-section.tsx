@@ -3,6 +3,7 @@ import type { PreferredProviderKey } from '@/lib/watch-providers';
 import type { TMDBMovie, TMDBSeries } from '@/types/tmdb';
 import Image from 'next/image';
 import { ProviderCard, type MediaItem } from './provider-card';
+import Link from 'next/link';
 
 const BACKDROP_ART: Partial<Record<PreferredProviderKey, string>> = {
   max: '/backdrop-max.avif',
@@ -11,7 +12,7 @@ const BACKDROP_ART: Partial<Record<PreferredProviderKey, string>> = {
 };
 
 const BACKDROP_ART_SIZE: Partial<Record<PreferredProviderKey, string>> = {
-  paramountplus: 'h-[640px] sm:h-[860px] w-[88%] sm:w-[76%]',
+  paramountplus: 'h-[500px] sm:h-[860px] w-[88%] sm:w-[76%]',
 };
 
 const LOGO_SIZE: Record<PreferredProviderKey, { h: string; w: string }> = {
@@ -23,32 +24,41 @@ const LOGO_SIZE: Record<PreferredProviderKey, { h: string; w: string }> = {
   appletv:       { h: 'h-[58px] sm:h-[80px]',   w: 'w-[58px] sm:w-[80px]' },
 };
 
-// ── Hardcoded hero data per provider (placeholder — replace later) ──
+// ── Hardcoded hero data per provider ──
 const HERO_TITLE: Record<PreferredProviderKey, string> = {
-  netflix:       'Squid Game',
-  max:           'The Last of Us',
-  primevideo:    'The Boys',
-  disneyplus:    'The Mandalorian',
-  paramountplus: 'Yellowstone',
-  appletv:       'Ted Lasso',
+  netflix:       'Dune',
+  max:           'House of the Dragon',
+  primevideo:    'Dune',
+  disneyplus:    'Harry Potter and the Philosopher\u2019s Stone',
+  paramountplus: 'Naked and Afraid',
+  appletv:       'Dune',
 };
 
 const HERO_TYPE: Record<PreferredProviderKey, 'Series' | 'Movie'> = {
-  netflix:       'Series',
+  netflix:       'Movie',
   max:           'Series',
-  primevideo:    'Series',
-  disneyplus:    'Series',
+  primevideo:    'Movie',
+  disneyplus:    'Movie',
   paramountplus: 'Series',
-  appletv:       'Series',
+  appletv:       'Movie',
+};
+
+const HERO_ID: Record<PreferredProviderKey, number> = {
+  netflix:       438631,
+  max:           94997,
+  primevideo:    438631,
+  disneyplus:    671,
+  paramountplus: 58832,
+  appletv:       438631,
 };
 
 const HERO_RATING: Record<PreferredProviderKey, string> = {
   netflix:       '8.6',
-  max:           '8.7',
-  primevideo:    '8.7',
-  disneyplus:    '8.7',
-  paramountplus: '8.6',
-  appletv:       '8.8',
+  max:           '8.4',
+  primevideo:    '8.6',
+  disneyplus:    '7.6',
+  paramountplus: '6.6',
+  appletv:       '8.6',
 };
 
 interface ProviderSectionProps {
@@ -93,7 +103,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
   const backdropArtSize = BACKDROP_ART_SIZE[providerKey] ?? 'h-[440px] sm:h-[610px] w-[72%] sm:w-[62%]';
 
   return (
-    <section className="relative pt-[128px] sm:pt-[180px]">
+    <section className="relative pt-12 sm:pt-[180px]">
 
       {/* ── Character art — billboard style, pops above section, aligns with cards ── */}
       <div
@@ -154,27 +164,27 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
           </div>
 
           <div className="flex gap-2 sm:gap-3">
-            <button
-              type="button"
+            <Link
+              href={HERO_TYPE[providerKey] === 'Movie' ? `/movie/${HERO_ID[providerKey]}` : `/series/${HERO_ID[providerKey]}`}
               className="px-4 sm:px-6 py-1.5 sm:py-2 rounded-full bg-white text-black text-xs sm:text-sm font-semibold hover:bg-white/90 transition-colors flex items-center gap-1.5"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <polygon points="6,4 20,12 6,20" />
               </svg>
               Watch
-            </button>
-            <button
-              type="button"
+            </Link>
+            <Link
+              href={HERO_TYPE[providerKey] === 'Movie' ? `/movie/${HERO_ID[providerKey]}` : `/series/${HERO_ID[providerKey]}`}
               className="px-4 sm:px-6 py-1.5 sm:py-2 rounded-full border border-white/30 text-white text-xs sm:text-sm font-semibold hover:bg-white/10 transition-colors"
             >
               Explore {label}
-            </button>
+            </Link>
           </div>
         </div>
       </div>
 
       {/* ── Card carousel ── */}
-      <div className="-mt-14 sm:-mt-20 relative z-30 flex gap-1.5 px-5 sm:px-10 overflow-x-auto no-scrollbar pb-8 pt-1">
+      <div className="-mt-14 sm:-mt-20 relative z-30 flex gap-1.5 px-5 sm:px-10 overflow-x-auto no-scrollbar pb-2 sm:pb-8 pt-1">
         {items.map((item, i) => (
           <ProviderCard key={`${item.kind}-${item.id}`} item={item} rank={i + 1} />
         ))}
