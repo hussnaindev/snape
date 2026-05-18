@@ -11,16 +11,44 @@ const BACKDROP_ART: Partial<Record<PreferredProviderKey, string>> = {
 };
 
 const BACKDROP_ART_SIZE: Partial<Record<PreferredProviderKey, string>> = {
-  paramountplus: 'h-[600px] sm:h-[820px] w-[85%] sm:w-[72%]',
+  paramountplus: 'h-[640px] sm:h-[860px] w-[88%] sm:w-[76%]',
 };
 
 const LOGO_SIZE: Record<PreferredProviderKey, { h: string; w: string }> = {
-  netflix:       { h: 'h-10 sm:h-14',  w: 'w-[110px] sm:w-[160px]' },
-  primevideo:    { h: 'h-12 sm:h-16',  w: 'w-[185px] sm:w-[250px]' },
-  disneyplus:    { h: 'h-10 sm:h-14',  w: 'w-[130px] sm:w-[175px]' },
-  max:           { h: 'h-8 sm:h-12',   w: 'w-[70px] sm:w-[100px]' },
-  paramountplus: { h: 'h-12 sm:h-16',  w: 'w-[195px] sm:w-[260px]' },
-  appletv:       { h: 'h-10 sm:h-14',  w: 'w-[150px] sm:w-[200px]' },
+  netflix:       { h: 'h-[30px] sm:h-[42px]',   w: 'w-[111px] sm:w-[155px]' },
+  primevideo:    { h: 'h-[90px] sm:h-[130px]',   w: 'w-[90px] sm:w-[130px]' },
+  disneyplus:    { h: 'h-[38px] sm:h-[65px]',   w: 'w-[70px] sm:w-[120px]' },
+  max:           { h: 'h-[24px] sm:h-[34px]',   w: 'w-[139px] sm:w-[196px]' },
+  paramountplus: { h: 'h-[58px] sm:h-[80px]',   w: 'w-[58px] sm:w-[80px]' },
+  appletv:       { h: 'h-[58px] sm:h-[80px]',   w: 'w-[58px] sm:w-[80px]' },
+};
+
+// ── Hardcoded hero data per provider (placeholder — replace later) ──
+const HERO_TITLE: Record<PreferredProviderKey, string> = {
+  netflix:       'Squid Game',
+  max:           'The Last of Us',
+  primevideo:    'The Boys',
+  disneyplus:    'The Mandalorian',
+  paramountplus: 'Yellowstone',
+  appletv:       'Ted Lasso',
+};
+
+const HERO_TYPE: Record<PreferredProviderKey, 'Series' | 'Movie'> = {
+  netflix:       'Series',
+  max:           'Series',
+  primevideo:    'Series',
+  disneyplus:    'Series',
+  paramountplus: 'Series',
+  appletv:       'Series',
+};
+
+const HERO_RATING: Record<PreferredProviderKey, string> = {
+  netflix:       '8.6',
+  max:           '8.7',
+  primevideo:    '8.7',
+  disneyplus:    '8.7',
+  paramountplus: '8.6',
+  appletv:       '8.8',
 };
 
 interface ProviderSectionProps {
@@ -62,33 +90,26 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
 
   const logo = LOGO_SIZE[providerKey];
   const backdropArt = BACKDROP_ART[providerKey] ?? '/test-character.avif';
-  const backdropArtSize = BACKDROP_ART_SIZE[providerKey] ?? 'h-[428px] sm:h-[600px] w-[60%] sm:w-[52%]';
-
-  /*
-   * 70 / 30 split: 70% of the art sits inside the backdrop, 30% bleeds above.
-   * Backdrop: 300px mobile / 420px desktop
-   * Art height = backdrop / 0.7  →  ~429px / 600px
-   * Bleed (section pt) = art * 0.3  →  ~129px / 180px
-   */
+  const backdropArtSize = BACKDROP_ART_SIZE[providerKey] ?? 'h-[440px] sm:h-[610px] w-[72%] sm:w-[62%]';
 
   return (
     <section className="relative pt-[128px] sm:pt-[180px]">
 
-      {/* ── Character art — absolute to section, bleeds 30% above backdrop ── */}
+      {/* ── Character art — billboard style, pops above section, aligns with cards ── */}
       <div
-        className={`absolute top-0 right-0 ${backdropArtSize} pointer-events-none z-10`}
-        style={{ maskImage: 'linear-gradient(to right, transparent 0%, black 45%)' }}
+        className={`absolute top-[-56px] sm:top-[-80px] right-0 ${backdropArtSize} pointer-events-none z-10`}
+        style={{ maskImage: 'linear-gradient(to right, transparent 8%, black 42%)' }}
       >
         <Image
           src={backdropArt}
           alt=""
           fill
-          sizes="(max-width: 640px) 60vw, 52vw"
-          className="object-contain object-right-bottom"
-          style={{ filter: 'drop-shadow(-28px 0 48px rgba(0,0,0,0.85))' }}
+          sizes="(max-width: 640px) 70vw, 60vw"
+          className="object-contain object-right-bottom scale-105"
+          style={{ filter: 'drop-shadow(-32px 0 56px rgba(0,0,0,0.9))' }}
         />
-        {/* Bottom feather */}
-        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#070b08] to-transparent" />
+        {/* Bottom feather into cards */}
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#070b08] to-transparent" />
       </div>
 
       {/* ── Backdrop — single seamless gradient, no separate overlay divs ── */}
@@ -105,8 +126,8 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
         {/* Bottom fade into page bg */}
         <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-[#070b08] via-[#070b08]/60 to-transparent" />
 
-        {/* Provider logo — upper-left */}
-        <div className="absolute left-6 sm:left-12 top-1/4 -translate-y-1/2 z-20">
+        {/* Provider hero — upper-left */}
+        <div className="absolute left-6 sm:left-12 top-[41%] -translate-y-1/2 z-20 flex flex-col items-start gap-3 sm:gap-4">
           <div className={`relative ${logo.h} ${logo.w}`}>
             <Image
               src={assetPath}
@@ -114,6 +135,40 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
               fill
               className="object-contain object-left [filter:brightness(0)_invert(1)]"
             />
+          </div>
+
+          <p className="text-white text-sm sm:text-lg font-semibold leading-tight max-w-[200px] sm:max-w-[300px]">
+            {HERO_TITLE[providerKey]}
+          </p>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-semibold text-white/70 bg-white/10 rounded-full px-2.5 py-0.5">
+              {HERO_TYPE[providerKey]}
+            </span>
+            <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-semibold text-white/70 bg-white/10 rounded-full px-2.5 py-0.5">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <polygon points="12,2 15,10 24,10 17,16 19,24 12,19 5,24 7,16 0,10 9,10" />
+              </svg>
+              {HERO_RATING[providerKey]}
+            </span>
+          </div>
+
+          <div className="flex gap-2 sm:gap-3">
+            <button
+              type="button"
+              className="px-4 sm:px-6 py-1.5 sm:py-2 rounded-full bg-white text-black text-xs sm:text-sm font-semibold hover:bg-white/90 transition-colors flex items-center gap-1.5"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <polygon points="6,4 20,12 6,20" />
+              </svg>
+              Watch
+            </button>
+            <button
+              type="button"
+              className="px-4 sm:px-6 py-1.5 sm:py-2 rounded-full border border-white/30 text-white text-xs sm:text-sm font-semibold hover:bg-white/10 transition-colors"
+            >
+              Explore {label}
+            </button>
           </div>
         </div>
       </div>
