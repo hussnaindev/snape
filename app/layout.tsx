@@ -68,7 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <meta name="theme-color" content="#000000" />
       </head>
-      <body className="min-h-screen bg-black text-white antialiased">
+      <body className="min-h-screen bg-black text-white antialiased overflow-x-hidden">
         <NextTopLoader color="#ffffff" height={2} showSpinner={false} />
         <FullStoryInit />
         <PwaInstallPrompt />
