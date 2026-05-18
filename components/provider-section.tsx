@@ -46,7 +46,7 @@ const HERO_TYPE: Record<PreferredProviderKey, 'Series' | 'Movie'> = {
 const HERO_ID: Record<PreferredProviderKey, number> = {
   netflix:       66732,
   max:           94997,
-  primevideo:    71593,
+  primevideo:    76479,
   disneyplus:    84958,
   paramountplus: 73586,
   appletv:       438631,
