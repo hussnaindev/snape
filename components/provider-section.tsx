@@ -7,17 +7,19 @@ import Link from 'next/link';
 
 const BACKDROP_ART: Partial<Record<PreferredProviderKey, string>> = {
   netflix: '/backdrop-netflix.avif',
+  primevideo: '/backdrop-primevideo.avif',
   max: '/backdrop-max.avif',
   paramountplus: '/backdrop-paramountplus.avif',
   disneyplus: '/backdrop-disneyplus.avif',
 };
 
-const BACKDROP_ART_SIZE: Partial<Record<PreferredProviderKey, string>> = {
-  paramountplus: 'h-[500px] sm:h-[860px] w-[88%] sm:w-[76%]',
-};
+const BACKDROP_ART_SIZE: Partial<Record<PreferredProviderKey, string>> = {};
 
 const BACKDROP_ART_RIGHT: Partial<Record<PreferredProviderKey, string>> = {
   netflix: '-right-10 sm:-right-32',
+  primevideo: '-right-10 sm:-right-32',
+  disneyplus: '-right-10 sm:-right-32',
+  paramountplus: '-right-10 sm:-right-32',
 };
 
 const LOGO_SIZE: Record<PreferredProviderKey, { h: string; w: string }> = {
