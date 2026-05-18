@@ -97,6 +97,8 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
 
   const logo = LOGO_SIZE[providerKey];
   const backdropArt = BACKDROP_ART[providerKey] ?? '/test-character.avif';
+  const backdropArtTranslate = { netflix: 'sm:translate-x-32', primevideo: 'sm:translate-x-32', paramountplus: 'sm:translate-x-32', disneyplus: ' sm:translate-x-0' } as Partial<Record<PreferredProviderKey, string>>;
+  const artTranslate = backdropArtTranslate[providerKey] ?? '';
 
   return (
     <section className="relative">
@@ -114,7 +116,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
 
         {/* Character art — clipped naturally by overflow-hidden */}
         <div
-          className={`absolute inset-y-0 right-0 w-3/5 sm:w-[62%] pointer-events-none ${providerKey !== 'max' && providerKey !== 'appletv' ? 'sm:translate-x-32' : ''}`}
+          className={`absolute inset-y-0 right-0 ${providerKey === 'disneyplus' ? 'w-5/5 sm:w-[62%]' : 'w-3/5 sm:w-[62%]'} pointer-events-none ${artTranslate}`}
           style={{ maskImage: 'linear-gradient(to right, transparent 8%, black 42%)' }}
         >
           <Image
