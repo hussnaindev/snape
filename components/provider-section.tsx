@@ -182,7 +182,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
       </div>
 
       {/* ── Card carousel ── */}
-      <div className="-mt-14 sm:-mt-20 relative z-30 flex gap-1.5 px-5 sm:px-10 overflow-x-auto no-scrollbar pb-2 sm:pb-8 pt-1">
+      <div className="-mt-14 sm:-mt-20 relative z-30 flex gap-1.5 px-5 sm:px-10 overflow-x-auto no-scrollbar pb-6 sm:pb-16 pt-6 sm:pt-8">
         {items.map((item, i) => (
           <ProviderCard key={`${item.kind}-${item.id}`} item={item} rank={i + 1} />
         ))}

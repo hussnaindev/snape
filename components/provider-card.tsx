@@ -32,7 +32,7 @@ export function ProviderCard({ item, rank }: ProviderCardProps) {
     <Link
       href={href}
       prefetch={false}
-      className="group relative flex-none w-[130px] sm:w-[175px] overflow-hidden rounded-2xl bg-white/5 transition-all duration-300 ease-out hover:scale-[1.04] hover:shadow-[0_14px_40px_rgba(0,0,0,0.8)] hover:z-10"
+      className="group relative flex-none w-[130px] sm:w-[175px] overflow-hidden rounded-2xl bg-white/5 transition-all duration-300 ease-out -translate-y-3 ring-1 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] hover:scale-[1.04] hover:-translate-y-5 hover:ring-white/35 hover:shadow-[0_12px_36px_rgba(255,255,255,0.13)] hover:z-10"
     >
       <div className="aspect-[2/3] relative overflow-hidden">
         {poster ? (
