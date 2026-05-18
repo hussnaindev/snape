@@ -49,6 +49,15 @@ const HERO_ID: Record<PreferredProviderKey, number> = {
   appletv:       438631,
 };
 
+const HERO_OVERVIEW: Partial<Record<PreferredProviderKey, string>> = {
+  netflix:       'When a young boy vanishes, a small town uncovers a mystery involving secret experiments, terrifying supernatural forces, and one strange little girl.',
+  max:           'The Targaryen dynasty is at the absolute apex of its power, with more than 15 dragons under their yoke. Most empires crumble from such heights. In the case of the Targaryens, their slow fall begins when King Viserys breaks with a century of tradition by naming his daughter Rhaenyra heir to the Iron Throne. But when Viserys later fathers a son, the court is shocked when Rhaenyra retains her status as his heir, and seeds of division sow friction across the realm.',
+  primevideo:    'A group of vigilantes known informally as "The Boys" set out to take down corrupt superheroes with no more than blue-collar grit and a willingness to fight dirty.',
+  disneyplus:    'After stealing the Tesseract during the events of "Avengers: Endgame," an alternate version of Loki is brought to the mysterious Time Variance Authority, a bureaucratic organization that exists outside of time and space and monitors the timeline. They give Loki a choice: face being erased from existence due to being a "time variant" or help fix the timeline and stop a greater threat.',
+  paramountplus:  'Follow the violent world of the Dutton family, who controls the largest contiguous ranch in the United States. Led by their patriarch John Dutton, the family defends their property against constant attack by land developers, an Indian reservation, and America\'s first National Park.',
+  appletv:       'Paul Atreides, a brilliant and gifted young man born into a great destiny beyond his understanding, must travel to the most dangerous planet in the universe to ensure the future of his family and his people. As malevolent forces explode into conflict over the planet\'s exclusive supply of the most precious resource in existence - a commodity capable of unlocking humanity\'s greatest potential - only those who can conquer their fear will survive.',
+};
+
 const HERO_RATING: Record<PreferredProviderKey, string> = {
   netflix:       '8.7',
   max:           '8.4',
@@ -56,6 +65,51 @@ const HERO_RATING: Record<PreferredProviderKey, string> = {
   disneyplus:    '8.5',
   paramountplus: '8.6',
   appletv:       '8.6',
+};
+
+const HERO_YEAR: Partial<Record<PreferredProviderKey, string>> = {
+  netflix:       '2016',
+  max:           '2022',
+  primevideo:    '2019',
+  disneyplus:    '2021',
+  paramountplus: '2018',
+  appletv:       '2021',
+};
+
+const HERO_GENRE: Partial<Record<PreferredProviderKey, string>> = {
+  netflix:       'Sci-Fi Fantasy',
+  max:           'Fantasy Drama',
+  primevideo:    'Action Comedy',
+  disneyplus:    'Action Adventure',
+  paramountplus: 'Western Drama',
+  appletv:       'Sci-Fi Adventure',
+};
+
+const HERO_AWARD: Partial<Record<PreferredProviderKey, string>> = {
+  netflix:       'Emmy Winner',
+  max:           'Emmy Winner',
+  primevideo:    'Emmy Winner',
+  disneyplus:    'Emmy Winner',
+  paramountplus: 'Oscar Winner',
+  appletv:       'Oscar Winner',
+};
+
+const HERO_RT: Partial<Record<PreferredProviderKey, { score: number; isFresh: boolean }>> = {
+  netflix:       { score: 90, isFresh: true },
+  max:           { score: 87, isFresh: true },
+  primevideo:    { score: 93, isFresh: true },
+  disneyplus:    { score: 87, isFresh: true },
+  paramountplus: { score: 83, isFresh: true },
+  appletv:       { score: 83, isFresh: true },
+};
+
+const HERO_RUNTIME: Partial<Record<PreferredProviderKey, string>> = {
+  netflix:       '5 Seasons',
+  max:           '2 Seasons',
+  primevideo:    '5 Seasons',
+  disneyplus:    '2 Seasons',
+  paramountplus: '5 Seasons',
+  appletv:       '2h 35m',
 };
 
 interface ProviderSectionProps {
@@ -149,17 +203,90 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
             {HERO_TITLE[providerKey]}
           </p>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-semibold text-white/70 bg-white/10 rounded-full px-2.5 py-0.5">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <span
+              className="text-white/70 font-medium"
+              style={{
+                fontSize: 11,
+                border: '1px solid rgba(255,255,255,0.35)',
+                borderRadius: 20,
+                padding: '2px 10px',
+              }}
+            >
               {HERO_TYPE[providerKey]}
             </span>
-            <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-semibold text-white/70 bg-white/10 rounded-full px-2.5 py-0.5">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <span
+              className="text-white/70 font-medium"
+              style={{
+                fontSize: 11,
+                border: '1px solid rgba(255,255,255,0.35)',
+                borderRadius: 20,
+                padding: '2px 10px',
+              }}
+            >
+              {HERO_GENRE[providerKey]}
+            </span>
+            <span
+              className="text-white/70 font-medium"
+              style={{
+                fontSize: 11,
+                border: '1px solid rgba(255,255,255,0.35)',
+                borderRadius: 20,
+                padding: '2px 10px',
+              }}
+            >
+              {HERO_YEAR[providerKey]}
+            </span>
+            <span
+              className="text-white/70 font-medium"
+              style={{
+                fontSize: 11,
+                border: '1px solid rgba(255,255,255,0.35)',
+                borderRadius: 20,
+                padding: '2px 10px',
+              }}
+            >
+              {HERO_RUNTIME[providerKey]}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            {HERO_AWARD[providerKey] && (
+              <span className="text-white/70 font-medium" style={{ fontSize: 11 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="inline-block mr-1 -mt-0.5">
+                  <path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4zM7 4H5a2 2 0 0 0-2 2v1a3 3 0 0 0 3 3M17 4h2a2 2 0 0 1 2 2v1a3 3 0 0 1-3 3"/>
+                </svg>
+                {HERO_AWARD[providerKey]}
+              </span>
+            )}
+            <span className="text-white/70 font-medium" style={{ fontSize: 11 }}>
+              HD
+            </span>
+            <span className="text-white/70 font-medium" style={{ fontSize: 11 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="inline-block mr-0.5 -mt-0.5">
                 <polygon points="12,2 15,10 24,10 17,16 19,24 12,19 5,24 7,16 0,10 9,10" />
               </svg>
               {HERO_RATING[providerKey]}
             </span>
+            {HERO_RT[providerKey] && (
+              <span className="inline-flex items-center gap-1 font-medium" style={{ fontSize: 11, color: HERO_RT[providerKey].isFresh ? '#86efac' : '#fca5a5' }}>
+                <Image
+                  src="/fresh-tomato-logo.png"
+                  alt="Rotten Tomatoes"
+                  width={13}
+                  height={13}
+                  className="object-contain"
+                />
+                {HERO_RT[providerKey].score}%
+              </span>
+            )}
           </div>
+
+          {HERO_OVERVIEW[providerKey] && (
+            <p className="hidden sm:block text-white/60 text-sm leading-snug max-w-[400px]" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+              {HERO_OVERVIEW[providerKey]}
+            </p>
+          )}
 
           <div className="flex gap-2 sm:gap-3">
             <Link
