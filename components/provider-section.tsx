@@ -14,17 +14,24 @@ const BACKDROP_ART: Partial<Record<PreferredProviderKey, string>> = {
 };
 
 const BACKDROP_ART_SIZE: Partial<Record<PreferredProviderKey, string>> = {
-  netflix:       'h-[300px] sm:h-[610px] w-[58%] sm:w-[62%]',
-  primevideo:    'h-[300px] sm:h-[610px] w-[58%] sm:w-[62%]',
-  disneyplus:    'h-[300px] sm:h-[610px] w-[58%] sm:w-[62%]',
-  paramountplus: 'h-[300px] sm:h-[610px] w-[58%] sm:w-[62%]',
+  netflix:       'h-96 sm:h-[610px] w-3/5 sm:w-[62%]',
+  primevideo:    'h-96 sm:h-[610px] w-3/5 sm:w-[62%]',
+  disneyplus:    'h-96 sm:h-[610px] w-3/5 sm:w-[62%]',
+  paramountplus: 'h-96 sm:h-[610px] w-3/5 sm:w-[62%]',
 };
 
 const BACKDROP_ART_RIGHT: Partial<Record<PreferredProviderKey, string>> = {
-  netflix: '-right-10 sm:-right-32',
-  primevideo: '-right-10 sm:-right-32',
-  disneyplus: '-right-10 sm:-right-32',
-  paramountplus: '-right-10 sm:-right-32',
+  netflix:       'right-0 sm:-right-32',
+  primevideo:    'right-0 sm:-right-32',
+  disneyplus:    'right-0 sm:-right-32',
+  paramountplus: 'right-0 sm:-right-32',
+};
+
+const BACKDROP_ART_TOP: Partial<Record<PreferredProviderKey, string>> = {
+  netflix:       'top-0 sm:top-[-80px]',
+  primevideo:    'top-0 sm:top-[-80px]',
+  disneyplus:    'top-0 sm:top-[-80px]',
+  paramountplus: 'top-0 sm:top-[-80px]',
 };
 
 const LOGO_SIZE: Record<PreferredProviderKey, { h: string; w: string }> = {
@@ -114,13 +121,14 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
   const backdropArt = BACKDROP_ART[providerKey] ?? '/test-character.avif';
   const backdropArtSize = BACKDROP_ART_SIZE[providerKey] ?? 'h-[440px] sm:h-[610px] w-[72%] sm:w-[62%]';
   const backdropArtRight = BACKDROP_ART_RIGHT[providerKey] ?? 'right-0';
+  const backdropArtTop = BACKDROP_ART_TOP[providerKey] ?? 'top-[-56px] sm:top-[-80px]';
 
   return (
     <section className="relative pt-12 sm:pt-[180px]">
 
       {/* ── Character art — billboard style, pops above section, aligns with cards ── */}
       <div
-        className={`absolute top-[-56px] sm:top-[-80px] ${backdropArtRight} ${backdropArtSize} pointer-events-none z-10`}
+        className={`absolute ${backdropArtTop} ${backdropArtRight} ${backdropArtSize} pointer-events-none z-10`}
         style={{ maskImage: 'linear-gradient(to right, transparent 8%, black 42%)' }}
       >
         <Image
