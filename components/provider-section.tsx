@@ -13,37 +13,15 @@ const BACKDROP_ART: Partial<Record<PreferredProviderKey, string>> = {
   disneyplus: '/backdrop-disneyplus.avif',
 };
 
-const BACKDROP_ART_SIZE: Partial<Record<PreferredProviderKey, string>> = {
-  netflix:       'h-96 sm:h-[610px] w-3/5 sm:w-[62%]',
-  primevideo:    'h-96 sm:h-[610px] w-3/5 sm:w-[62%]',
-  disneyplus:    'h-96 sm:h-[610px] w-3/5 sm:w-[62%]',
-  paramountplus: 'h-96 sm:h-[610px] w-3/5 sm:w-[62%]',
-};
-
-const BACKDROP_ART_RIGHT: Partial<Record<PreferredProviderKey, string>> = {
-  netflix:       'right-0 sm:-right-32',
-  primevideo:    'right-0 sm:-right-32',
-  disneyplus:    'right-0 sm:-right-32',
-  paramountplus: 'right-0 sm:-right-32',
-};
-
-const BACKDROP_ART_TOP: Partial<Record<PreferredProviderKey, string>> = {
-  netflix:       'top-0 sm:top-[-80px]',
-  primevideo:    'top-0 sm:top-[-80px]',
-  disneyplus:    'top-0 sm:top-[-80px]',
-  paramountplus: 'top-0 sm:top-[-80px]',
-};
-
 const LOGO_SIZE: Record<PreferredProviderKey, { h: string; w: string }> = {
-  netflix:       { h: 'h-[30px] sm:h-[42px]',   w: 'w-[111px] sm:w-[155px]' },
-  primevideo:    { h: 'h-[90px] sm:h-[130px]',   w: 'w-[90px] sm:w-[130px]' },
+  netflix:       { h: 'h-[30px] sm:h-[42px]',  w: 'w-[111px] sm:w-[155px]' },
+  primevideo:    { h: 'h-[90px] sm:h-[130px]',  w: 'w-[90px] sm:w-[130px]' },
   disneyplus:    { h: 'h-[38px] sm:h-[65px]',   w: 'w-[70px] sm:w-[120px]' },
   max:           { h: 'h-[24px] sm:h-[34px]',   w: 'w-[139px] sm:w-[196px]' },
   paramountplus: { h: 'h-[58px] sm:h-[80px]',   w: 'w-[58px] sm:w-[80px]' },
   appletv:       { h: 'h-[58px] sm:h-[80px]',   w: 'w-[58px] sm:w-[80px]' },
 };
 
-// ── Hardcoded hero data per provider ──
 const HERO_TITLE: Record<PreferredProviderKey, string> = {
   netflix:       'Stranger Things',
   max:           'House of the Dragon',
@@ -119,43 +97,40 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
 
   const logo = LOGO_SIZE[providerKey];
   const backdropArt = BACKDROP_ART[providerKey] ?? '/test-character.avif';
-  const backdropArtSize = BACKDROP_ART_SIZE[providerKey] ?? 'h-[440px] sm:h-[610px] w-[72%] sm:w-[62%]';
-  const backdropArtRight = BACKDROP_ART_RIGHT[providerKey] ?? 'right-0';
-  const backdropArtTop = BACKDROP_ART_TOP[providerKey] ?? 'top-[-56px] sm:top-[-80px]';
 
   return (
-    <section className="relative pt-12 sm:pt-[180px]">
+    <section className="relative">
 
-      {/* ── Character art — billboard style, pops above section, aligns with cards ── */}
-      <div
-        className={`absolute ${backdropArtTop} ${backdropArtRight} ${backdropArtSize} pointer-events-none z-10`}
-        style={{ maskImage: 'linear-gradient(to right, transparent 8%, black 42%)' }}
-      >
-        <Image
-          src={backdropArt}
-          alt=""
-          fill
-          sizes="(max-width: 640px) 70vw, 60vw"
-          className="object-cover object-top scale-105 sm:object-contain sm:object-right-bottom"
-          style={{ filter: 'drop-shadow(-32px 0 56px rgba(0,0,0,0.9))' }}
-        />
-        {/* Bottom feather into cards */}
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#070b08] to-transparent" />
-      </div>
+      {/* ── Backdrop ── */}
+      <div className="relative h-[300px] sm:h-[560px] overflow-hidden">
 
-      {/* ── Backdrop — single seamless gradient, no separate overlay divs ── */}
-      <div className="relative h-[300px] sm:h-[420px] overflow-hidden">
-        {/* One smooth gradient: dark left → brand colour right. No hard seam. */}
+        {/* Background gradient */}
         <div
           className="absolute inset-0"
           style={{
             background: `linear-gradient(to right, #070b08 0%, #070b08 28%, ${brandColor}30 58%, ${brandColor}55 100%)`,
           }}
         />
+
+        {/* Character art — clipped naturally by overflow-hidden */}
+        <div
+          className={`absolute inset-y-0 right-0 w-3/5 sm:w-[62%] pointer-events-none ${providerKey !== 'max' && providerKey !== 'appletv' ? 'sm:translate-x-32' : ''}`}
+          style={{ maskImage: 'linear-gradient(to right, transparent 8%, black 42%)' }}
+        >
+          <Image
+            src={backdropArt}
+            alt=""
+            fill
+            sizes="(max-width: 640px) 70vw, 60vw"
+            className="object-cover object-top sm:object-contain sm:object-right-bottom"
+            style={{ filter: 'drop-shadow(-32px 0 56px rgba(0,0,0,0.9))' }}
+          />
+        </div>
+
         {/* Top vignette */}
         <div className="absolute inset-x-0 top-0 h-1/4 bg-gradient-to-b from-black/45 to-transparent" />
         {/* Bottom fade into page bg */}
-        <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-[#070b08] via-[#070b08]/60 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-[#070b08] via-[#070b08]/60 to-transparent" />
 
         {/* Provider hero — upper-left */}
         <div className="absolute left-6 sm:left-12 top-[41%] -translate-y-1/2 z-20 flex flex-col items-start gap-3 sm:gap-4">

@@ -38,7 +38,7 @@ export default async function HomePage() {
 
         <ContinueWatchingCarousel hasHistory={hasHistory} />
 
-        <div className="mt-6 flex flex-col">
+        <div className="flex flex-col">
           {providersWithData.map(({ provider, movies, series }) => (
             <ProviderSection
               key={provider.key}
