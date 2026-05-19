@@ -25,6 +25,7 @@ interface Props {
   firstMovieBackdropPath: string | null;
   firstMovieTitle: string | null;
   firstMovieYear: string;
+  firstMovieVoteAverage: number;
 }
 
 export function CollectionDetailHero({
@@ -39,6 +40,7 @@ export function CollectionDetailHero({
   firstMovieBackdropPath,
   firstMovieTitle,
   firstMovieYear,
+  firstMovieVoteAverage,
 }: Props) {
   const [playerActive, setPlayerActive] = useState(false);
   const [playerVisible, setPlayerVisible] = useState(false);
@@ -196,6 +198,7 @@ export function CollectionDetailHero({
             posterPath={firstMoviePosterPath}
             backdropPath={firstMovieBackdropPath}
             year={firstMovieYear}
+            vote_average={firstMovieVoteAverage}
           />
         )}
       </div>

@@ -86,6 +86,7 @@ export default async function SeriesWatchPage({ params, searchParams }: Props) {
         year={series.first_air_date?.slice(0, 4) ?? ''}
         season={resolvedSeasonNum}
         episode={resolvedEpisodeNum}
+        vote_average={series.vote_average}
       />
     </div>
   );

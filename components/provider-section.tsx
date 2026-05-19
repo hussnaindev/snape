@@ -161,7 +161,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
     <section className="relative">
 
       {/* ── Backdrop ── */}
-      <div className="relative h-[300px] sm:h-[560px] overflow-hidden">
+      <div className="relative h-[340px] sm:h-[560px] overflow-hidden">
 
         {/* Background gradient */}
         <div
@@ -196,7 +196,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
             />
           </div>
 
-          <p className="text-white text-sm sm:text-lg font-semibold leading-tight max-w-[200px] sm:max-w-[300px]">
+          <p className="text-base sm:text-3xl font-itc-pioneer leading-tight max-w-[180px] sm:max-w-[340px]" style={{ color: 'black', WebkitTextStroke: `1px ${brandColor}` }}>
             {HERO_TITLE[providerKey]}
           </p>
 
@@ -314,7 +314,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
       </div>
 
       {/* ── Card carousel ── */}
-      <ParallaxCarousel className="-mt-14 sm:-mt-20 relative z-30 flex gap-1.5 px-5 sm:px-10 overflow-x-auto no-scrollbar pb-2 sm:pb-4 pt-4 sm:pt-6">
+      <ParallaxCarousel className="-mt-16 sm:-mt-20 relative z-30 flex gap-1.5 px-5 sm:px-10 overflow-x-auto no-scrollbar pb-3 sm:pb-4 pt-4 sm:pt-6">
         {items.map((item, i) => (
           <ProviderCard key={`${item.kind}-${item.id}`} item={item} rank={i + 1} />
         ))}

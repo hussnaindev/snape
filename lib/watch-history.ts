@@ -9,6 +9,7 @@ export interface WatchHistoryEntry {
   watchedAt: number; // Date.now()
   season?: number;
   episode?: number;
+  vote_average: number;
 }
 
 export const WATCH_HISTORY_MIN_ENTRIES = 1;
@@ -64,6 +65,7 @@ export function addToWatchHistory(entry: Omit<WatchHistoryEntry, 'progress' | 'w
       year: entry.year,
       progress: seededProgress(entry.id),
       watchedAt: Date.now(),
+      vote_average: entry.vote_average ?? 0,
     };
     // Preserve existing season/episode if not provided in new entry
     const season = entry.season ?? existing?.season;

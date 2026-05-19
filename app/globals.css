@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'ITC Pioneer';
+  src: url('/fonts/ITCPioneer.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   /* ── Brand colors ── */
   --color-black: #070b08;
@@ -11,6 +19,12 @@
   --font-body: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-cormorant), ui-serif, Georgia, serif;
   --font-bungee: var(--font-bungee), ui-sans-serif, system-ui, sans-serif;
+  --font-oregano: var(--font-oregano), ui-serif, Georgia, serif;
+  --font-bebas-neue: var(--font-bebas-neue), ui-sans-serif, system-ui, sans-serif;
+  --font-syne: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
+  --font-itc-pioneer: 'ITC Pioneer', ui-serif, Georgia, serif;
+
+
 }
 
 /* ── Keyframes ── */

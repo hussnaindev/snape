@@ -18,6 +18,7 @@ interface Props {
   year: string;
   season?: number;
   episode?: number;
+  vote_average?: number;
 }
 
 export function WatchHistoryRecorder({
@@ -29,6 +30,7 @@ export function WatchHistoryRecorder({
   year,
   season,
   episode,
+  vote_average,
 }: Props) {
   const { state } = useAuth();
   const isAuthenticated = state.status === 'authenticated';
@@ -41,6 +43,7 @@ export function WatchHistoryRecorder({
       posterPath,
       backdropPath,
       year,
+      vote_average: vote_average ?? 0,
     };
     if (season !== undefined) entry.season = season;
     if (episode !== undefined) entry.episode = episode;
@@ -54,7 +57,7 @@ export function WatchHistoryRecorder({
       };
       uploadEntryToServer(serverEntry);
     }
-  }, [id, type, title, posterPath, backdropPath, year, season, episode, isAuthenticated]);
+  }, [id, type, title, posterPath, backdropPath, year, season, episode, vote_average, isAuthenticated]);
 
   return null;
 }

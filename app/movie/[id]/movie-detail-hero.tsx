@@ -365,6 +365,7 @@ export function MovieDetailHero({
             posterPath={posterPath}
             backdropPath={backdropPath}
             year={year}
+            vote_average={rating}
           />
         )}
       </div>

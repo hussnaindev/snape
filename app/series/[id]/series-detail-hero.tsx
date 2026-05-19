@@ -431,6 +431,7 @@ export function SeriesDetailHero({
             year={yearRange.slice(0, 4)}
             season={currentSeason}
             episode={currentEpisode}
+            vote_average={rating}
           />
         )}
 

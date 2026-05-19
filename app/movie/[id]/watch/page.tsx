@@ -54,6 +54,7 @@ export default async function WatchPage({ params }: Props) {
           posterPath={movie.poster_path}
           backdropPath={movie.backdrop_path}
           year={movie.release_date?.slice(0, 4) ?? ''}
+          vote_average={movie.vote_average}
         />
       )}
     </div>

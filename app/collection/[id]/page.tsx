@@ -101,6 +101,7 @@ export default async function CollectionPage({ params }: Props) {
           firstMovieBackdropPath={firstMovie?.backdrop_path ?? null}
           firstMovieTitle={firstMovie?.title ?? null}
           firstMovieYear={firstMovie?.release_date?.slice(0, 4) ?? ''}
+          firstMovieVoteAverage={firstMovie?.vote_average ?? 0}
         />
 
         {/* Movies grid */}

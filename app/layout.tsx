@@ -4,7 +4,7 @@ import { FullStoryInit } from '@/components/fullstory-init';
 import { PwaInstallPrompt } from '@/components/pwa-install-prompt';
 import { APP_NAME } from '@/lib/config';
 import type { Metadata, Viewport } from 'next';
-import { Bungee, Cormorant_Garamond, DM_Sans, Syne } from 'next/font/google';
+import { Bebas_Neue, Bungee, Cormorant_Garamond, DM_Sans, Oregano, Syne } from 'next/font/google';
 import NextTopLoader from 'nextjs-toploader';
 import './globals.css';
 import { GoogleAnalytics } from '@next/third-parties/google';
@@ -38,6 +38,20 @@ const cormorantGaramond = Cormorant_Garamond({
   display: 'swap',
 });
 
+const oregano = Oregano({
+  subsets: ['latin'],
+  weight: ['400'],
+  variable: '--font-oregano',
+  display: 'swap',
+});
+
+const bebasNeue = Bebas_Neue({
+  subsets: ['latin'],
+  weight: ['400'],
+  variable: '--font-bebas-neue',
+  display: 'swap',
+});
+
 export const viewport: Viewport = {
   viewportFit: 'cover',
   width: 'device-width',
@@ -63,7 +77,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${dmSans.variable} ${cormorantGaramond.variable} ${bungee.variable} ${syne.variable}`}
+      className={`${dmSans.variable} ${cormorantGaramond.variable} ${bungee.variable} ${syne.variable} ${oregano.variable} ${bebasNeue.variable}`}
     >
       <head>
         <meta name="theme-color" content="#000000" />
