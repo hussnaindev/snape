@@ -68,11 +68,6 @@
   }
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-18px); }
-}
-
 @keyframes slide-in-right {
   from { transform: translateX(100%); }
   to { transform: translateX(0); }
@@ -112,10 +107,6 @@
   animation: snake-spin 1.3s linear infinite;
   transform-box: fill-box;
   transform-origin: center;
-}
-
-@utility animate-float {
-  animation: float 6s ease-in-out infinite;
 }
 
 @utility animate-slide-in-right {

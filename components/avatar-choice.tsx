@@ -11,12 +11,6 @@ export const PRESET_AVATARS = [
   '/avatar5.png',
 ] as const;
 
-export type PresetAvatarUrl = (typeof PRESET_AVATARS)[number];
-
-export function isPresetAvatarUrl(v: string): v is PresetAvatarUrl {
-  return (PRESET_AVATARS as readonly string[]).includes(v);
-}
-
 export function AvatarChoice({
   value,
   onChange,
