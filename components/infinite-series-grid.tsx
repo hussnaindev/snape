@@ -126,7 +126,7 @@ export function InfiniteSeriesGrid({
 
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 px-4 md:px-8">
+      <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 px-4 md:px-8">
         {series.map((s) => (
           <SeriesCard key={s.id} series={s} imageSize="w1280" />
         ))}

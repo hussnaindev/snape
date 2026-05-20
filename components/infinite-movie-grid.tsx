@@ -150,7 +150,7 @@ export function InfiniteMovieGrid(props: InfiniteMovieGridProps) {
 
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 px-4 md:px-8">
+      <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 px-4 md:px-8">
         {movies.map((movie) => (
           <MovieCard key={movie.id} movie={movie} imageSize="w1280" />
         ))}

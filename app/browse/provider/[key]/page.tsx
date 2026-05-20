@@ -47,7 +47,7 @@ export default async function ProviderBrowsePage({ params }: Props) {
           </div>
         )}
         {filteredMovies.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 px-4 md:px-8">
+          <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 px-4 md:px-8">
             {filteredMovies.map((movie) => (
               <MovieCard key={movie.id} movie={movie} imageSize="w1280" />
             ))}
@@ -60,7 +60,7 @@ export default async function ProviderBrowsePage({ params }: Props) {
           </div>
         )}
         {filteredSeries.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 px-4 md:px-8">
+          <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 px-4 md:px-8">
             {filteredSeries.map((s) => (
               <SeriesCard key={s.id} series={s} imageSize="w1280" />
             ))}
