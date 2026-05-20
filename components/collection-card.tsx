@@ -16,7 +16,7 @@ export function CollectionCard({ collection, className }: CollectionCardProps) {
     <Link
       href={`/collection/${collection.id}`}
       prefetch={false}
-      className={`group relative block overflow-hidden rounded-md sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] transition-all duration-300 ease-out hover:-translate-y-1 hover:ring-white/35 hover:shadow-[0_12px_36px_rgba(255,255,255,0.13)] hover:z-10 ${className ?? ''}`}
+      className={`group relative block overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] transition-all duration-300 ease-out hover:-translate-y-1 hover:ring-white/35 hover:shadow-[0_12px_36px_rgba(255,255,255,0.13)] hover:z-10 ${className ?? ''}`}
     >
       {/* Mobile: Poster (portrait) */}
       <div className="aspect-[2/3] overflow-hidden sm:hidden relative">
@@ -49,8 +49,12 @@ export function CollectionCard({ collection, className }: CollectionCardProps) {
             </svg>
           </div>
         </div>
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2">
-          <p className="text-white text-[11px] font-medium leading-tight line-clamp-2 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+        {/* Mobile: title + type badge */}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent px-2.5 pt-8 pb-2.5">
+          <span className="text-[8px] font-semibold tracking-widest uppercase text-white/45 block mb-0.5">
+            Collection
+          </span>
+          <p className="text-white text-[11px] font-medium line-clamp-2 leading-snug">
             {collection.name}
           </p>
         </div>
