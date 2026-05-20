@@ -99,8 +99,11 @@ function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
           </div>
         </div>
 
-        {/* Bottom gradient — type badge + rating */}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent pl-4 pr-2.5 pt-8 pb-2.5">
+        {/* Bottom gradient — title + type badge + rating */}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent px-4 pt-8 pb-2.5">
+          <p className="text-[16px] tracking-wide leading-tight truncate max-w-[200px] text-white mb-1">
+            {entry.title}
+          </p>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <span className="text-[10px] font-semibold tracking-widest uppercase text-white/50">
               {entry.type === 'movie' ? 'Film' : 'Series'}
@@ -114,13 +117,6 @@ function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
         {/* Progress bar */}
         <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/20">
           <div className="h-full bg-gradient-to-r from-red-900 via-[#E50914] to-red-400" style={{ width: `${entry.progress}%` }} />
-        </div>
-
-        {/* Bottom right — title */}
-        <div className="absolute bottom-0 right-0 px-2.5 pb-2.5 pointer-events-none z-10">
-          <p className="text-[20px] font-itc-pioneer tracking-wide leading-tight truncate max-w-[160px] text-right" style={{ color: 'white' }}>
-            {entry.title}
-          </p>
         </div>
       </div>
     </Link>
