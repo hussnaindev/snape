@@ -167,9 +167,9 @@ function buildSearchQueryVariants(query: string): string[] {
   return variants;
 }
 
-async function searchTmdbListWithFallback<T>(endpoint: string, query: string): Promise<T[]> {
+async function searchTmdbListWithFallback<T>(endpoint: string, query: string, includeAdult = false): Promise<T[]> {
   for (const q of buildSearchQueryVariants(query)) {
-    const data = await tmdbFetch<TMDBListResult<T>>(endpoint, { query: q, page: '1' }, 600);
+    const data = await tmdbFetch<TMDBListResult<T>>(endpoint, { query: q, page: '1', include_adult: String(includeAdult) }, 600);
     if (data.results.length > 0) return data.results;
   }
   return [];
@@ -181,11 +181,12 @@ export async function searchMovies(
   query: string,
   page = 1,
   resolvedQuery?: string,
+  includeAdult = true,
 ): Promise<SearchPagedResult<TMDBMovie>> {
   if (resolvedQuery) {
     const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(
       '/search/movie',
-      { query: resolvedQuery, page: String(page) },
+      { query: resolvedQuery, page: String(page), include_adult: String(includeAdult) },
       600,
     );
     // Filter out collections that may appear in movie search
@@ -198,7 +199,7 @@ export async function searchMovies(
   for (const variant of buildSearchQueryVariants(query)) {
     const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(
       '/search/movie',
-      { query: variant, page: '1' },
+      { query: variant, page: '1', include_adult: String(includeAdult) },
       600,
     );
     if (data.results.length > 0) {
@@ -213,11 +214,12 @@ export async function searchTvShows(
   query: string,
   page = 1,
   resolvedQuery?: string,
+  includeAdult = true,
 ): Promise<SearchPagedResult<TMDBSeries>> {
   if (resolvedQuery) {
     const data = await tmdbFetch<TMDBListResult<TMDBSeries>>(
       '/search/tv',
-      { query: resolvedQuery, page: String(page) },
+      { query: resolvedQuery, page: String(page), include_adult: String(includeAdult) },
       600,
     );
     // Filter out collections that may appear in TV search
@@ -230,7 +232,7 @@ export async function searchTvShows(
   for (const variant of buildSearchQueryVariants(query)) {
     const data = await tmdbFetch<TMDBListResult<TMDBSeries>>(
       '/search/tv',
-      { query: variant, page: '1' },
+      { query: variant, page: '1', include_adult: String(includeAdult) },
       600,
     );
     if (data.results.length > 0) {
@@ -241,8 +243,8 @@ export async function searchTvShows(
   return { page: 1, results: [], total_pages: 0, total_results: 0, resolvedQuery: null };
 }
 
-export async function searchPeople(query: string): Promise<TMDBPersonSearchHit[]> {
-  return searchTmdbListWithFallback<TMDBPersonSearchHit>('/search/person', query);
+export async function searchPeople(query: string, includeAdult = true): Promise<TMDBPersonSearchHit[]> {
+  return searchTmdbListWithFallback<TMDBPersonSearchHit>('/search/person', query, includeAdult);
 }
 
 // ── TV Series ────────────────────────────────────────────────────────────────
@@ -326,6 +328,6 @@ export async function getCollection(id: number): Promise<TMDBCollection> {
   return tmdbFetch<TMDBCollection>(`/collection/${id}`);
 }
 
-export async function searchCollections(query: string): Promise<TMDBCollectionSearchHit[]> {
-  return searchTmdbListWithFallback<TMDBCollectionSearchHit>('/search/collection', query);
+export async function searchCollections(query: string, includeAdult = true): Promise<TMDBCollectionSearchHit[]> {
+  return searchTmdbListWithFallback<TMDBCollectionSearchHit>('/search/collection', query, includeAdult);
 }

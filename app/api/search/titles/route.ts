@@ -18,6 +18,7 @@ export async function GET(request: Request) {
   const type = searchParams.get('type');
   const page = parsePositivePageParam(searchParams.get('page'));
   const variant = searchParams.get('variant')?.trim() || undefined;
+  const includeAdult = searchParams.get('adult') !== 'false';
 
   if (!q) {
     return NextResponse.json({ ok: false, error: 'Missing q' }, { status: 400 });
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
 
   try {
     if (type === 'movie') {
-      const data = await searchMovies(q, page, variant);
+      const data = await searchMovies(q, page, variant, includeAdult);
       const results = filterHasImages(data.results);
       return NextResponse.json({
         ok: true,
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
         results,
       });
     }
-    const data = await searchTvShows(q, page, variant);
+    const data = await searchTvShows(q, page, variant, includeAdult);
     const results = filterHasImages(data.results);
     return NextResponse.json({
       ok: true,

@@ -15,13 +15,14 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get('q') ?? '').trim();
   const page = parsePositivePageParam(searchParams.get('page'));
+  const includeAdult = searchParams.get('adult') !== 'false';
 
   if (!q) {
     return NextResponse.json({ ok: false, error: 'Missing q' }, { status: 400 });
   }
 
   try {
-    const results = await searchCollections(q);
+    const results = await searchCollections(q, includeAdult);
     return NextResponse.json({
       ok: true,
       page: 1,
