@@ -125,9 +125,7 @@ function HorizontalDragScroll({ children, className }: { children: ReactNode; cl
     startX: 0,
     lastTranslate: 0,
     currentTranslate: 0,
-    rafId: 0,
     minTranslate: 0,
-    latestPageX: 0,
   });
 
   // Shared logic: start drag (mouse & touch)
@@ -141,23 +139,17 @@ function HorizontalDragScroll({ children, className }: { children: ReactNode; cl
     drag.current.minTranslate = -(el.scrollWidth - el.parentElement!.clientWidth);
   };
 
-  // Shared logic: move drag (throttled via rAF)
+  // Shared logic: move drag (direct write — RAF adds frame latency and misses paints)
   const moveDrag = (pageX: number) => {
     if (!drag.current.isDragging) return;
-    drag.current.latestPageX = pageX; // always capture latest before early-exit
-    if (drag.current.rafId) return;
-    drag.current.rafId = requestAnimationFrame(() => {
-      drag.current.rafId = 0;
-      const el = ref.current;
-      if (!el) return;
-      const delta = drag.current.latestPageX - drag.current.startX;
-      drag.current.currentTranslate = drag.current.lastTranslate + delta;
-      drag.current.currentTranslate = Math.max(
-        drag.current.minTranslate,
-        Math.min(0, drag.current.currentTranslate),
-      );
-      el.style.transform = `translateX(${drag.current.currentTranslate}px)`;
-    });
+    const el = ref.current;
+    if (!el) return;
+    const delta = pageX - drag.current.startX;
+    drag.current.currentTranslate = Math.max(
+      drag.current.minTranslate,
+      Math.min(0, drag.current.lastTranslate + delta),
+    );
+    el.style.transform = `translateX(${drag.current.currentTranslate}px)`;
   };
 
   // Shared logic: end drag
@@ -403,18 +395,18 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
           <div className="flex gap-2 sm:gap-3">
             <Link
               href={HERO_TYPE[providerKey] === 'Movie' ? `/movie/${HERO_ID[providerKey]}` : `/series/${HERO_ID[providerKey]}`}
-              className="px-4 sm:px-6 py-1.5 sm:py-2 rounded-full bg-white text-black text-xs sm:text-sm font-semibold hover:bg-white/90 transition-colors flex items-center gap-1.5"
+              className="relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-12 px-4 md:h-14 md:px-6 min-w-40 border-transparent bg-white text-black backdrop-blur-md lg:hover:bg-white/80 active:bg-white/70"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <polygon points="6,4 20,12 6,20" />
               </svg>
-              Watch
+              <span className="px-2">Watch</span>
             </Link>
             <Link
               href={`/browse/provider/${providerKey}`}
-              className="px-4 sm:px-6 py-1.5 sm:py-2 rounded-full border border-white/70 bg-white/15 text-white text-xs sm:text-sm font-semibold hover:bg-white/25 transition-colors sm:border-white/30 sm:bg-transparent"
+              className="relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-12 px-4 md:h-14 md:px-6 min-w-40 backdrop-blur-md border-white/20 bg-white/2 text-white lg:hover:border-transparent lg:hover:bg-white/20 lg:hover:text-white active:border-transparent active:bg-white/20"
             >
-              Explore {label}
+              <span className="px-2">Explore {label}</span>
             </Link>
           </div>
         </div>

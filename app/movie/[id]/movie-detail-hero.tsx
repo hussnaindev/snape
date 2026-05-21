@@ -441,18 +441,20 @@ export function MovieDetailHero({
               <button
                 type="button"
                 onClick={handleWatchClick}
-                className="inline-flex items-center justify-center gap-2 flex-1 bg-white text-black font-semibold text-sm px-5 py-2 rounded-lg hover:bg-gray-200 transition-colors md:hidden cursor-pointer"
+                className="relative top-0 flex-1 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-12 px-4 min-w-40 border-transparent bg-white text-black backdrop-blur-md lg:hover:bg-white/80 active:bg-white/70 md:hidden"
               >
-                <span>▶</span> Watch
+                <span>▶</span>
+                <span className="px-2">Watch</span>
               </button>
 
               {/* Desktop watch button */}
               <button
                 type="button"
                 onClick={handleWatchClick}
-                className="hidden md:inline-flex items-center gap-2 bg-white text-black font-semibold text-sm px-6 py-2.5 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer"
+                className="relative top-0 hidden md:inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-12 px-4 md:h-14 md:px-6 min-w-40 border-transparent bg-white text-black backdrop-blur-md lg:hover:bg-white/80 active:bg-white/70"
               >
-                <span>▶</span> Watch
+                <span>▶</span>
+                <span className="px-2">Watch</span>
               </button>
 
               <WatchlistButton tmdbId={movieId} mediaType="movie" iconOnly className="md:hidden" />

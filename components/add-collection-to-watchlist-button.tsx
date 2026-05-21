@@ -88,12 +88,12 @@ export function AddCollectionToWatchlistButton({ collection, className, iconOnly
       <Link
         href="/auth/login"
         className={cn(
-          'inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all bg-transparent text-white border-white/30 hover:border-white/60 whitespace-nowrap',
+          'relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-12 px-4 md:h-14 md:px-6 min-w-40 backdrop-blur-md border-white/20 bg-white/2 text-white lg:hover:border-transparent lg:hover:bg-white/20 lg:hover:text-white active:border-transparent active:bg-white/20',
           className,
         )}
       >
         <PlusIcon />
-        Add to Watchlist
+        <span className="px-2">Add to Watchlist</span>
       </Link>
     );
   }
@@ -138,16 +138,16 @@ export function AddCollectionToWatchlistButton({ collection, className, iconOnly
       onClick={handleClick}
       disabled={loading}
       className={cn(
-        'inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all cursor-pointer',
+        'relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-12 px-4 md:h-14 md:px-6 min-w-40 backdrop-blur-md',
         inList
-          ? 'bg-white/10 text-white border-white/30 hover:bg-white/15'
-          : 'bg-transparent text-white border-white/30 hover:border-white/60',
+          ? 'border-white/20 bg-white/20 text-white lg:hover:bg-white/30 active:bg-white/20'
+          : 'border-white/20 bg-white/2 text-white lg:hover:border-transparent lg:hover:bg-white/20 lg:hover:text-white active:border-transparent active:bg-white/20',
         loading && 'opacity-50 cursor-wait',
         className,
       )}
     >
       {inList ? <CheckIcon /> : <PlusIcon />}
-      {inList ? 'In Watchlist' : 'Add to Watchlist'}
+      <span className="px-2">{inList ? 'In Watchlist' : 'Add to Watchlist'}</span>
     </button>
   );
 }
