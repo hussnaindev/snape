@@ -88,7 +88,7 @@ export function AddCollectionToWatchlistButton({ collection, className, iconOnly
       <Link
         href="/auth/login"
         className={cn(
-          'relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-12 px-4 md:h-14 md:px-6 min-w-40 backdrop-blur-md border-white/20 bg-white/2 text-white lg:hover:border-transparent lg:hover:bg-white/20 lg:hover:text-white active:border-transparent active:bg-white/20',
+          'relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-10 px-3 md:h-12 md:px-5 min-w-36 backdrop-blur-md border-white/20 bg-white/2 text-white lg:hover:border-transparent lg:hover:bg-white/20 lg:hover:text-white active:border-transparent active:bg-white/20',
           className,
         )}
       >
@@ -138,7 +138,7 @@ export function AddCollectionToWatchlistButton({ collection, className, iconOnly
       onClick={handleClick}
       disabled={loading}
       className={cn(
-        'relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-12 px-4 md:h-14 md:px-6 min-w-40 backdrop-blur-md',
+        'relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-10 px-3 md:h-12 md:px-5 min-w-36 backdrop-blur-md',
         inList
           ? 'border-white/20 bg-white/20 text-white lg:hover:bg-white/30 active:bg-white/20'
           : 'border-white/20 bg-white/2 text-white lg:hover:border-transparent lg:hover:bg-white/20 lg:hover:text-white active:border-transparent active:bg-white/20',

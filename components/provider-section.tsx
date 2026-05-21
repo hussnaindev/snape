@@ -395,7 +395,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
           <div className="flex gap-2 sm:gap-3">
             <Link
               href={HERO_TYPE[providerKey] === 'Movie' ? `/movie/${HERO_ID[providerKey]}` : `/series/${HERO_ID[providerKey]}`}
-              className="relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-12 px-4 md:h-14 md:px-6 min-w-40 border-transparent bg-white text-black backdrop-blur-md lg:hover:bg-white/80 active:bg-white/70"
+              className="relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-10 px-3 md:h-12 md:px-5 min-w-36 border-transparent bg-white text-black backdrop-blur-md lg:hover:bg-white/80 active:bg-white/70"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <polygon points="6,4 20,12 6,20" />
@@ -404,7 +404,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
             </Link>
             <Link
               href={`/browse/provider/${providerKey}`}
-              className="relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-12 px-4 md:h-14 md:px-6 min-w-40 backdrop-blur-md border-white/20 bg-white/2 text-white lg:hover:border-transparent lg:hover:bg-white/20 lg:hover:text-white active:border-transparent active:bg-white/20"
+              className="relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-10 px-3 md:h-12 md:px-5 min-w-36 backdrop-blur-md border-white/20 bg-white/2 text-white lg:hover:border-transparent lg:hover:bg-white/20 lg:hover:text-white active:border-transparent active:bg-white/20"
             >
               <span className="px-2">Explore {label}</span>
             </Link>

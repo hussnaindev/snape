@@ -473,7 +473,7 @@ export function HeroSection() {
                 <button
                   type="button"
                   onClick={() => handlePrimaryClick(s)}
-                  className="relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-12 px-4 md:h-14 md:px-6 min-w-40 border-transparent bg-white text-black backdrop-blur-md lg:hover:bg-white/80 active:bg-white/70"
+                  className="relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-10 px-3 md:h-12 md:px-5 min-w-36 border-transparent bg-white text-black backdrop-blur-md lg:hover:bg-white/80 active:bg-white/70"
                 >
                   {s.primaryLabel === 'Sign In' ? (
                     <svg
@@ -508,7 +508,7 @@ export function HeroSection() {
                   <button
                     type="button"
                     onClick={() => handleMoreInfoClick(s)}
-                    className="relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-12 px-4 md:h-14 md:px-6 min-w-40 backdrop-blur-md border-white/20 bg-white/2 text-white lg:hover:border-transparent lg:hover:bg-white/20 lg:hover:text-white active:border-transparent active:bg-white/20"
+                    className="relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-10 px-3 md:h-12 md:px-5 min-w-36 backdrop-blur-md border-white/20 bg-white/2 text-white lg:hover:border-transparent lg:hover:bg-white/20 lg:hover:text-white active:border-transparent active:bg-white/20"
                   >
                     <svg
                       width="13"

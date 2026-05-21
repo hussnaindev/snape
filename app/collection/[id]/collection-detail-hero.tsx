@@ -258,7 +258,7 @@ export function CollectionDetailHero({
                   <button
                     type="button"
                     onClick={handleWatchClick}
-                    className="relative top-0 flex-1 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-12 px-4 min-w-40 border-transparent bg-white text-black backdrop-blur-md lg:hover:bg-white/80 active:bg-white/70 md:hidden"
+                    className="relative top-0 flex-1 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-10 px-3 min-w-36 border-transparent bg-white text-black backdrop-blur-md lg:hover:bg-white/80 active:bg-white/70 md:hidden"
                   >
                     <span>▶</span>
                     <span className="px-2">Watch</span>
@@ -266,7 +266,7 @@ export function CollectionDetailHero({
                   <button
                     type="button"
                     onClick={handleWatchClick}
-                    className="relative top-0 hidden md:inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-12 px-4 md:h-14 md:px-6 min-w-40 border-transparent bg-white text-black backdrop-blur-md lg:hover:bg-white/80 active:bg-white/70"
+                    className="relative top-0 hidden md:inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-10 px-3 md:h-12 md:px-5 min-w-36 border-transparent bg-white text-black backdrop-blur-md lg:hover:bg-white/80 active:bg-white/70"
                   >
                     <span>▶</span>
                     <span className="px-2">Watch</span>
