@@ -96,7 +96,7 @@ export default async function SearchPage({ searchParams }: Props) {
               />
             )}
             {showCollectionsGrid && (
-              <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3">
                 {collections.map((collection) => (
                   <CollectionCard key={collection.id} collection={collection} />
                 ))}

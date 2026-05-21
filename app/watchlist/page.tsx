@@ -262,7 +262,7 @@ function SkeletonGrid() {
   return (
     <>
       {/* Mobile skeleton */}
-      <div className="md:hidden grid grid-cols-3 gap-2.5">
+      <div className="md:hidden grid grid-cols-2 gap-2.5">
         {Array.from({ length: 9 }, (_, i) => (
           <div key={i} className="rounded-lg bg-white/5 aspect-[2/3] animate-pulse" />
         ))}
