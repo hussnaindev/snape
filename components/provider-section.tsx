@@ -127,6 +127,7 @@ function HorizontalDragScroll({ children, className }: { children: ReactNode; cl
     currentTranslate: 0,
     rafId: 0,
     minTranslate: 0,
+    latestPageX: 0,
   });
 
   // Shared logic: start drag (mouse & touch)
@@ -143,12 +144,13 @@ function HorizontalDragScroll({ children, className }: { children: ReactNode; cl
   // Shared logic: move drag (throttled via rAF)
   const moveDrag = (pageX: number) => {
     if (!drag.current.isDragging) return;
+    drag.current.latestPageX = pageX; // always capture latest before early-exit
     if (drag.current.rafId) return;
     drag.current.rafId = requestAnimationFrame(() => {
       drag.current.rafId = 0;
       const el = ref.current;
       if (!el) return;
-      const delta = pageX - drag.current.startX;
+      const delta = drag.current.latestPageX - drag.current.startX;
       drag.current.currentTranslate = drag.current.lastTranslate + delta;
       drag.current.currentTranslate = Math.max(
         drag.current.minTranslate,

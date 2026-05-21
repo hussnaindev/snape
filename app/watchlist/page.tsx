@@ -222,19 +222,26 @@ function WatchlistCard({
           )}
         </div>
 
+        {/* Type chip top-left */}
+        <span className="absolute top-1 left-1.5 sm:top-1.5 sm:left-2 lg:top-2 lg:left-3 z-10 inline-flex items-center text-[7px] sm:text-[9px] lg:text-[10px] xl:text-[11px] font-semibold leading-none tracking-widest uppercase text-white/80 border border-white/40 rounded-full px-1.5 py-1 lg:px-2.5 lg:py-1.5 bg-black/40 backdrop-blur-sm">
+          {card.mediaType === 'movie' ? 'Film' : card.mediaType === 'series' ? 'Series' : 'Collection'}
+        </span>
+
+        {/* Rating chip top-right */}
+        {card.vote_average !== undefined && card.vote_average > 0 && (
+          <span className="absolute top-1 right-1.5 sm:top-1.5 sm:right-2 lg:top-2 lg:right-3 z-10 inline-flex items-center gap-1 rounded-full border border-white/40 px-1.5 py-1 lg:px-2.5 lg:py-1.5 text-[7px] sm:text-[9px] lg:text-[10px] xl:text-[11px] font-semibold leading-none tabular-nums text-white bg-black/40 backdrop-blur-sm">
+            ★ {card.vote_average.toFixed(1)}
+          </span>
+        )}
+
         {/* Title strip */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end px-1.5 py-1 sm:px-3 sm:py-2.5">
-          <p className="text-white/90 text-[11px] sm:text-sm font-light tracking-[0.2em] leading-tight line-clamp-2 uppercase drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end px-1.5 py-1 sm:px-3 sm:py-2.5 lg:px-4 lg:py-3">
+          <p className="text-white/90 text-[11px] sm:text-sm lg:text-[15px] xl:text-[16px] font-light tracking-[0.2em] leading-tight truncate uppercase drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
             {title}
           </p>
           {year && (
-            <span className="text-white/50 text-[9px] sm:text-xs mt-0.5 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+            <span className="text-white/50 text-[9px] sm:text-xs lg:text-sm mt-0.5 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
               {year}
-            </span>
-          )}
-          {card.mediaType === 'collection' && (
-            <span className="text-white/50 text-[9px] sm:text-xs mt-0.5">
-              Collection
             </span>
           )}
         </div>

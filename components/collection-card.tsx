@@ -49,12 +49,14 @@ export function CollectionCard({ collection, className }: CollectionCardProps) {
             </svg>
           </div>
         </div>
-        {/* title + type badge */}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent px-2.5 sm:px-3 pt-8 pb-2.5">
-          <span className="text-[8px] sm:text-[9px] font-semibold tracking-widest uppercase text-white/45 block mb-0.5">
-            Collection
-          </span>
-          <p className="text-[11px] sm:text-[13px] font-chesna-grotesk uppercase line-clamp-2 leading-snug tracking-[0.2em] font-light text-white opacity-90">
+        {/* Type chip top-left */}
+        <span className="absolute top-1.5 left-2 lg:top-2 lg:left-3 z-10 inline-flex items-center text-[8px] sm:text-[9px] lg:text-[10px] xl:text-[11px] 2xl:text-[12px] font-semibold leading-none tracking-widest uppercase text-white/80 border border-white/40 rounded-full px-2 py-1 lg:px-2.5 lg:py-1.5 bg-black/40 backdrop-blur-sm">
+          Collection
+        </span>
+
+        {/* Title at bottom */}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent px-2.5 sm:px-3 lg:px-4 pt-8 lg:pt-10 xl:pt-12 pb-2.5 lg:pb-3 xl:pb-4">
+          <p className="text-[11px] sm:text-[13px] lg:text-[14px] xl:text-[15px] 2xl:text-[16px] font-chesna-grotesk uppercase truncate tracking-[0.2em] font-light text-white opacity-90">
               {collection.name}
           </p>
         </div>
