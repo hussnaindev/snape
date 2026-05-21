@@ -60,7 +60,7 @@ function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
           <span className="text-[8px] sm:text-[9px] font-semibold tracking-widest uppercase text-white/45 block mb-0.5">
             {entry.type === 'movie' ? 'Film' : 'Series'}
           </span>
-          <p className="text-white text-[11px] sm:text-[13px] font-medium line-clamp-2 leading-snug">
+          <p className="text-white text-[11px] sm:text-[13px] font-chesna-grotesk font-medium line-clamp-2 leading-snug">
             {entry.title}
           </p>
           {entry.vote_average > 0 && (
@@ -101,7 +101,7 @@ function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
 
         {/* Bottom gradient — title + type badge + rating */}
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent px-4 pt-8 pb-2.5">
-          <p className="text-[16px] tracking-wide leading-tight truncate max-w-[200px] text-white mb-1">
+          <p className="text-[16px] font-chesna-grotesk tracking-wide leading-tight truncate max-w-[200px] text-white mb-1">
             {entry.title}
           </p>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">

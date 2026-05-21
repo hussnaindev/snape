@@ -398,7 +398,7 @@ export function MovieDetailHero({
           <div className="flex-1 min-w-0 flex flex-col justify-between">
             {/* TOP CONTENT */}
             <div className="min-w-0">
-              <h1 className="font-body text-xl md:text-4xl font-bold text-white leading-tight line-clamp-2">
+              <h1 className="font-chesna-grotesk text-xl md:text-4xl font-bold text-white leading-tight line-clamp-2">
                 {title}
               </h1>
 

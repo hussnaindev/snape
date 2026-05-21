@@ -65,7 +65,7 @@ export function ProviderCard({ item, rank }: ProviderCardProps) {
           <span className="text-[8px] sm:text-[9px] font-semibold tracking-widest uppercase text-white/45 block mb-0.5">
             {item.kind === 'movie' ? 'Film' : 'Series'}
           </span>
-          <p className="text-white text-[11px] sm:text-[13px] font-medium line-clamp-2 leading-snug">
+          <p className="text-white text-[11px] sm:text-[13px] font-chesna-grotesk font-medium line-clamp-2 leading-snug">
             {item.title}
           </p>
           {item.vote_average > 0 && (

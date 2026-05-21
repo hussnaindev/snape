@@ -8,6 +8,14 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'Chesna Grotesk';
+  src: url('/fonts/chesnagrotesk-regular-webfont.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   /* ── Brand colors ── */
   --color-black: #070b08;
@@ -23,6 +31,7 @@
   --font-bebas-neue: var(--font-bebas-neue), ui-sans-serif, system-ui, sans-serif;
   --font-syne: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
   --font-itc-pioneer: 'ITC Pioneer', ui-serif, Georgia, serif;
+  --font-chesna-grotesk: 'Chesna Grotesk', ui-sans-serif, system-ui, sans-serif;
 
 
 }
