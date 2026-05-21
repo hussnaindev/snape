@@ -472,19 +472,8 @@ export function HeroSection() {
               <div className="flex items-center gap-2.5 mt-3.5">
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center gap-1.5 text-black font-semibold cursor-pointer"
-                  style={{
-                    fontFamily: APPLE_FONT,
-                    fontSize: 14,
-                    height: 42,
-                    borderRadius: 42,
-                    backgroundColor: 'white',
-                    minWidth: 120,
-                    paddingLeft: 18,
-                    paddingRight: 22,
-                    border: 'none',
-                  }}
                   onClick={() => handlePrimaryClick(s)}
+                  className="relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-12 px-4 md:h-14 md:px-6 min-w-40 border-transparent bg-white text-black backdrop-blur-md lg:hover:bg-white/80 active:bg-white/70"
                 >
                   {s.primaryLabel === 'Sign In' ? (
                     <svg
@@ -513,25 +502,13 @@ export function HeroSection() {
                       <path d="M2 1.5a.5.5 0 0 1 .765-.424l8 4.5a.5.5 0 0 1 0 .848l-8 4.5A.5.5 0 0 1 2 10.5z" />
                     </svg>
                   )}
-                  {s.primaryLabel}
+                  <span className="px-2">{s.primaryLabel}</span>
                 </button>
                 {s.moreInfo && (
                   <button
                     type="button"
-                    className="inline-flex items-center justify-center gap-1.5 font-semibold cursor-pointer text-white"
-                    style={{
-                      fontFamily: APPLE_FONT,
-                      fontSize: 14,
-                      height: 42,
-                      borderRadius: 42,
-                      background: 'rgba(255,255,255,0.15)',
-                      backdropFilter: 'blur(60px) saturate(220%)',
-                      WebkitBackdropFilter: 'blur(60px) saturate(220%)',
-                      paddingLeft: 18,
-                      paddingRight: 22,
-                      border: 'none',
-                    }}
                     onClick={() => handleMoreInfoClick(s)}
+                    className="relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-12 px-4 md:h-14 md:px-6 min-w-40 backdrop-blur-md border-white/20 bg-white/2 text-white lg:hover:border-transparent lg:hover:bg-white/20 lg:hover:text-white active:border-transparent active:bg-white/20"
                   >
                     <svg
                       width="13"
@@ -542,7 +519,7 @@ export function HeroSection() {
                     >
                       <path d="M6 1a.5.5 0 0 1 .5.5V5.5H10.5a.5.5 0 0 1 0 1H6.5V10.5a.5.5 0 0 1-1 0V6.5H1.5a.5.5 0 0 1 0-1H5.5V1.5A.5.5 0 0 1 6 1z" />
                     </svg>
-                    More Info
+                    <span className="px-2">More Info</span>
                   </button>
                 )}
               </div>
@@ -615,18 +592,8 @@ export function HeroSection() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center gap-1 font-semibold cursor-pointer text-black"
-                  style={{
-                    fontFamily: APPLE_FONT,
-                    fontSize: 12,
-                    height: 30,
-                    borderRadius: 30,
-                    backgroundColor: 'white',
-                    paddingLeft: 14,
-                    paddingRight: 14,
-                    border: 'none',
-                  }}
                   onClick={() => handlePrimaryClick(s)}
+                  className="relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-10 px-3 min-w-32 border-transparent bg-white text-black backdrop-blur-md active:bg-white/70"
                 >
                   {s.primaryLabel === 'Sign In' ? (
                     <svg
@@ -655,26 +622,14 @@ export function HeroSection() {
                       <path d="M2 1.5a.5.5 0 0 1 .765-.424l8 4.5a.5.5 0 0 1 0 .848l-8 4.5A.5.5 0 0 1 2 10.5z" />
                     </svg>
                   )}
-                  {s.primaryLabel}
+                  <span className="px-2">{s.primaryLabel}</span>
                 </button>
 
                 {s.moreInfo && (
                   <button
                     type="button"
-                    className="inline-flex items-center justify-center gap-1 font-semibold cursor-pointer text-white"
-                    style={{
-                      fontFamily: APPLE_FONT,
-                      fontSize: 12,
-                      height: 30,
-                      borderRadius: 30,
-                      background: 'rgba(255,255,255,0.15)',
-                      backdropFilter: 'blur(60px) saturate(220%)',
-                      WebkitBackdropFilter: 'blur(60px) saturate(220%)',
-                      paddingLeft: 12,
-                      paddingRight: 12,
-                      border: 'none',
-                    }}
                     onClick={() => handleMoreInfoClick(s)}
+                    className="relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-10 px-3 min-w-32 backdrop-blur-md border-white/20 bg-white/2 text-white active:border-transparent active:bg-white/20"
                   >
                     <svg
                       width="13"
@@ -685,7 +640,7 @@ export function HeroSection() {
                     >
                       <path d="M6 1a.5.5 0 0 1 .5.5V5.5H10.5a.5.5 0 0 1 0 1H6.5V10.5a.5.5 0 0 1-1 0V6.5H1.5a.5.5 0 0 1 0-1H5.5V1.5A.5.5 0 0 1 6 1z" />
                     </svg>
-                    More Info
+                    <span className="px-2">More Info</span>
                   </button>
                 )}
               </div>

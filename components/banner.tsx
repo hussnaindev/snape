@@ -53,17 +53,17 @@ export function Banner() {
           <button
             type="button"
             onClick={() => router.push('/auth/login')}
-            className="px-4 sm:px-6 py-1.5 sm:py-2 rounded-full bg-white text-black text-xs sm:text-sm font-semibold hover:bg-white/90 transition-colors cursor-pointer"
+            className="relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-12 px-4 md:h-14 md:px-6 min-w-40 border-transparent bg-white text-black backdrop-blur-md lg:hover:bg-white/80 active:bg-white/70"
           >
-            Login
+            <span className="px-2">Login</span>
           </button>
 
           <button
             type="button"
             onClick={() => router.push('/auth/signup')}
-            className="px-4 sm:px-6 py-1.5 sm:py-2 rounded-full border border-white/70 bg-white/15 text-white text-xs sm:text-sm font-semibold hover:bg-white/25 transition-colors sm:border-white/30 sm:bg-transparent cursor-pointer"
+            className="relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-12 px-4 md:h-14 md:px-6 min-w-40 backdrop-blur-md border-white/20 bg-white/2 text-white lg:hover:border-transparent lg:hover:bg-white/20 lg:hover:text-white active:border-transparent active:bg-white/20"
           >
-            Sign Up
+            <span className="px-2">Sign Up</span>
           </button>
         </div>
       </div>
