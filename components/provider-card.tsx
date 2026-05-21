@@ -1,6 +1,7 @@
 'use client';
 
 import { tmdbImage } from '@/lib/tmdb-image';
+import { TITLE_STYLE } from '@/lib/title-styles';
 import Image from 'next/image';
 import Link from 'next/link';
 import { RatingBadge } from './ui/rating-badge';
@@ -65,8 +66,8 @@ export function ProviderCard({ item, rank }: ProviderCardProps) {
           <span className="text-[8px] sm:text-[9px] font-semibold tracking-widest uppercase text-white/45 block mb-0.5">
             {item.kind === 'movie' ? 'Film' : 'Series'}
           </span>
-          <p className="text-white text-[11px] sm:text-[13px] font-chesna-grotesk font-medium line-clamp-2 leading-snug">
-            {item.title}
+          <p className={'text-[11px] sm:text-[13px] font-chesna-grotesk uppercase line-clamp-2 leading-snug ' + TITLE_STYLE}>
+              {item.title}
           </p>
           {item.vote_average > 0 && (
             <RatingBadge rating={item.vote_average} className="text-[8px] sm:text-[9px] px-1 py-px mt-1.5" />

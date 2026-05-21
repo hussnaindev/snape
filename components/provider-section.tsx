@@ -120,37 +120,70 @@ const HERO_RUNTIME: Partial<Record<PreferredProviderKey, string>> = {
 
 function HorizontalDragScroll({ children, className }: { children: ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  const state = useRef({ isDragging: false, startX: 0, lastTranslateX: 0, currentTranslateX: 0 });
+  const drag = useRef({
+    isDragging: false,
+    startX: 0,
+    lastTranslate: 0,
+    currentTranslate: 0,
+    rafId: 0,
+    minTranslate: 0,
+  });
 
+  // Shared logic: start drag (mouse & touch)
+  const startDrag = (pageX: number) => {
+    const el = ref.current;
+    if (!el) return;
+    drag.current.isDragging = true;
+    drag.current.startX = pageX;
+    drag.current.lastTranslate = drag.current.currentTranslate;
+    // Cache boundaries once on start — avoids layout thrashing on every frame
+    drag.current.minTranslate = -(el.scrollWidth - el.parentElement!.clientWidth);
+  };
+
+  // Shared logic: move drag (throttled via rAF)
+  const moveDrag = (pageX: number) => {
+    if (!drag.current.isDragging) return;
+    if (drag.current.rafId) return;
+    drag.current.rafId = requestAnimationFrame(() => {
+      drag.current.rafId = 0;
+      const el = ref.current;
+      if (!el) return;
+      const delta = pageX - drag.current.startX;
+      drag.current.currentTranslate = drag.current.lastTranslate + delta;
+      drag.current.currentTranslate = Math.max(
+        drag.current.minTranslate,
+        Math.min(0, drag.current.currentTranslate),
+      );
+      el.style.transform = `translateX(${drag.current.currentTranslate}px)`;
+    });
+  };
+
+  // Shared logic: end drag
+  const endDrag = () => {
+    drag.current.isDragging = false;
+    const el = ref.current;
+    if (el) el.style.cursor = '';
+  };
+
+  // ── Native touch events ──
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
 
     const onTouchStart = (e: TouchEvent) => {
-      state.current.isDragging = true;
       const touch = e.touches[0];
       if (!touch) return;
-      state.current.startX = touch.pageX;
-      state.current.lastTranslateX = state.current.currentTranslateX;
+      startDrag(touch.pageX);
     };
 
     const onTouchMove = (e: TouchEvent) => {
-      if (!state.current.isDragging) return;
+      if (!drag.current.isDragging) return;
       const touch = e.touches[0];
       if (!touch) return;
-      const delta = touch.pageX - state.current.startX;
-      state.current.currentTranslateX = state.current.lastTranslateX + delta;
-
-      const max = 0;
-      const min = -(el.scrollWidth - el.parentElement!.clientWidth);
-      state.current.currentTranslateX = Math.max(min, Math.min(max, state.current.currentTranslateX));
-
-      el.style.transform = `translateX(${state.current.currentTranslateX}px)`;
+      moveDrag(touch.pageX);
     };
 
-    const onTouchEnd = () => {
-      state.current.isDragging = false;
-    };
+    const onTouchEnd = () => endDrag();
 
     el.addEventListener('touchstart', onTouchStart, { passive: true });
     el.addEventListener('touchmove', onTouchMove, { passive: true });
@@ -163,36 +196,17 @@ function HorizontalDragScroll({ children, className }: { children: ReactNode; cl
     };
   }, []);
 
+  // ── Mouse events ──
   const onMouseDown = (e: React.MouseEvent) => {
-    const el = ref.current;
-    if (!el) return;
     e.preventDefault();
-    state.current.isDragging = true;
-    state.current.startX = e.pageX;
-    state.current.lastTranslateX = state.current.currentTranslateX;
-    el.style.cursor = 'grabbing';
-  };
-
-  const onMouseMove = (e: React.MouseEvent) => {
-    if (!state.current.isDragging) return;
     const el = ref.current;
-    if (!el) return;
-    const delta = e.pageX - state.current.startX;
-    state.current.currentTranslateX = state.current.lastTranslateX + delta;
-
-    const max = 0;
-    const min = -(el.scrollWidth - el.parentElement!.clientWidth);
-    state.current.currentTranslateX = Math.max(min, Math.min(max, state.current.currentTranslateX));
-
-    el.style.transform = `translateX(${state.current.currentTranslateX}px)`;
+    if (el) el.style.cursor = 'grabbing';
+    startDrag(e.pageX);
   };
 
-  const onEnd = () => {
-    const el = ref.current;
-    if (!el) return;
-    state.current.isDragging = false;
-    el.style.cursor = '';
-  };
+  const onMouseMove = (e: React.MouseEvent) => moveDrag(e.pageX);
+
+  const onEnd = () => endDrag();
 
   return (
     <div
