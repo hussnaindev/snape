@@ -1,5 +1,3 @@
-'use client';
-
 import { tmdbImage } from '@/lib/tmdb-image';
 import type { PreferredProviderKey } from '@/lib/watch-providers';
 import type { TMDBMovie, TMDBSeries } from '@/types/tmdb';
@@ -9,7 +7,6 @@ import { ParallaxCarousel } from './parallax-carousel';
 import { ParallaxMeta } from './parallax-meta';
 import { ProviderCard, type MediaItem } from './provider-card';
 import Link from 'next/link';
-import { useRef, useCallback, useEffect, type ReactNode } from 'react';
 
 const BACKDROP_ART: Partial<Record<PreferredProviderKey, string>> = {
   netflix: '/backdrop-netflix.avif',
@@ -118,103 +115,6 @@ const HERO_RUNTIME: Partial<Record<PreferredProviderKey, string>> = {
   appletv:       '2h 35m',
 };
 
-function HorizontalDragScroll({ children, className }: { children: ReactNode; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const drag = useRef({
-    isDragging: false,
-    startX: 0,
-    lastTranslate: 0,
-    currentTranslate: 0,
-    minTranslate: 0,
-  });
-
-  // Shared logic: start drag (mouse & touch)
-  const startDrag = (pageX: number) => {
-    const el = ref.current;
-    if (!el) return;
-    drag.current.isDragging = true;
-    drag.current.startX = pageX;
-    drag.current.lastTranslate = drag.current.currentTranslate;
-    // Cache boundaries once on start — avoids layout thrashing on every frame
-    drag.current.minTranslate = -(el.scrollWidth - el.parentElement!.clientWidth);
-  };
-
-  // Shared logic: move drag (direct write — RAF adds frame latency and misses paints)
-  const moveDrag = (pageX: number) => {
-    if (!drag.current.isDragging) return;
-    const el = ref.current;
-    if (!el) return;
-    const delta = pageX - drag.current.startX;
-    drag.current.currentTranslate = Math.max(
-      drag.current.minTranslate,
-      Math.min(0, drag.current.lastTranslate + delta),
-    );
-    el.style.transform = `translateX(${drag.current.currentTranslate}px)`;
-  };
-
-  // Shared logic: end drag
-  const endDrag = () => {
-    drag.current.isDragging = false;
-    const el = ref.current;
-    if (el) el.style.cursor = '';
-  };
-
-  // ── Native touch events ──
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const onTouchStart = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      if (!touch) return;
-      startDrag(touch.pageX);
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (!drag.current.isDragging) return;
-      const touch = e.touches[0];
-      if (!touch) return;
-      moveDrag(touch.pageX);
-    };
-
-    const onTouchEnd = () => endDrag();
-
-    el.addEventListener('touchstart', onTouchStart, { passive: true });
-    el.addEventListener('touchmove', onTouchMove, { passive: true });
-    el.addEventListener('touchend', onTouchEnd);
-
-    return () => {
-      el.removeEventListener('touchstart', onTouchStart);
-      el.removeEventListener('touchmove', onTouchMove);
-      el.removeEventListener('touchend', onTouchEnd);
-    };
-  }, []);
-
-  // ── Mouse events ──
-  const onMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const el = ref.current;
-    if (el) el.style.cursor = 'grabbing';
-    startDrag(e.pageX);
-  };
-
-  const onMouseMove = (e: React.MouseEvent) => moveDrag(e.pageX);
-
-  const onEnd = () => endDrag();
-
-  return (
-    <div
-      ref={ref}
-      className={className}
-      onMouseDown={onMouseDown}
-      onMouseMove={onMouseMove}
-      onMouseUp={onEnd}
-      onMouseLeave={onEnd}
-    >
-      {children}
-    </div>
-  );
-}
 
 interface ProviderSectionProps {
   providerKey: PreferredProviderKey;
@@ -397,7 +297,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
               href={HERO_TYPE[providerKey] === 'Movie' ? `/movie/${HERO_ID[providerKey]}` : `/series/${HERO_ID[providerKey]}`}
               className="relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-10 px-3 md:h-12 md:px-5 min-w-36 border-transparent bg-white text-black backdrop-blur-md lg:hover:bg-white/80 active:bg-white/70"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <polygon points="6,4 20,12 6,20" />
               </svg>
               <span className="px-2">Watch</span>
@@ -414,13 +314,11 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
         </div>
       </div>
 
-      {/* ── Card carousel (no CSS overflow — uses drag scroll so hover is never clipped) ── */}
-      <ParallaxCarousel className="-mt-16 sm:-mt-20 relative z-30">
-        <HorizontalDragScroll className="flex gap-1.5 px-5 sm:px-10 2xl:px-16 3xl:px-24 pb-3 sm:pb-4 pt-6">
-          {items.map((item, i) => (
-            <ProviderCard key={`${item.kind}-${item.id}`} item={item} rank={i + 1} />
-          ))}
-        </HorizontalDragScroll>
+      {/* ── Card carousel — pt-8/pt-10 padding absorbs hover translate-y so cards never clip ── */}
+      <ParallaxCarousel className="-mt-16 sm:-mt-20 relative z-30 flex gap-1.5 px-5 sm:px-10 2xl:px-16 3xl:px-24 overflow-x-auto no-scrollbar pb-4 sm:pb-6 pt-8 sm:pt-10">
+        {items.map((item, i) => (
+          <ProviderCard key={`${item.kind}-${item.id}`} item={item} rank={i + 1} />
+        ))}
       </ParallaxCarousel>
     </section>
   );
