@@ -12,7 +12,7 @@ interface SeriesCardProps {
 }
 
 export function SeriesCard({ series, className }: SeriesCardProps) {
-  const poster = tmdbImage(series.poster_path, 'w342');
+  const poster = tmdbImage(series.poster_path, 'w500');
 
   return (
     <div

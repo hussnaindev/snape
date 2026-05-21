@@ -10,7 +10,7 @@ interface CollectionCardProps {
 
 export function CollectionCard({ collection, className }: CollectionCardProps) {
   const backdrop = tmdbImage(collection.backdrop_path, 'w780');
-  const poster = tmdbImage(collection.poster_path, 'w342');
+  const poster = tmdbImage(collection.poster_path, 'w500');
 
   return (
     <Link

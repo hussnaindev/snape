@@ -18,7 +18,7 @@ const MIN_ENTRIES = WATCH_HISTORY_MIN_ENTRIES;
 
 function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
   const backdrop = tmdbImage(entry.backdropPath, 'w780');
-  const poster = tmdbImage(entry.posterPath, 'w342');
+  const poster = tmdbImage(entry.posterPath, 'w500');
   const href =
     entry.type === 'movie'
       ? `/movie/${entry.id}?autoplay=true`

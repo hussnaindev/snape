@@ -380,14 +380,14 @@ export function MovieDetailHero({
         {/* MAIN ROW */}
         <div className="flex gap-4 md:gap-8 items-stretch">
           {/* POSTER */}
-          <div className="flex-none w-24 md:w-40">
+          <div className="flex-none w-24 md:w-40 lg:w-48 xl:w-56">
             {poster && (
               <div className="relative aspect-[2/3] w-full h-full rounded overflow-hidden shadow-2xl">
                 <Image
                   src={poster}
                   alt={title}
                   fill
-                  sizes="(max-width: 768px) 96px, 160px"
+                  sizes="(max-width: 768px) 96px, (max-width: 1024px) 160px, (max-width: 1280px) 192px, 224px"
                   className="object-cover"
                 />
               </div>
@@ -398,7 +398,7 @@ export function MovieDetailHero({
           <div className="flex-1 min-w-0 flex flex-col justify-between">
             {/* TOP CONTENT */}
             <div className="min-w-0">
-              <h1 className="font-chesna-grotesk text-xl md:text-4xl font-bold text-white leading-tight line-clamp-2">
+              <h1 className="font-chesna-grotesk text-xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight line-clamp-2">
                 {title}
               </h1>
 
@@ -467,7 +467,7 @@ export function MovieDetailHero({
 
         {/* SYNOPSIS */}
         {overview && (
-          <div className="mt-5 md:mt-8 max-w-2xl">
+          <div className="mt-5 md:mt-8 max-w-2xl xl:max-w-3xl">
             <ExpandableText text={overview} />
           </div>
         )}

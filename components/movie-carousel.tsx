@@ -18,7 +18,7 @@ export function MovieCarousel({ title, movies }: MovieCarouselProps) {
           {movies.map((movie) => (
             <div
               key={movie.id}
-              className="flex-none w-[130px] sm:w-[170px] md:w-[180px] lg:w-[190px] xl:w-[200px]"
+              className="flex-none w-[130px] sm:w-[170px] md:w-[180px] lg:w-[190px] xl:w-[210px] 2xl:w-[240px] 3xl:w-[260px]"
             >
               <MovieCard movie={movie} />
             </div>

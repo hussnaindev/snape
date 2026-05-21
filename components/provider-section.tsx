@@ -1,3 +1,5 @@
+'use client';
+
 import { tmdbImage } from '@/lib/tmdb-image';
 import type { PreferredProviderKey } from '@/lib/watch-providers';
 import type { TMDBMovie, TMDBSeries } from '@/types/tmdb';
@@ -7,6 +9,7 @@ import { ParallaxCarousel } from './parallax-carousel';
 import { ParallaxMeta } from './parallax-meta';
 import { ProviderCard, type MediaItem } from './provider-card';
 import Link from 'next/link';
+import { useRef, useCallback, useEffect, type ReactNode } from 'react';
 
 const BACKDROP_ART: Partial<Record<PreferredProviderKey, string>> = {
   netflix: '/backdrop-netflix.avif',
@@ -114,6 +117,96 @@ const HERO_RUNTIME: Partial<Record<PreferredProviderKey, string>> = {
   paramountplus: '5 Seasons',
   appletv:       '2h 35m',
 };
+
+function HorizontalDragScroll({ children, className }: { children: ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const state = useRef({ isDragging: false, startX: 0, lastTranslateX: 0, currentTranslateX: 0 });
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      state.current.isDragging = true;
+      const touch = e.touches[0];
+      if (!touch) return;
+      state.current.startX = touch.pageX;
+      state.current.lastTranslateX = state.current.currentTranslateX;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!state.current.isDragging) return;
+      const touch = e.touches[0];
+      if (!touch) return;
+      const delta = touch.pageX - state.current.startX;
+      state.current.currentTranslateX = state.current.lastTranslateX + delta;
+
+      const max = 0;
+      const min = -(el.scrollWidth - el.parentElement!.clientWidth);
+      state.current.currentTranslateX = Math.max(min, Math.min(max, state.current.currentTranslateX));
+
+      el.style.transform = `translateX(${state.current.currentTranslateX}px)`;
+    };
+
+    const onTouchEnd = () => {
+      state.current.isDragging = false;
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: true });
+    el.addEventListener('touchend', onTouchEnd);
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, []);
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    const el = ref.current;
+    if (!el) return;
+    e.preventDefault();
+    state.current.isDragging = true;
+    state.current.startX = e.pageX;
+    state.current.lastTranslateX = state.current.currentTranslateX;
+    el.style.cursor = 'grabbing';
+  };
+
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!state.current.isDragging) return;
+    const el = ref.current;
+    if (!el) return;
+    const delta = e.pageX - state.current.startX;
+    state.current.currentTranslateX = state.current.lastTranslateX + delta;
+
+    const max = 0;
+    const min = -(el.scrollWidth - el.parentElement!.clientWidth);
+    state.current.currentTranslateX = Math.max(min, Math.min(max, state.current.currentTranslateX));
+
+    el.style.transform = `translateX(${state.current.currentTranslateX}px)`;
+  };
+
+  const onEnd = () => {
+    const el = ref.current;
+    if (!el) return;
+    state.current.isDragging = false;
+    el.style.cursor = '';
+  };
+
+  return (
+    <div
+      ref={ref}
+      className={className}
+      onMouseDown={onMouseDown}
+      onMouseMove={onMouseMove}
+      onMouseUp={onEnd}
+      onMouseLeave={onEnd}
+    >
+      {children}
+    </div>
+  );
+}
 
 interface ProviderSectionProps {
   providerKey: PreferredProviderKey;
@@ -313,11 +406,13 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
         </div>
       </div>
 
-      {/* ── Card carousel ── */}
-      <ParallaxCarousel className="-mt-16 sm:-mt-20 relative z-30 flex gap-1.5 px-5 sm:px-10 overflow-x-auto no-scrollbar pb-3 sm:pb-4 pt-4 sm:pt-6">
-        {items.map((item, i) => (
-          <ProviderCard key={`${item.kind}-${item.id}`} item={item} rank={i + 1} />
-        ))}
+      {/* ── Card carousel (no CSS overflow — uses drag scroll so hover is never clipped) ── */}
+      <ParallaxCarousel className="-mt-16 sm:-mt-20 relative z-30">
+        <HorizontalDragScroll className="flex gap-1.5 px-5 sm:px-10 2xl:px-16 3xl:px-24 pb-3 sm:pb-4 pt-6">
+          {items.map((item, i) => (
+            <ProviderCard key={`${item.kind}-${item.id}`} item={item} rank={i + 1} />
+          ))}
+        </HorizontalDragScroll>
       </ParallaxCarousel>
     </section>
   );

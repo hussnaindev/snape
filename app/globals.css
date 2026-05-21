@@ -17,6 +17,9 @@
 }
 
 @theme {
+  /* ── Breakpoints ── */
+  --breakpoint-3xl: 1800px;
+
   /* ── Brand colors ── */
   --color-black: #070b08;
   --color-sage: #a8d5b5;

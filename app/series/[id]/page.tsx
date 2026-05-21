@@ -65,7 +65,7 @@ export default async function SeriesPage({ params }: Props) {
 
   const trailerKey = await getEmbeddableTrailerKey(videos);
   const backdrop = tmdbImage(series.backdrop_path, 'original');
-  const poster = tmdbImage(series.poster_path, 'w342');
+  const poster = tmdbImage(series.poster_path, 'w500');
 
   const startYear = series.first_air_date?.slice(0, 4) ?? '';
   const endYear = series.last_air_date?.slice(0, 4) ?? '';

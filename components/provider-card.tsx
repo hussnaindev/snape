@@ -25,7 +25,7 @@ const ORDINAL_MASK = 'linear-gradient(180deg, #fff 0, #fff 50%, hsla(0,0%,100%,0
 
 export function ProviderCard({ item, rank }: ProviderCardProps) {
   const href = item.kind === 'movie' ? `/movie/${item.id}` : `/series/${item.id}`;
-  const poster = tmdbImage(item.poster_path, 'w342');
+  const poster = tmdbImage(item.poster_path, 'w500');
   const isTen = rank === 10;
 
   return (

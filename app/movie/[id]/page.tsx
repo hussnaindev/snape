@@ -56,7 +56,7 @@ export default async function MoviePage({ params }: Props) {
 
   const backdrop = tmdbImage(movie.backdrop_path, 'original');
   const trailerKey = await getEmbeddableTrailerKey(videos);
-  const poster = tmdbImage(movie.poster_path, 'w342');
+  const poster = tmdbImage(movie.poster_path, 'w500');
   const year = movie.release_date?.slice(0, 4) ?? '';
   const runtime = movie.runtime
     ? `${Math.floor(movie.runtime / 60)}h ${movie.runtime % 60}m`

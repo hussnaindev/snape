@@ -12,7 +12,7 @@ interface MovieCardProps {
 }
 
 export function MovieCard({ movie, className }: MovieCardProps) {
-  const poster = tmdbImage(movie.poster_path, 'w342');
+  const poster = tmdbImage(movie.poster_path, 'w500');
 
   return (
     <div
