@@ -224,7 +224,7 @@ function WatchlistCard({
 
         {/* Title strip */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end px-1.5 py-1 sm:px-3 sm:py-2.5">
-          <p className="text-white text-[11px] sm:text-sm font-medium leading-tight line-clamp-2 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+          <p className="text-white/90 text-[11px] sm:text-sm font-light tracking-[0.2em] leading-tight line-clamp-2 uppercase drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
             {title}
           </p>
           {year && (

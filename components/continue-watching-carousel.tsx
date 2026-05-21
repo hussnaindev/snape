@@ -12,7 +12,6 @@ import type { WatchHistoryEntry } from '@/lib/watch-history';
 import Image from 'next/image';
 import Link from 'next/link';
 import { RatingBadge } from './ui/rating-badge';
-import { TITLE_STYLE } from '@/lib/title-styles';
 import { useEffect, useLayoutEffect, useState } from 'react';
 
 const MIN_ENTRIES = WATCH_HISTORY_MIN_ENTRIES;
@@ -61,7 +60,7 @@ function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
           <span className="text-[8px] sm:text-[9px] font-semibold tracking-widest uppercase text-white/45 block mb-0.5">
             {entry.type === 'movie' ? 'Film' : 'Series'}
           </span>
-<p className={'text-[11px] sm:text-[13px] font-chesna-grotesk uppercase line-clamp-2 leading-snug ' + TITLE_STYLE}>
+<p className="text-[11px] sm:text-[13px] font-chesna-grotesk uppercase line-clamp-2 leading-snug tracking-[0.2em] font-light text-white opacity-90">
               {entry.title}
           </p>
           {entry.vote_average > 0 && (
@@ -102,7 +101,7 @@ function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
 
         {/* Bottom gradient — title + type badge + rating */}
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent px-4 pt-8 pb-2.5">
-<p className={'text-[16px] font-chesna-grotesk tracking-wide leading-tight truncate max-w-[200px] mb-1 uppercase ' + TITLE_STYLE}>
+<p className="text-[16px] font-chesna-grotesk leading-tight truncate max-w-[200px] mb-1 uppercase tracking-[0.2em] font-light text-white opacity-90">
               {entry.title}
           </p>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">

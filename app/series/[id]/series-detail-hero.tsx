@@ -498,7 +498,7 @@ export function SeriesDetailHero({
           {/* DETAILS */}
           <div className="flex-1 min-w-0 flex flex-col justify-between">
             <div className="min-w-0">
-              <h1 className="font-chesna-grotesk text-xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight line-clamp-2 uppercase [text-shadow:0_0_8px_rgba(255,255,255,0.15)]">
+              <h1 className="font-chesna-grotesk text-xl md:text-4xl lg:text-5xl xl:text-6xl font-light text-white opacity-90 leading-tight line-clamp-2 uppercase tracking-[0.2em] [text-shadow:0_0_8px_rgba(255,255,255,0.15)]">
                 {name}
               </h1>
 

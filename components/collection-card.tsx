@@ -1,5 +1,4 @@
 import { tmdbImage } from '@/lib/tmdb-image';
-import { TITLE_STYLE } from '@/lib/title-styles';
 import type { TMDBCollectionSearchHit } from '@/types/tmdb';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -55,7 +54,7 @@ export function CollectionCard({ collection, className }: CollectionCardProps) {
           <span className="text-[8px] sm:text-[9px] font-semibold tracking-widest uppercase text-white/45 block mb-0.5">
             Collection
           </span>
-          <p className={'text-[11px] sm:text-[13px] font-chesna-grotesk uppercase line-clamp-2 leading-snug ' + TITLE_STYLE}>
+          <p className="text-[11px] sm:text-[13px] font-chesna-grotesk uppercase line-clamp-2 leading-snug tracking-[0.2em] font-light text-white opacity-90">
               {collection.name}
           </p>
         </div>
