@@ -54,11 +54,13 @@ export function CollectionCard({ collection, className }: CollectionCardProps) {
           Collection
         </span>
 
-        {/* Title at bottom */}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent px-2.5 sm:px-3 lg:px-3 pt-8 lg:pt-8 xl:pt-8 pb-2 lg:pb-2.5 xl:pb-3">
-          <p className="text-[11px] sm:text-[12px] lg:text-[12px] xl:text-[12px] 2xl:text-[12px] font-chesna-grotesk uppercase truncate tracking-[0.2em] font-light text-white opacity-90">
-              {collection.name}
-          </p>
+        {/* Title bar at bottom */}
+        <div className="absolute inset-x-0 bottom-0 flex items-center pointer-events-none z-0">
+          <div className="w-full bg-black/60 backdrop-blur-sm py-1.5 sm:py-2 rounded-t-md px-3">
+            <p className="text-[10px] sm:text-[11px] font-chesna-grotesk uppercase truncate tracking-[0.2em] font-light text-white/90 text-center">
+                {collection.name}
+            </p>
+          </div>
         </div>
       </div>
     </Link>
