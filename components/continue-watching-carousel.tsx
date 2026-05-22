@@ -55,20 +55,20 @@ function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
         </div>
 
         {/* Type chip top-left */}
-        <span className="absolute top-1.5 left-2 lg:top-2 lg:left-3 z-10 inline-flex items-center text-[8px] sm:text-[9px] lg:text-[10px] xl:text-[11px] 2xl:text-[12px] font-semibold leading-none tracking-widest uppercase text-white/80 border border-white/40 rounded-full px-2 py-1 lg:px-2.5 lg:py-1.5 bg-black/40 backdrop-blur-sm">
+        <span className="absolute top-1.5 left-2 lg:top-2 lg:left-3 z-10 inline-flex items-center text-[8px] sm:text-[9px] lg:text-[9px] xl:text-[9px] 2xl:text-[9px] font-semibold leading-none tracking-widest uppercase text-white/80 border border-white/40 rounded-full px-2 py-1 lg:px-2 lg:py-1 bg-black/40 backdrop-blur-sm">
           {entry.type === 'movie' ? 'Film' : 'Series'}
         </span>
 
         {/* Rating chip top-right */}
         {entry.vote_average > 0 && (
-          <span className="absolute top-1.5 right-2 lg:top-2 lg:right-3 z-10 inline-flex items-center gap-1 rounded-full border border-white/40 px-2 py-1 lg:px-2.5 lg:py-1.5 text-[8px] sm:text-[9px] lg:text-[10px] xl:text-[11px] 2xl:text-[12px] font-semibold leading-none tabular-nums text-white bg-black/40 backdrop-blur-sm">
+          <span className="absolute top-1.5 right-2 lg:top-2 lg:right-3 z-10 inline-flex items-center gap-1 rounded-full border border-white/40 px-2 py-1 lg:px-2 lg:py-1 text-[8px] sm:text-[9px] lg:text-[9px] xl:text-[9px] 2xl:text-[9px] font-semibold leading-none tabular-nums text-white bg-black/40 backdrop-blur-sm">
             ★ {entry.vote_average.toFixed(1)}
           </span>
         )}
 
         {/* Title at bottom */}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent px-2.5 sm:px-3 lg:px-4 pt-8 lg:pt-10 xl:pt-12 pb-2.5 lg:pb-3 xl:pb-4">
-<p className="text-[11px] sm:text-[13px] lg:text-[14px] xl:text-[15px] 2xl:text-[16px] font-chesna-grotesk uppercase truncate tracking-[0.2em] font-light text-white opacity-90">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent px-2.5 sm:px-3 lg:px-3 pt-8 lg:pt-8 xl:pt-8 pb-2 lg:pb-2.5 xl:pb-3">
+<p className="text-[11px] sm:text-[12px] lg:text-[12px] xl:text-[12px] 2xl:text-[12px] font-chesna-grotesk uppercase truncate tracking-[0.2em] font-light text-white opacity-90">
               {entry.title}
           </p>
         </div>
@@ -105,20 +105,20 @@ function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
         </div>
 
         {/* Type chip top-left */}
-        <span className="absolute top-1.5 left-2 lg:top-2 lg:left-3 z-10 inline-flex items-center text-[10px] lg:text-[11px] xl:text-[12px] font-semibold leading-none tracking-widest uppercase text-white/80 border border-white/40 rounded-full px-2 py-1 lg:px-2.5 lg:py-1.5 bg-black/40 backdrop-blur-sm">
+        <span className="absolute top-1.5 left-2 lg:top-2 lg:left-3 z-10 inline-flex items-center text-[9px] lg:text-[9px] xl:text-[9px] font-semibold leading-none tracking-widest uppercase text-white/80 border border-white/40 rounded-full px-2 py-1 lg:px-2 lg:py-1 bg-black/40 backdrop-blur-sm">
           {entry.type === 'movie' ? 'Film' : 'Series'}
         </span>
 
         {/* Rating chip top-right */}
         {entry.vote_average > 0 && (
-          <span className="absolute top-1.5 right-2 lg:top-2 lg:right-3 z-10 inline-flex items-center gap-1 rounded-full border border-white/40 px-2 py-1 lg:px-2.5 lg:py-1.5 text-[10px] lg:text-[11px] xl:text-[12px] font-semibold leading-none tabular-nums text-white bg-black/40 backdrop-blur-sm">
+          <span className="absolute top-1.5 right-2 lg:top-2 lg:right-3 z-10 inline-flex items-center gap-1 rounded-full border border-white/40 px-2 py-1 lg:px-2 lg:py-1 text-[9px] lg:text-[9px] xl:text-[9px] font-semibold leading-none tabular-nums text-white bg-black/40 backdrop-blur-sm">
             ★ {entry.vote_average.toFixed(1)}
           </span>
         )}
 
         {/* Title at bottom */}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent px-4 lg:px-5 pt-8 lg:pt-10 xl:pt-12 pb-2.5 lg:pb-3 xl:pb-4">
-<p className="text-[16px] lg:text-[18px] xl:text-[20px] font-chesna-grotesk leading-tight truncate max-w-[200px] lg:max-w-[260px] xl:max-w-[300px] uppercase tracking-[0.2em] font-light text-white opacity-90">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent px-4 lg:px-4 pt-8 lg:pt-8 xl:pt-8 pb-2 lg:pb-2.5 xl:pb-3">
+<p className="text-[14px] lg:text-[14px] xl:text-[14px] font-chesna-grotesk leading-tight truncate max-w-[200px] lg:max-w-[260px] xl:max-w-[300px] uppercase tracking-[0.2em] font-light text-white opacity-90">
               {entry.title}
           </p>
         </div>
