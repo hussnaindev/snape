@@ -465,6 +465,7 @@ export function SeriesDetailHero({
                   initialSeason={initialSeason}
                   initialSelectedSeason={currentSeason}
                   onSelect={handleEpisodeSelect}
+                  variant="list"
                 />
               </div>
             </div>

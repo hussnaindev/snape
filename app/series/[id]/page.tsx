@@ -137,10 +137,7 @@ export default async function SeriesPage({ params }: Props) {
 
         {/* EPISODES */}
         {initialSeason && series.seasons.length > 0 && (
-          <div id="episode-guide" className="mt-10 px-4 md:px-8">
-            <h2 className="text-white font-body font-semibold text-base md:text-lg mb-4">
-              Episodes
-            </h2>
+          <div id="episode-guide" className="mt-10">
             <EpisodeGuide
               seriesId={seriesId}
               seasons={series.seasons}
