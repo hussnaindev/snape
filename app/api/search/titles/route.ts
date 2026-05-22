@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   const type = searchParams.get('type');
   const page = parsePositivePageParam(searchParams.get('page'));
   const variant = searchParams.get('variant')?.trim() || undefined;
-  const includeAdult = searchParams.get('adult') !== 'false';
+  const includeAdult = searchParams.get('adult') === 'true';
 
   if (!q) {
     return NextResponse.json({ ok: false, error: 'Missing q' }, { status: 400 });

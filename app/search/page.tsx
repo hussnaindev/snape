@@ -38,15 +38,15 @@ export default async function SearchPage({ searchParams }: Props) {
   if (query) {
     try {
       if (activeTab === 'movies') {
-        movieSearch = await searchMovies(query, 1, undefined, true);
+        movieSearch = await searchMovies(query, 1, undefined, false);
         movies = filterHasImages(movieSearch.results);
       } else if (activeTab === 'series') {
-        seriesSearch = await searchTvShows(query, 1, undefined, true);
+        seriesSearch = await searchTvShows(query, 1, undefined, false);
         series = filterHasImages(seriesSearch.results);
       } else if (activeTab === 'collections') {
-        collections = await searchCollections(query, true);
+        collections = await searchCollections(query, false);
       } else {
-        people = await searchPeople(query, true);
+        people = await searchPeople(query, false);
       }
     } catch {
       // TMDB failure — show empty state

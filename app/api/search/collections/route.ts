@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get('q') ?? '').trim();
   const page = parsePositivePageParam(searchParams.get('page'));
-  const includeAdult = searchParams.get('adult') !== 'false';
+  const includeAdult = searchParams.get('adult') === 'true';
 
   if (!q) {
     return NextResponse.json({ ok: false, error: 'Missing q' }, { status: 400 });

@@ -181,7 +181,7 @@ export async function searchMovies(
   query: string,
   page = 1,
   resolvedQuery?: string,
-  includeAdult = true,
+  includeAdult = false,
 ): Promise<SearchPagedResult<TMDBMovie>> {
   if (resolvedQuery) {
     const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(
@@ -214,7 +214,7 @@ export async function searchTvShows(
   query: string,
   page = 1,
   resolvedQuery?: string,
-  includeAdult = true,
+  includeAdult = false,
 ): Promise<SearchPagedResult<TMDBSeries>> {
   if (resolvedQuery) {
     const data = await tmdbFetch<TMDBListResult<TMDBSeries>>(
@@ -243,7 +243,7 @@ export async function searchTvShows(
   return { page: 1, results: [], total_pages: 0, total_results: 0, resolvedQuery: null };
 }
 
-export async function searchPeople(query: string, includeAdult = true): Promise<TMDBPersonSearchHit[]> {
+export async function searchPeople(query: string, includeAdult = false): Promise<TMDBPersonSearchHit[]> {
   return searchTmdbListWithFallback<TMDBPersonSearchHit>('/search/person', query, includeAdult);
 }
 
@@ -328,6 +328,6 @@ export async function getCollection(id: number): Promise<TMDBCollection> {
   return tmdbFetch<TMDBCollection>(`/collection/${id}`);
 }
 
-export async function searchCollections(query: string, includeAdult = true): Promise<TMDBCollectionSearchHit[]> {
+export async function searchCollections(query: string, includeAdult = false): Promise<TMDBCollectionSearchHit[]> {
   return searchTmdbListWithFallback<TMDBCollectionSearchHit>('/search/collection', query, includeAdult);
 }
