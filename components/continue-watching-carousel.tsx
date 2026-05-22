@@ -11,13 +11,13 @@ import { SYNCED_EVENT } from '@/lib/watch-history';
 import type { WatchHistoryEntry } from '@/lib/watch-history';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const MIN_ENTRIES = WATCH_HISTORY_MIN_ENTRIES;
 
-function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
+function ContinueWatchingCard({ entry, prefetch }: { entry: WatchHistoryEntry; prefetch: boolean }) {
   const backdrop = tmdbImage(entry.backdropPath, 'w780');
-  const poster = tmdbImage(entry.posterPath, 'w500');
+  const poster = tmdbImage(entry.posterPath, 'w342');
   const href =
     entry.type === 'movie'
       ? `/movie/${entry.id}?autoplay=true`
@@ -26,8 +26,8 @@ function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
   return (
     <Link
       href={href}
-      prefetch={false}
-      className="group relative flex-none w-[130px] sm:w-[300px] md:w-[340px] lg:w-[380px] overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 transition-all duration-300 ease-out ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] hover:-translate-y-1 hover:ring-white/35 hover:shadow-[0_12px_36px_rgba(255,255,255,0.13)] hover:z-10"
+      prefetch={prefetch}
+      className="group relative flex-none w-[130px] sm:w-[300px] md:w-[340px] lg:w-[380px] overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 transition-[transform,box-shadow,border-color] duration-300 ease-out ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] lg:hover:-translate-y-1 lg:hover:ring-white/35 lg:hover:shadow-[0_12px_36px_rgba(255,255,255,0.13)] lg:hover:z-10"
     >
       {/* Mobile: portrait card with poster */}
       <div className="sm:hidden aspect-[2/3] relative overflow-hidden">
@@ -37,7 +37,7 @@ function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
             alt={entry.title}
             fill
             sizes="130px"
-            className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+            className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
           />
         ) : (
           <div className="absolute inset-0 bg-white/5 flex items-center justify-center text-white/20 text-xs">
@@ -46,7 +46,7 @@ function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
         )}
 
         {/* Play overlay on hover */}
-        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/50 opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200 hidden lg:flex items-center justify-center">
           <div className="w-12 h-12 rounded-full border border-white/50 bg-black/30 flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.12)]">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="white" aria-hidden="true">
               <polygon points="6,4 20,12 6,20" />
@@ -89,7 +89,7 @@ function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
             alt={entry.title}
             fill
             sizes="(max-width: 1024px) 300px, 380px"
-            className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+            className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
           />
         ) : (
           <div className="absolute inset-0 bg-white/5 flex items-center justify-center text-white/20 text-sm">
@@ -98,7 +98,7 @@ function ContinueWatchingCard({ entry }: { entry: WatchHistoryEntry }) {
         )}
 
         {/* Play overlay on hover */}
-        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/50 opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200 hidden lg:flex items-center justify-center">
           <div className="w-12 h-12 rounded-full border border-white/50 bg-black/30 flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.12)]">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="white" aria-hidden="true">
               <polygon points="6,4 20,12 6,20" />
@@ -140,7 +140,7 @@ export function ContinueWatchingCarousel({ hasHistory }: { hasHistory: boolean }
   // null = not yet read from localStorage; array = loaded (may be empty)
   const [items, setItems] = useState<WatchHistoryEntry[] | null>(null);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const history = getWatchHistory();
     syncWatchHistoryCookie(history); // corrects stale cookies from prior sessions
     setItems(history);
@@ -235,8 +235,12 @@ export function ContinueWatchingCarousel({ hasHistory }: { hasHistory: boolean }
       </div>
 
       <div className="flex gap-1.5 overflow-x-auto no-scrollbar pt-3 sm:pt-4 pb-3 sm:pb-4 px-1 sm:px-2">
-        {items.map((entry) => (
-          <ContinueWatchingCard key={`${entry.type}-${entry.id}`} entry={entry} />
+        {items.map((entry, idx) => (
+          <ContinueWatchingCard
+            key={`${entry.type}-${entry.id}`}
+            entry={entry}
+            prefetch={idx < 3}
+          />
         ))}
       </div>
     </section>

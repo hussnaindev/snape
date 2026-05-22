@@ -47,9 +47,12 @@ export function Topbar() {
     };
   }, [mobileOpen]);
 
+  useEffect(() => {
+    if (searchOpen) inputRef.current?.focus();
+  }, [searchOpen]);
+
   function openSearch() {
     setSearchOpen(true);
-    setTimeout(() => inputRef.current?.focus(), 50);
   }
 
   function handleSearch(e: React.FormEvent) {

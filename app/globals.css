@@ -28,11 +28,6 @@
 
   /* ── Fonts (populated by next/font CSS vars) ── */
   --font-body: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-cormorant), ui-serif, Georgia, serif;
-  --font-bungee: var(--font-bungee), ui-sans-serif, system-ui, sans-serif;
-  --font-oregano: var(--font-oregano), ui-serif, Georgia, serif;
-  --font-bebas-neue: var(--font-bebas-neue), ui-sans-serif, system-ui, sans-serif;
-  --font-syne: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
   --font-itc-pioneer: 'ITC Pioneer', ui-serif, Georgia, serif;
   --font-chesna-grotesk: 'Chesna Grotesk', ui-sans-serif, system-ui, sans-serif;
 
@@ -132,10 +127,6 @@
   box-sizing: border-box;
 }
 
-html {
-  scroll-behavior: smooth;
-}
-
 /* Mobile fullscreen fix: when the document is in fullscreen, remove safe-area
    inset padding so the video fills edge-to-edge (the system status bar becomes
    a thin overlay on top of the video, not a gap below it).
@@ -171,12 +162,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Mobile scroll perf: strip backdrop-filter on small screens.
-   Every backdrop-blur region forces the compositor to re-rasterize the
-   content behind it on every paint. With ~30 instances on the homepage
-   (chips on cards, hero badges, dots pill), that destroys mobile FPS.
-   Desktop GPUs handle it fine and keep the glassy look. */
-@media (max-width: 639px) {
+/* Strip backdrop-filter on mobile + tablet. Every backdrop-blur region
+   forces the compositor to re-rasterize the content behind it on every
+   paint; with dozens of chips per page that destroys scroll FPS on
+   anything but desktop GPUs. ≤1024px covers phones + iPads. */
+@media (max-width: 1023px) {
   .backdrop-blur-xs,
   .backdrop-blur-sm,
   .backdrop-blur,
@@ -187,6 +177,20 @@ body {
   .backdrop-blur-3xl {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* Honor prefers-reduced-motion: kill all transitions, animations, and
+   smooth-scroll so the UI feels instant for users with vestibular
+   sensitivities (and on devices set to low-power animations). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

@@ -181,12 +181,15 @@ export function HeroSection() {
     hlsRef.current?.destroy();
     hlsRef.current = null;
     if (Hls.isSupported()) {
-      const hls = new Hls({ autoStartLoad: true });
+      // Adaptive bitrate selection — let HLS pick a rendition that matches
+      // the bandwidth + viewport. Forcing the top rendition (UHD) on mobile
+      // burns multiple MB before the hero is even past slide 1.
+      const hls = new Hls({ autoStartLoad: true, capLevelToPlayerSize: true });
       hlsRef.current = hls;
       hls.loadSource(slide.trailerUrl);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        hls.currentLevel = hls.levels.length - 1;
+        hls.currentLevel = -1;
         video.play().catch(() => {});
       });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {

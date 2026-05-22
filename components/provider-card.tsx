@@ -15,18 +15,19 @@ export type MediaItem = {
 interface ProviderCardProps {
   item: MediaItem;
   rank: number;
+  prefetch?: boolean;
 }
 
-export function ProviderCard({ item, rank }: ProviderCardProps) {
+export function ProviderCard({ item, rank, prefetch = false }: ProviderCardProps) {
   const href = item.kind === 'movie' ? `/movie/${item.id}` : `/series/${item.id}`;
-  const poster = tmdbImage(item.poster_path, 'w500');
+  const poster = tmdbImage(item.poster_path, 'w342');
   const isTen = rank === 10;
 
   return (
     <Link
       href={href}
-      prefetch={false}
-      className="group relative flex-none w-[130px] sm:w-[175px] overflow-hidden rounded-2xl bg-white/5 transition-all duration-300 ease-out -translate-y-3 ring-1 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] hover:scale-[1.04] hover:-translate-y-5 hover:ring-white/35 hover:shadow-[0_12px_36px_rgba(255,255,255,0.13)] hover:z-10"
+      prefetch={prefetch}
+      className="group relative flex-none w-[130px] sm:w-[175px] overflow-hidden rounded-2xl bg-white/5 transition-[transform,box-shadow,border-color] duration-300 ease-out -translate-y-3 ring-1 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] lg:hover:scale-[1.03] lg:hover:-translate-y-5 lg:hover:ring-white/35 lg:hover:shadow-[0_12px_36px_rgba(255,255,255,0.13)] lg:hover:z-10"
     >
       <div className="aspect-[2/3] relative overflow-hidden">
         {poster ? (
@@ -35,7 +36,7 @@ export function ProviderCard({ item, rank }: ProviderCardProps) {
             alt={item.title}
             fill
             sizes="(max-width: 640px) 130px, 175px"
-            className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+            className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
           />
         ) : (
           <div className="absolute inset-0 bg-white/5 flex items-center justify-center text-white/20 text-xs">
@@ -46,7 +47,7 @@ export function ProviderCard({ item, rank }: ProviderCardProps) {
         {/* Rank number hidden — kept for future use */}
 
         {/* Play overlay on hover */}
-        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/50 opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200 hidden lg:flex items-center justify-center">
           <div className="w-12 h-12 rounded-full border border-white/50 bg-black/30 flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.12)]">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="white" aria-hidden="true">
               <polygon points="6,4 20,12 6,20" />

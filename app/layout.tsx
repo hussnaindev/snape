@@ -4,51 +4,15 @@ import { FullStoryInit } from '@/components/fullstory-init';
 import { PwaInstallPrompt } from '@/components/pwa-install-prompt';
 import { APP_NAME } from '@/lib/config';
 import type { Metadata, Viewport } from 'next';
-import { Bebas_Neue, Bungee, Cormorant_Garamond, DM_Sans, Oregano, Syne } from 'next/font/google';
+import { DM_Sans } from 'next/font/google';
 import NextTopLoader from 'nextjs-toploader';
 import './globals.css';
 import { GoogleAnalytics } from '@next/third-parties/google';
-
-const bungee = Bungee({
-  subsets: ['latin'],
-  weight: ['400'],
-  variable: '--font-bungee',
-  display: 'swap',
-});
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
   weight: ['300', '400', '500', '600'],
   variable: '--font-dm-sans',
-  display: 'swap',
-});
-
-const syne = Syne({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-syne',
-  display: 'swap',
-});
-
-const cormorantGaramond = Cormorant_Garamond({
-  subsets: ['latin'],
-  weight: ['300', '400', '600'],
-  style: ['normal', 'italic'],
-  variable: '--font-cormorant',
-  display: 'swap',
-});
-
-const oregano = Oregano({
-  subsets: ['latin'],
-  weight: ['400'],
-  variable: '--font-oregano',
-  display: 'swap',
-});
-
-const bebasNeue = Bebas_Neue({
-  subsets: ['latin'],
-  weight: ['400'],
-  variable: '--font-bebas-neue',
   display: 'swap',
 });
 
@@ -75,12 +39,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${dmSans.variable} ${cormorantGaramond.variable} ${bungee.variable} ${syne.variable} ${oregano.variable} ${bebasNeue.variable}`}
-    >
+    <html lang="en" className={dmSans.variable}>
       <head>
         <meta name="theme-color" content="#000000" />
+        <link rel="preconnect" href="https://image.tmdb.org" crossOrigin="" />
       </head>
       <body className="min-h-screen bg-black text-white antialiased overflow-x-hidden">
         <NextTopLoader color="#ffffff" height={2} showSpinner={false} />

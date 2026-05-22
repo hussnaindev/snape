@@ -2,7 +2,7 @@
 // Replaces N independent scroll listeners with one consolidated pipeline:
 //   • ONE scroll/resize listener for the whole page
 //   • ONE rAF per scroll burst
-//   • Reads (layout) batched before writes — no layout thrashing
+//   • Section rects cached — no getBoundingClientRect() inside the tick loop
 //   • IntersectionObserver gates updates so off-screen sections cost nothing
 //   • will-change toggled on/off with viewport visibility (no leaked GPU layers)
 
@@ -15,6 +15,11 @@ type Subscriber = {
   visible: boolean;
 };
 
+type SectionMetrics = {
+  documentTop: number;
+  height: number;
+};
+
 let subs: Subscriber[] = [];
 let raf = 0;
 let initialized = false;
@@ -22,28 +27,32 @@ let io: IntersectionObserver | null = null;
 let reducedMotion = false;
 let isMobile = false;
 const sectionRefCounts = new WeakMap<Element, number>();
+const sectionMetrics = new WeakMap<Element, SectionMetrics>();
+
+function measureSection(section: Element, rect?: DOMRectReadOnly) {
+  const r = rect ?? section.getBoundingClientRect();
+  sectionMetrics.set(section, {
+    documentTop: r.top + window.scrollY,
+    height: r.height,
+  });
+}
 
 function tick() {
   raf = 0;
   if (reducedMotion || isMobile) return;
 
   const vh = window.innerHeight;
+  const scrollY = window.scrollY;
 
-  // Phase 1 — READ. One layout flush covers every visible subscriber.
-  const writes: Array<[Subscriber, number]> = [];
+  // Pure compositor work — no layout reads, all metrics come from the cache.
   for (let i = 0; i < subs.length; i++) {
     const s = subs[i];
     if (!s || !s.visible) continue;
-    const rect = s.section.getBoundingClientRect();
-    const t = 1 - (rect.top + rect.height) / (vh + rect.height);
-    writes.push([s, t]);
-  }
-
-  // Phase 2 — WRITE. Pure compositor work, no layout.
-  for (let i = 0; i < writes.length; i++) {
-    const entry = writes[i];
-    if (!entry) continue;
-    entry[0].effect(entry[1]);
+    const m = sectionMetrics.get(s.section);
+    if (!m) continue;
+    const top = m.documentTop - scrollY;
+    const t = 1 - (top + m.height) / (vh + m.height);
+    s.effect(t);
   }
 }
 
@@ -57,6 +66,10 @@ function onVisibilityChange(entries: IntersectionObserverEntry[]) {
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i];
     if (!entry) continue;
+    // Refresh cached metrics whenever the section crosses the intersection
+    // root margin — this is the right cadence for catching layout shifts
+    // from late-loading images / fonts without thrashing on every scroll frame.
+    measureSection(entry.target, entry.boundingClientRect);
     for (let j = 0; j < subs.length; j++) {
       const s = subs[j];
       if (!s || s.section !== entry.target) continue;
@@ -66,13 +79,21 @@ function onVisibilityChange(entries: IntersectionObserverEntry[]) {
       // Promote/demote the layer in sync with viewport visibility so we
       // don't keep dozens of dormant composited layers in GPU memory.
       s.el.style.willChange = s.visible ? 'transform, opacity' : 'auto';
-      if (!s.visible) {
-        // Clearing the inline transform/opacity when leaving viewport keeps
-        // the layer in a clean state for next entry and avoids stale values.
-      }
     }
   }
   if (anyVisibleChanged) schedule();
+}
+
+function refreshAllMetrics() {
+  // Resize / orientation change: full re-measure.
+  const seen = new Set<Element>();
+  for (let i = 0; i < subs.length; i++) {
+    const s = subs[i];
+    if (!s) continue;
+    if (seen.has(s.section)) continue;
+    seen.add(s.section);
+    measureSection(s.section);
+  }
 }
 
 function init() {
@@ -96,6 +117,7 @@ function init() {
         s.el.style.willChange = 'auto';
       }
     } else {
+      refreshAllMetrics();
       schedule();
     }
   };
@@ -104,7 +126,14 @@ function init() {
   }
 
   window.addEventListener('scroll', schedule, { passive: true });
-  window.addEventListener('resize', schedule, { passive: true });
+  window.addEventListener(
+    'resize',
+    () => {
+      refreshAllMetrics();
+      schedule();
+    },
+    { passive: true },
+  );
 
   // 200px rootMargin keeps the effect smooth at the seam — we begin updating
   // just before the section is on-screen so there's no perceived jump.
@@ -125,7 +154,10 @@ export function registerParallax(
   subs.push(sub);
 
   const count = sectionRefCounts.get(section) ?? 0;
-  if (count === 0) io?.observe(section);
+  if (count === 0) {
+    measureSection(section);
+    io?.observe(section);
+  }
   sectionRefCounts.set(section, count + 1);
 
   // Run once so initial paint isn't a frame behind.
@@ -137,6 +169,7 @@ export function registerParallax(
     if (next <= 0) {
       io?.unobserve(section);
       sectionRefCounts.delete(section);
+      sectionMetrics.delete(section);
     } else {
       sectionRefCounts.set(section, next);
     }

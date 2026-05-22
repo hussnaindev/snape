@@ -27,6 +27,7 @@ interface ActorProfileImageProps {
   sizes: string;
   className?: string;
   fallbackSize: ActorProfileFallbackSize;
+  loading?: 'eager' | 'lazy';
 }
 
 export function ActorProfileImage({
@@ -35,6 +36,7 @@ export function ActorProfileImage({
   sizes,
   className,
   fallbackSize,
+  loading,
 }: ActorProfileImageProps) {
   const [failed, setFailed] = useState(false);
 
@@ -49,6 +51,7 @@ export function ActorProfileImage({
       fill
       sizes={sizes}
       className={className}
+      loading={loading}
       onError={() => setFailed(true)}
     />
   );

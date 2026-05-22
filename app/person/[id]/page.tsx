@@ -71,7 +71,9 @@ export default async function PersonPage({ params }: Props) {
     releaseDate: string;
   } | null = null;
 
-  // Try to find a release with a backdrop, working backwards from the latest
+  // Try to find a release with a backdrop, working backwards from the latest.
+  // We fetch the top N candidates in parallel and pick the first chronological
+  // hit — sequential awaits here used to cost 5–15 round-trips of TTFB.
   const movieReleases = allMovieCredits
     .filter((m) => m.release_date)
     .map((m) => ({ ...m, type: 'movie' as const, airDate: m.release_date }));
@@ -84,51 +86,56 @@ export default async function PersonPage({ params }: Props) {
     b.airDate > a.airDate ? 1 : -1,
   );
 
-  for (const release of allReleases) {
-    try {
-      if (release.type === 'movie') {
-        const [movieDetail, videos] = await Promise.all([
-          getMovieDetail(release.id).catch(() => null),
-          getMovieVideos(release.id).catch(() => ({ results: [] })),
-        ]);
-
-        if (movieDetail?.backdrop_path) {
-          backdropUrl = tmdbImage(movieDetail.backdrop_path, 'original');
-          releaseWithBackdrop = {
-            id: release.id,
-            title: release.title,
-            type: 'movie',
-            backdropPath: movieDetail.backdrop_path,
-            releaseDate: release.release_date,
+  const candidates = allReleases.slice(0, 6);
+  const resolved = await Promise.all(
+    candidates.map(async (release) => {
+      try {
+        if (release.type === 'movie') {
+          const [detail, videos] = await Promise.all([
+            getMovieDetail(release.id).catch(() => null),
+            getMovieVideos(release.id).catch(() => ({ results: [] })),
+          ]);
+          if (!detail?.backdrop_path) return null;
+          return {
+            backdropPath: detail.backdrop_path,
+            videos,
+            info: {
+              id: release.id,
+              title: release.title,
+              type: 'movie' as const,
+              backdropPath: detail.backdrop_path,
+              releaseDate: release.release_date,
+            },
           };
-          if (videos.results.length > 0) {
-            trailerKey = await getEmbeddableTrailerKey(videos);
-          }
-          break;
         }
-      } else {
-        const [seriesDetail, videos] = await Promise.all([
+        const [detail, videos] = await Promise.all([
           getSeriesDetail(release.id).catch(() => null),
           getSeriesVideos(release.id).catch(() => ({ results: [] })),
         ]);
-
-        if (seriesDetail?.backdrop_path) {
-          backdropUrl = tmdbImage(seriesDetail.backdrop_path, 'original');
-          releaseWithBackdrop = {
+        if (!detail?.backdrop_path) return null;
+        return {
+          backdropPath: detail.backdrop_path,
+          videos,
+          info: {
             id: release.id,
             title: release.name,
-            type: 'series',
-            backdropPath: seriesDetail.backdrop_path,
+            type: 'series' as const,
+            backdropPath: detail.backdrop_path,
             releaseDate: release.first_air_date,
-          };
-          if (videos.results.length > 0) {
-            trailerKey = await getEmbeddableTrailerKey(videos);
-          }
-          break;
-        }
+          },
+        };
+      } catch {
+        return null;
       }
-    } catch {
-      continue;
+    }),
+  );
+
+  const winner = resolved.find((r) => r !== null);
+  if (winner) {
+    backdropUrl = tmdbImage(winner.backdropPath, 'original');
+    releaseWithBackdrop = winner.info;
+    if (winner.videos.results.length > 0) {
+      trailerKey = await getEmbeddableTrailerKey(winner.videos);
     }
   }
 
@@ -229,13 +236,13 @@ export default async function PersonPage({ params }: Props) {
             <SectionDivider label="Filmography" className="mb-4" />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3">
               {filmography.map((credit) => {
-                const poster = tmdbImage(credit.poster_path, 'w500');
+                const poster = tmdbImage(credit.poster_path, 'w342');
                 return (
                   <Link
                     key={`${credit.id}-${credit.character}`}
                     href={`/movie/${credit.id}`}
                     prefetch={false}
-                    className="group relative block overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] transition-all duration-300 ease-out hover:-translate-y-1 hover:ring-white/35 hover:shadow-[0_12px_36px_rgba(255,255,255,0.13)] hover:z-10"
+                    className="group relative block overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] transition-[transform,box-shadow,border-color] duration-300 ease-out lg:hover:-translate-y-1 lg:hover:ring-white/35 lg:hover:shadow-[0_12px_36px_rgba(255,255,255,0.13)] lg:hover:z-10"
                   >
                     <div className="aspect-[2/3] overflow-hidden relative">
                       {poster ? (
@@ -243,8 +250,8 @@ export default async function PersonPage({ params }: Props) {
                           src={poster}
                           alt={credit.title}
                           fill
-                          sizes="50vw"
-                          className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 240px"
+                          className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
                         />
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center bg-white/5 text-white/20 text-xs text-center p-2">
