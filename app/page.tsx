@@ -33,7 +33,7 @@ export default async function HomePage() {
     <>
       <Topbar />
 
-      <div className="overflow-x-hidden">
+      <div style={{ overflowX: 'clip' }}>
         <HeroSection />
 
         <ContinueWatchingCarousel hasHistory={hasHistory} />
