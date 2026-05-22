@@ -97,7 +97,7 @@ export function Topbar() {
               Browse
             </button>
             {browseOpen && (
-              <div className="absolute top-full right-0 mt-1 bg-black/60 backdrop-blur-sm rounded-lg shadow-xl border border-white/10 w-48 overflow-hidden z-50">
+              <div className="absolute top-full right-0 mt-1 bg-black/70 sm:bg-black/60 sm:backdrop-blur-sm rounded-lg shadow-xl border border-white/10 w-48 overflow-hidden z-50">
                 {GENRES.map((genre) => (
                      <Link
                         key={genre.id}
@@ -210,7 +210,7 @@ export function Topbar() {
       {mobileOpen && (
         <>
           <div
-            className="md:hidden fixed inset-0 bg-black/60 z-[60] backdrop-blur-sm"
+            className="md:hidden fixed inset-0 bg-black/70 z-[60]"
             onClick={() => setMobileOpen(false)}
             aria-hidden="true"
           />

@@ -58,7 +58,7 @@ export function UserMenu() {
       {open && (
         <>
           {/* ── Desktop: dropdown ── */}
-          <div className="hidden md:block absolute top-full right-0 mt-2 w-52 bg-black/60 backdrop-blur-sm border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 animate-fade-in">
+          <div className="hidden md:block absolute top-full right-0 mt-2 w-52 bg-black/70 sm:bg-black/60 sm:backdrop-blur-sm border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 animate-fade-in">
             <div className="px-4 py-3 border-b border-white/10">
               <p className="text-white text-sm font-semibold truncate">{user.name}</p>
               <p className="text-white/40 text-xs truncate">{user.email}</p>
