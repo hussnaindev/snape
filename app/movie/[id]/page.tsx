@@ -16,6 +16,8 @@ import { tmdbImage } from '@/lib/tmdb-image';
 import { getMovieEmbedUrl } from '@/lib/vsembed';
 import { pickPreferredProvidersWithFallback } from '@/lib/watch-providers';
 
+import { ParallaxContent } from '@/components/parallax-content';
+
 import { MovieDetailHero } from './movie-detail-hero';
 
 export const runtime = 'edge';
@@ -89,14 +91,18 @@ export default async function MoviePage({ params }: Props) {
           overview={movie.overview ?? null}
         />
 
-        <div className="mt-10">
-          <CastRail cast={credits.cast} />
-        </div>
+        <section className="mt-10">
+          <ParallaxContent direction="right" speed={120}>
+            <CastRail cast={credits.cast} />
+          </ParallaxContent>
+        </section>
 
         {recommendations.length > 0 && (
-          <div className="mt-10 mb-16">
-            <MovieCarousel title="More Like This" movies={recommendations} />
-          </div>
+          <section className="mt-10 mb-16">
+            <ParallaxContent direction="left" speed={120}>
+              <MovieCarousel title="More Like This" movies={recommendations} />
+            </ParallaxContent>
+          </section>
         )}
       </div>
     </>

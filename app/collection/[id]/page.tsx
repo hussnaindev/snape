@@ -6,6 +6,8 @@ import { tmdbImage } from '@/lib/tmdb-image';
 import { getMovieEmbedUrl } from '@/lib/vsembed';
 import type { Metadata } from 'next';
 
+import { ParallaxContent } from '@/components/parallax-content';
+
 import { CollectionDetailHero } from './collection-detail-hero';
 
 const GENRE_MAP: Record<number, string> = {
@@ -105,18 +107,20 @@ export default async function CollectionPage({ params }: Props) {
         />
 
         {/* Movies grid */}
-        <div className="mt-10 mb-16">
-          <div className="px-4 md:px-8">
-            <h2 className="text-white font-body font-semibold text-base md:text-lg mb-4">
-              Movies in this collection
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3">
-              {collection.parts.map((movie) => (
-                <MovieCard key={movie.id} movie={movie} />
-              ))}
+        <section className="mt-10 mb-16">
+          <ParallaxContent direction="right" speed={120}>
+            <div className="px-4 md:px-8">
+              <h2 className="text-white font-body font-semibold text-base md:text-lg mb-4">
+                Movies in this collection
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3">
+                {collection.parts.map((movie) => (
+                  <MovieCard key={movie.id} movie={movie} />
+                ))}
+              </div>
             </div>
-          </div>
-        </div>
+          </ParallaxContent>
+        </section>
       </div>
     </>
   );

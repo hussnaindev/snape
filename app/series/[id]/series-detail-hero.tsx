@@ -14,6 +14,7 @@ import { TagChip } from '@/components/ui/tag-chip';
 import { WatchHistoryRecorder } from '@/components/watch-history-recorder';
 import { WatchProvidersRow } from '@/components/watch-providers-row';
 import { WatchlistButton } from '@/components/watchlist-button';
+import { registerParallax } from '@/lib/parallax-controller';
 import { cn } from '@/lib/utils';
 import type { PreferredProviderKey } from '@/lib/watch-providers';
 import type { TMDBSeason, TMDBSeasonSummary } from '@/types/tmdb';
@@ -83,6 +84,9 @@ export function SeriesDetailHero({
   const { setControls } = usePlayerControls();
   const searchParams = useSearchParams();
 
+  const sectionRef = useRef<HTMLElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const metaRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const autoPlayRef = useRef(false);
@@ -275,8 +279,29 @@ export function SeriesDetailHero({
     return () => setControls(null);
   }, [playerActive, playerVisible, isFullscreen, handleFullscreen, handleEpisodes, setControls]);
 
+  // Parallax: backdrop vertical movement
+  useEffect(() => {
+    const el = backdropRef.current;
+    const section = sectionRef.current;
+    if (!el || !section) return;
+    return registerParallax(el, section, (t) => {
+      el.style.transform = `translate3d(0, ${(t - 0.5) * 360}px, 0)`;
+    });
+  }, []);
+
+  // Parallax: metadata horizontal movement + fade
+  useEffect(() => {
+    const el = metaRef.current;
+    const section = sectionRef.current;
+    if (!el || !section) return;
+    return registerParallax(el, section, (t) => {
+      el.style.transform = `translate3d(${(t - 0.5) * -120}px, 0, 0)`;
+      el.style.opacity = String(Math.max(0, Math.min(t / 0.25, (1 - t) / 0.2)));
+    });
+  }, []);
+
   return (
-    <>
+    <section ref={sectionRef}>
       {/* BACKDROP / PLAYER SECTION */}
       <div
         ref={playerContainerRef}
@@ -287,21 +312,23 @@ export function SeriesDetailHero({
             : 'h-[calc(30vh+4rem)] md:h-[calc(55vh+9rem)] min-h-[200px] md:min-h-[320px]',
         )}
       >
-        {backdropUrl ? (
-          <Image
-            src={backdropUrl}
-            alt={alt}
-            fill
-            priority
-            sizes="100vw"
-            className={cn(
-              'object-cover object-top transition-opacity duration-700',
-              playerActive && playerVisible ? 'opacity-0' : '',
-            )}
-          />
-        ) : (
-          <div className="absolute inset-0 bg-white/5" />
-        )}
+        <div ref={backdropRef} className="absolute inset-0">
+          {backdropUrl ? (
+            <Image
+              src={backdropUrl}
+              alt={alt}
+              fill
+              priority
+              sizes="100vw"
+              className={cn(
+                'object-cover object-top transition-opacity duration-700',
+                playerActive && playerVisible ? 'opacity-0' : '',
+              )}
+            />
+          ) : (
+            <div className="absolute inset-0 bg-white/5" />
+          )}
+        </div>
 
         {embedYtUrl && showVideo && (
           <iframe
@@ -475,6 +502,7 @@ export function SeriesDetailHero({
 
       {/* CARD + SYNOPSIS */}
       <div
+        ref={metaRef}
         className={cn(
           'px-4 md:px-8 relative z-10 transition-[margin-top] duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]',
           playerActive ? 'mt-4' : '-mt-36 md:-mt-60',
@@ -595,6 +623,6 @@ export function SeriesDetailHero({
 
         {networks && <p className="mt-1 text-xs text-white/40">{networks}</p>}
       </div>
-    </>
+    </section>
   );
 }

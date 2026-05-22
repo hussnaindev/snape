@@ -17,6 +17,8 @@ import { tmdbImage } from '@/lib/tmdb-image';
 import { getSeriesEmbedUrl } from '@/lib/vsembed';
 import { pickPreferredProvidersWithFallback } from '@/lib/watch-providers';
 
+import { ParallaxContent } from '@/components/parallax-content';
+
 import { EpisodeGuide } from './episode-guide';
 import { SeriesDetailHero } from './series-detail-hero';
 
@@ -137,25 +139,31 @@ export default async function SeriesPage({ params }: Props) {
 
         {/* EPISODES */}
         {initialSeason && series.seasons.length > 0 && (
-          <div id="episode-guide" className="mt-10">
-            <EpisodeGuide
-              seriesId={seriesId}
-              seasons={series.seasons}
-              initialSeason={initialSeason}
-            />
-          </div>
+          <section id="episode-guide" className="mt-10">
+            <ParallaxContent direction="right" speed={120}>
+              <EpisodeGuide
+                seriesId={seriesId}
+                seasons={series.seasons}
+                initialSeason={initialSeason}
+              />
+            </ParallaxContent>
+          </section>
         )}
 
         {/* CAST */}
-        <div className="mt-10">
-          <CastRail cast={credits.cast} />
-        </div>
+        <section className="mt-10">
+          <ParallaxContent direction="left" speed={120}>
+            <CastRail cast={credits.cast} />
+          </ParallaxContent>
+        </section>
 
         {/* RECOMMENDATIONS */}
         {recommendations.length > 0 && (
-          <div className="mt-10 mb-16">
-            <SeriesCarousel title="More Like This" series={recommendations} />
-          </div>
+          <section className="mt-10 mb-16">
+            <ParallaxContent direction="right" speed={120}>
+              <SeriesCarousel title="More Like This" series={recommendations} />
+            </ParallaxContent>
+          </section>
         )}
       </div>
     </>
