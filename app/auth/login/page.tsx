@@ -58,7 +58,7 @@ export default function LoginPage() {
       {/* Form card */}
       <div className="relative z-10 flex-1 flex items-center justify-center px-4 pb-20">
         <div className="w-full max-w-sm lg:max-w-2xl">
-          <div className="bg-black/70 backdrop-blur-md border border-white/12 rounded-2xl shadow-2xl overflow-hidden">
+          <div className="bg-black/85 border border-white/12 rounded-2xl shadow-2xl overflow-hidden">
             <div className="flex flex-col lg:flex-row">
               {/* Left panel */}
               <div className="hidden lg:block lg:w-[280px] lg:flex-none p-8 border-r border-white/10 bg-gradient-to-b from-white/[0.06] to-transparent">

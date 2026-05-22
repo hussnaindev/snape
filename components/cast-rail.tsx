@@ -52,7 +52,7 @@ export function CastRail({ cast }: CastRailProps) {
                 )}
               </div>
               {/* Title bar below circle */}
-              <div className="bg-black/70 sm:bg-black/60 sm:backdrop-blur-sm py-1.5 rounded-md px-2">
+              <div className="bg-gradient-to-t from-black/85 to-black/50 py-1.5 rounded-md px-2">
                 <p className="text-[10px] sm:text-[11px] font-chesna-grotesk uppercase truncate tracking-[0.2em] font-light text-white/90 text-center leading-tight">
                   {member.name}
                 </p>

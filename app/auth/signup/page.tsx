@@ -65,7 +65,7 @@ export default function SignupPage() {
       {/* Form card */}
       <div className="relative z-10 flex-1 flex items-center justify-center px-4 pb-20">
         <div className="w-full max-w-sm lg:max-w-2xl">
-          <div className="bg-black/70 backdrop-blur-md border border-white/12 rounded-2xl px-8 py-10 shadow-2xl">
+          <div className="bg-black/85 border border-white/12 rounded-2xl px-8 py-10 shadow-2xl">
             {/* Heading */}
             <div className="flex items-center gap-3 mb-1">
               <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-none">

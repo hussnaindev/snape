@@ -50,7 +50,7 @@ export function WatchlistButton({ tmdbId, mediaType, className, iconOnly = false
           href={href}
           aria-label="Login to add to watchlist"
           className={cn(
-            'flex items-center justify-center w-9 h-9 rounded-full border transition-all bg-black/40 text-white border-white/30 hover:border-white/70 backdrop-blur-sm',
+            'flex items-center justify-center w-9 h-9 rounded-full border transition-all bg-black/60 text-white border-white/30 hover:border-white/70',
             className,
           )}
         >
@@ -63,7 +63,7 @@ export function WatchlistButton({ tmdbId, mediaType, className, iconOnly = false
       <Link
         href={href}
         className={cn(
-          'relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-10 px-3 md:h-12 md:px-5 min-w-36 backdrop-blur-md border-white/20 bg-white/2 text-white lg:hover:border-transparent lg:hover:bg-white/20 lg:hover:text-white active:border-transparent active:bg-white/20',
+          'relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-10 px-3 md:h-12 md:px-5 min-w-36 border-white/20 bg-white/10 text-white lg:hover:border-transparent lg:hover:bg-white/20 lg:hover:text-white active:border-transparent active:bg-white/20',
           className,
         )}
       >
@@ -116,7 +116,7 @@ export function WatchlistButton({ tmdbId, mediaType, className, iconOnly = false
           'flex items-center justify-center w-9 h-9 rounded-full border transition-all cursor-pointer',
           inList
             ? 'bg-white text-black border-white'
-            : 'bg-black/40 text-white border-white/30 hover:border-white/70 backdrop-blur-sm',
+            : 'bg-black/60 text-white border-white/30 hover:border-white/70',
           loading && 'opacity-50 cursor-wait',
           className,
         )}
@@ -132,7 +132,7 @@ export function WatchlistButton({ tmdbId, mediaType, className, iconOnly = false
       onClick={toggle}
       disabled={loading}
       className={cn(
-        'relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-10 px-3 md:h-12 md:px-5 min-w-36 backdrop-blur-md',
+        'relative top-0 inline-flex items-center justify-center gap-2 text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-10 px-3 md:h-12 md:px-5 min-w-36',
         inList
           ? 'border-white/20 bg-white/20 text-white lg:hover:bg-white/30 active:bg-white/20'
           : 'border-white/20 bg-white/2 text-white lg:hover:border-transparent lg:hover:bg-white/20 lg:hover:text-white active:border-transparent active:bg-white/20',

@@ -136,7 +136,7 @@ export function PwaInstallPrompt({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-black/85 backdrop-blur px-4 py-3',
+        'fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-black/90 px-4 py-3',
         'supports-[backdrop-filter]:bg-black/60',
         className,
       )}

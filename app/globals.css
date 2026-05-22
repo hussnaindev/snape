@@ -162,23 +162,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Strip backdrop-filter on mobile + tablet. Every backdrop-blur region
-   forces the compositor to re-rasterize the content behind it on every
-   paint; with dozens of chips per page that destroys scroll FPS on
-   anything but desktop GPUs. ≤1024px covers phones + iPads. */
-@media (max-width: 1023px) {
-  .backdrop-blur-xs,
-  .backdrop-blur-sm,
-  .backdrop-blur,
-  .backdrop-blur-md,
-  .backdrop-blur-lg,
-  .backdrop-blur-xl,
-  .backdrop-blur-2xl,
-  .backdrop-blur-3xl {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-}
 
 /* Honor prefers-reduced-motion: kill all transitions, animations, and
    smooth-scroll so the UI feels instant for users with vestibular
