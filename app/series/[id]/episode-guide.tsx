@@ -112,9 +112,9 @@ export function EpisodeGuide({ seriesId, seasons, initialSeason, initialSelected
                   key={i}
                   className="flex-none w-[180px] sm:w-[240px] md:w-[260px] lg:w-[280px] xl:w-[300px]"
                 >
-                  <div className="rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 overflow-hidden animate-pulse">
-                    <div className="aspect-video bg-white/10" />
-                  </div>
+                    <div className="rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 overflow-hidden animate-pulse shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)]">
+                      <div className="aspect-[4/3] bg-white/10" />
+                    </div>
                 </div>
               ))}
             </div>
