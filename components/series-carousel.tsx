@@ -9,7 +9,7 @@ interface SeriesCarouselProps {
 
 export function SeriesCarousel({ title, series }: SeriesCarouselProps) {
   return (
-    <section className="cv-auto">
+    <section>
       <div className="px-4 md:px-8">
         <SectionDivider label={title} className="mb-2" />
       </div>

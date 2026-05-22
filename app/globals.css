@@ -194,14 +194,6 @@ body {
   }
 }
 
-/* Off-screen homepage sections skip layout + paint. `auto` lets the browser
-   remember each section's real size after first measure, so only the very
-   first scroll-into-view has any estimate. */
-.cv-auto {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 800px;
-}
-
 /* Kill browser autofill yellow on dark inputs */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,

@@ -159,7 +159,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
   const artTranslate = backdropArtTranslate[providerKey] ?? '';
 
   return (
-    <section className="relative cv-auto">
+    <section className="relative">
 
       {/* ── Backdrop ── */}
       <div className="relative h-[340px] sm:h-[560px] overflow-hidden">
