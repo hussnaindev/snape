@@ -215,7 +215,7 @@ function EpisodeCard({
         onClick={handleClick}
         className="block h-full w-full text-left cursor-pointer"
       >
-        <div className="aspect-video overflow-hidden relative">
+        <div className="aspect-[4/3] overflow-hidden relative">
           {still ? (
             <Image
               src={still}
