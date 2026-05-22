@@ -191,7 +191,7 @@ function EpisodeCard({
   selectedSeason: number;
   onSelect?: (season: number, episode: number) => void;
 }) {
-  const still = tmdbResponsive(episode.still_path, 'w300', 'w500');
+  const still = tmdbResponsive(episode.still_path, 'w500', 'w500');
   const runtime = episode.runtime ? `${episode.runtime}m` : null;
   const rating = episode.vote_average;
 
