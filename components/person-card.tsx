@@ -8,48 +8,48 @@ interface PersonCardProps {
 }
 
 export function PersonCard({ credit }: PersonCardProps) {
-  const poster = tmdbImage(credit.poster_path, 'w185');
-  const backdrop = tmdbImage(credit.backdrop_path, 'w780') ?? poster;
-  const year = credit.release_date?.slice(0, 4) ?? '';
+  const poster = tmdbImage(credit.poster_path, 'w500');
 
   return (
-    <Link href={`/movie/${credit.id}`} className="flex-none w-28 sm:w-64 group">
-      {/* Mobile: portrait */}
-      <div className="sm:hidden aspect-[2/3] rounded overflow-hidden bg-white/5 mb-2 relative">
-        {poster ? (
-          <Image
-            src={poster}
-            alt={credit.title}
-            fill
-            sizes="112px"
-            className="object-cover group-hover:scale-105 transition-transform duration-200"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-white/20 text-xs text-center p-2">
-            {credit.title}
-          </div>
-        )}
-      </div>
+    <Link href={`/movie/${credit.id}`} prefetch={false} className="flex-none w-[130px] sm:w-[170px] md:w-[180px] lg:w-[190px] xl:w-[210px] 2xl:w-[240px] group">
+      <div className="relative block overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] transition-all duration-300 ease-out hover:-translate-y-1 hover:ring-white/35 hover:shadow-[0_12px_36px_rgba(255,255,255,0.13)] hover:z-10">
+        <div className="aspect-[2/3] overflow-hidden relative">
+          {poster ? (
+            <Image
+              src={poster}
+              alt={credit.title}
+              fill
+              sizes="50vw"
+              className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/5 text-white/20 text-sm">
+              {credit.title}
+            </div>
+          )}
 
-      {/* Desktop: landscape */}
-      <div className="hidden sm:block aspect-video rounded overflow-hidden bg-white/5 mb-2 relative">
-        {backdrop ? (
-          <Image
-            src={backdrop}
-            alt={credit.title}
-            fill
-            sizes="256px"
-            className="object-cover group-hover:scale-105 transition-transform duration-200"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-white/20 text-xs text-center p-2">
-            {credit.title}
-          </div>
-        )}
-      </div>
+          {/* Type chip top-left */}
+          <span className="absolute top-1.5 left-2 lg:top-2 lg:left-3 z-10 inline-flex items-center text-[8px] sm:text-[9px] lg:text-[9px] xl:text-[9px] 2xl:text-[9px] font-semibold leading-none tracking-widest uppercase text-white/80 border border-white/40 rounded-full px-2 py-1 lg:px-2 lg:py-1 bg-black/40 backdrop-blur-sm">
+            Film
+          </span>
 
-      <p className="text-white text-xs font-medium leading-tight truncate">{credit.title}</p>
-      {year && <p className="text-white/40 text-xs mt-0.5">{year}</p>}
+          {/* Rating chip top-right */}
+          {credit.vote_average > 0 && (
+            <span className="absolute top-1.5 right-2 lg:top-2 lg:right-3 z-10 inline-flex items-center gap-1 rounded-full border border-white/40 px-2 py-1 lg:px-2 lg:py-1 text-[8px] sm:text-[9px] lg:text-[9px] xl:text-[9px] 2xl:text-[9px] font-semibold leading-none tabular-nums text-white bg-black/40 backdrop-blur-sm">
+              ★ {credit.vote_average.toFixed(1)}
+            </span>
+          )}
+
+          {/* Title bar at bottom */}
+          <div className="absolute inset-x-0 bottom-0 flex items-center pointer-events-none z-0">
+            <div className="w-full bg-black/70 sm:bg-black/60 sm:backdrop-blur-sm py-1.5 sm:py-2 rounded-t-md px-3">
+              <p className="text-[10px] sm:text-[11px] font-chesna-grotesk uppercase truncate tracking-[0.2em] font-light text-white/90 text-center">
+                {credit.title}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </Link>
   );
 }

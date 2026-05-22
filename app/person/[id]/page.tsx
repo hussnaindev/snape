@@ -8,7 +8,6 @@ import { ActorProfileImage } from '@/components/actor-profile-image';
 import { PersonCard } from '@/components/person-card';
 import { Topbar } from '@/components/topbar';
 import { ExpandableText } from '@/components/ui/expandable-text';
-import { RatingBadge } from '@/components/ui/rating-badge';
 import { SectionDivider } from '@/components/ui/section-divider';
 import {
   getEmbeddableTrailerKey,
@@ -228,25 +227,23 @@ export default async function PersonPage({ params }: Props) {
         {filmography.length > 0 && (
           <section className="px-4 md:px-8 pb-16">
             <SectionDivider label="Filmography" className="mb-4" />
-            <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3">
               {filmography.map((credit) => {
-                const img =
-                  tmdbImage(credit.backdrop_path, 'w780') ?? tmdbImage(credit.poster_path, 'w780');
-                const year = credit.release_date?.slice(0, 4);
+                const poster = tmdbImage(credit.poster_path, 'w500');
                 return (
                   <Link
                     key={`${credit.id}-${credit.character}`}
                     href={`/movie/${credit.id}`}
                     prefetch={false}
-                    className="group relative block overflow-hidden rounded-md bg-white/5 transition-all duration-300 ease-out sm:hover:scale-105 sm:hover:shadow-[0_8px_30px_rgba(0,0,0,0.6)] sm:hover:brightness-110 sm:hover:z-10"
+                    className="group relative block overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] transition-all duration-300 ease-out hover:-translate-y-1 hover:ring-white/35 hover:shadow-[0_12px_36px_rgba(255,255,255,0.13)] hover:z-10"
                   >
-                    <div className="aspect-video overflow-hidden relative">
-                      {img ? (
+                    <div className="aspect-[2/3] overflow-hidden relative">
+                      {poster ? (
                         <Image
-                          src={img}
+                          src={poster}
                           alt={credit.title}
                           fill
-                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                          sizes="50vw"
                           className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
                         />
                       ) : (
@@ -254,23 +251,26 @@ export default async function PersonPage({ params }: Props) {
                           {credit.title}
                         </div>
                       )}
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end px-2 py-1.5 sm:px-3 sm:py-2.5">
-                      <p className="text-white text-xs sm:text-sm font-medium leading-tight line-clamp-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-                        {credit.title}
-                      </p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {year && (
-                          <span className="text-white/50 text-[10px] sm:text-xs drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-                            {year}
-                          </span>
-                        )}
-                        {credit.vote_average > 0 && (
-                          <RatingBadge
-                            rating={credit.vote_average}
-                            className="text-[9px] px-1 py-0 sm:text-[11px] sm:px-1.5"
-                          />
-                        )}
+
+                      {/* Type chip top-left */}
+                      <span className="absolute top-1.5 left-2 lg:top-2 lg:left-3 z-10 inline-flex items-center text-[8px] sm:text-[9px] lg:text-[9px] xl:text-[9px] 2xl:text-[9px] font-semibold leading-none tracking-widest uppercase text-white/80 border border-white/40 rounded-full px-2 py-1 lg:px-2 lg:py-1 bg-black/40 backdrop-blur-sm">
+                        Film
+                      </span>
+
+                      {/* Rating chip top-right */}
+                      {credit.vote_average > 0 && (
+                        <span className="absolute top-1.5 right-2 lg:top-2 lg:right-3 z-10 inline-flex items-center gap-1 rounded-full border border-white/40 px-2 py-1 lg:px-2 lg:py-1 text-[8px] sm:text-[9px] lg:text-[9px] xl:text-[9px] 2xl:text-[9px] font-semibold leading-none tabular-nums text-white bg-black/40 backdrop-blur-sm">
+                          ★ {credit.vote_average.toFixed(1)}
+                        </span>
+                      )}
+
+                      {/* Title bar at bottom */}
+                      <div className="absolute inset-x-0 bottom-0 flex items-center pointer-events-none z-0">
+                        <div className="w-full bg-black/70 sm:bg-black/60 sm:backdrop-blur-sm py-1.5 sm:py-2 rounded-t-md px-3">
+                          <p className="text-[10px] sm:text-[11px] font-chesna-grotesk uppercase truncate tracking-[0.2em] font-light text-white/90 text-center">
+                            {credit.title}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </Link>
