@@ -215,7 +215,7 @@ export default async function PersonPage({ params }: Props) {
         {knownFor.length > 0 && (
           <section className="px-4 md:px-8 mt-10 mb-10">
             <SectionDivider label="Known For" className="mb-4" />
-            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+            <div className="flex gap-3 overflow-x-auto no-scrollbar py-1">
               {knownFor.map((credit) => (
                 <PersonCard key={`${credit.id}-${credit.character}`} credit={credit} />
               ))}

@@ -11,8 +11,8 @@ export function PersonCard({ credit }: PersonCardProps) {
   const poster = tmdbImage(credit.poster_path, 'w500');
 
   return (
-    <Link href={`/movie/${credit.id}`} prefetch={false} className="flex-none w-[130px] sm:w-[170px] md:w-[180px] lg:w-[190px] xl:w-[210px] 2xl:w-[240px] group">
-      <div className="relative block overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] transition-all duration-300 ease-out hover:-translate-y-1 hover:ring-white/35 hover:shadow-[0_12px_36px_rgba(255,255,255,0.13)] hover:z-10">
+    <div className="group relative flex-none w-[130px] sm:w-[170px] md:w-[180px] lg:w-[190px] xl:w-[210px] 2xl:w-[240px] overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] transition-all duration-300 ease-out hover:-translate-y-1 hover:ring-white/35 hover:shadow-[0_12px_36px_rgba(255,255,255,0.13)] hover:z-10">
+      <Link href={`/movie/${credit.id}`} prefetch={false} className="block h-full w-full">
         <div className="aspect-[2/3] overflow-hidden relative">
           {poster ? (
             <Image
@@ -49,7 +49,7 @@ export function PersonCard({ credit }: PersonCardProps) {
             </div>
           </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
