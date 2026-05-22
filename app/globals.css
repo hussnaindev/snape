@@ -171,6 +171,33 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Mobile scroll perf: strip backdrop-filter on small screens.
+   Every backdrop-blur region forces the compositor to re-rasterize the
+   content behind it on every paint. With ~30 instances on the homepage
+   (chips on cards, hero badges, dots pill), that destroys mobile FPS.
+   Desktop GPUs handle it fine and keep the glassy look. */
+@media (max-width: 639px) {
+  .backdrop-blur-xs,
+  .backdrop-blur-sm,
+  .backdrop-blur,
+  .backdrop-blur-md,
+  .backdrop-blur-lg,
+  .backdrop-blur-xl,
+  .backdrop-blur-2xl,
+  .backdrop-blur-3xl {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* Off-screen homepage sections skip layout + paint. `auto` lets the browser
+   remember each section's real size after first measure, so only the very
+   first scroll-into-view has any estimate. */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 800px;
+}
+
 /* Kill browser autofill yellow on dark inputs */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,

@@ -159,6 +159,7 @@ export function HeroSection() {
   const hlsRef = useRef<Hls | null>(null);
   const trailerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showVideo, setShowVideo] = useState(false);
+  const heroVisibleRef = useRef(true);
 
   function trackWidth() {
     return containerRef.current?.offsetWidth ?? 0;
@@ -199,6 +200,9 @@ export function HeroSection() {
     setShowVideo(false);
     for (const v of videoRefs.current) v?.pause();
     trailerTimerRef.current = setTimeout(() => {
+      // Skip trailer load if user has already scrolled past the hero —
+      // saves several MB of HLS segment fetches on mobile.
+      if (!heroVisibleRef.current) return;
       setShowVideo(true);
       attachHls(idx);
     }, 2000);
@@ -219,6 +223,34 @@ export function HeroSection() {
       if (trailerTimerRef.current) clearTimeout(trailerTimerRef.current);
       hlsRef.current?.destroy();
     };
+  }, []);
+
+  // Pause + tear down trailer when hero scrolls out of view; resume when back.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry) return;
+        heroVisibleRef.current = entry.isIntersecting;
+        if (!entry.isIntersecting) {
+          for (const v of videoRefs.current) v?.pause();
+          hlsRef.current?.destroy();
+          hlsRef.current = null;
+          if (trailerTimerRef.current) {
+            clearTimeout(trailerTimerRef.current);
+            trailerTimerRef.current = null;
+          }
+          setShowVideo(false);
+        } else {
+          // Re-arm the trailer when user scrolls back to hero.
+          resetTrailerTimer(currentRef.current);
+        }
+      },
+      { threshold: 0 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
   }, []);
 
   // Touchpad horizontal swipe — fires WheelEvent with deltaX, not pointer events
