@@ -521,16 +521,16 @@ export function SeriesDetailHero({
                 {rating > 0 && (
                   <>
                     <span className="text-white/20">·</span>
-                    <RatingBadge rating={rating} />
+                    <RatingBadge rating={rating} className="text-[9px] md:text-[10px]" />
                   </>
                 )}
               </div>
 
-              <div className="flex flex-nowrap gap-1 md:gap-2 mt-2 overflow-x-auto no-scrollbar">
+                  <div className="flex flex-nowrap items-center gap-1 md:gap-2 mt-2 overflow-x-auto no-scrollbar">
                 {status && (
                   <span
                     className={cn(
-                      'inline-flex items-center justify-center text-center whitespace-nowrap text-[9px] md:text-xs px-1.5 md:px-2 py-px md:py-0.5 rounded border font-medium',
+                      'inline-flex items-center justify-center text-center whitespace-nowrap text-[9px] md:text-xs px-1.5 md:px-2 py-0.5 rounded-full border font-chesna-grotesk font-medium',
                       statusColor,
                     )}
                   >
@@ -538,7 +538,7 @@ export function SeriesDetailHero({
                   </span>
                 )}
                 {genres.slice(0, 3).map((g) => (
-                  <TagChip key={g.id} label={g.name} />
+                  <TagChip key={g.id} label={g.name} className="text-[9px] md:text-[10px]" />
                 ))}
               </div>
 

@@ -419,15 +419,15 @@ export function MovieDetailHero({
                 {rating > 0 && (
                   <>
                     <span className="text-white/20">·</span>
-                    <RatingBadge rating={rating} />
+                    <RatingBadge rating={rating} className="text-[9px] md:text-[10px]" />
                   </>
                 )}
               </div>
 
               {genres.length > 0 && (
-                <div className="flex flex-nowrap gap-1 md:gap-2 mt-2 overflow-x-auto no-scrollbar">
+                <div className="flex flex-nowrap items-center gap-1 md:gap-2 mt-2 overflow-x-auto no-scrollbar">
                   {genres.slice(0, 3).map((g) => (
-                    <TagChip key={g.id} label={g.name} />
+                    <TagChip key={g.id} label={g.name} className="text-[9px] md:text-[10px]" />
                   ))}
                 </div>
               )}

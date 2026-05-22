@@ -13,7 +13,7 @@ export function ExpandableText({ text, className }: Props) {
   return (
     <div>
       <p
-        className={`text-white/70 text-xs md:text-sm leading-relaxed ${expanded ? '' : 'line-clamp-3'} ${className ?? ''}`}
+        className={`text-white/70 text-xs md:text-sm font-chesna-grotesk leading-relaxed ${expanded ? '' : 'line-clamp-3'} ${className ?? ''}`}
       >
         {text}
       </p>

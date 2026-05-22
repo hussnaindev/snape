@@ -244,9 +244,9 @@ export function CollectionDetailHero({
               </div>
 
               {genres.length > 0 && (
-                <div className="flex flex-nowrap gap-1 md:gap-2 mt-2 overflow-x-auto no-scrollbar">
+                <div className="flex flex-nowrap items-center gap-1 md:gap-2 mt-2 overflow-x-auto no-scrollbar">
                   {genres.map((label) => (
-                    <TagChip key={label} label={label} />
+                    <TagChip key={label} label={label} className="text-[9px] md:text-[10px]" />
                   ))}
                 </div>
               )}
