@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { InfiniteMovieGrid } from '@/components/infinite-movie-grid';
+import { ParallaxContent } from '@/components/parallax-content';
 import { Topbar } from '@/components/topbar';
 import { SectionDivider } from '@/components/ui/section-divider';
 import { getMoviesByGenre } from '@/lib/tmdb';
@@ -37,16 +38,20 @@ export default async function BrowseGenrePage({ params, searchParams }: Props) {
     <>
       <Topbar />
       <div className="pt-20">
-        <div className="px-4 md:px-8 mb-6">
-          <SectionDivider label={name ? `${name} Movies` : 'Browse by Genre'} />
-        </div>
-        <InfiniteMovieGrid
-          key={genreId}
-          mode="browse"
-          genreId={genreId}
-          initialMovies={movies}
-          totalPages={data.total_pages}
-        />
+        <section>
+          <ParallaxContent>
+            <div className="px-4 md:px-8 mb-6">
+              <SectionDivider label={name ? `${name} Movies` : 'Browse by Genre'} />
+            </div>
+            <InfiniteMovieGrid
+              key={genreId}
+              mode="browse"
+              genreId={genreId}
+              initialMovies={movies}
+              totalPages={data.total_pages}
+            />
+          </ParallaxContent>
+        </section>
       </div>
     </>
   );

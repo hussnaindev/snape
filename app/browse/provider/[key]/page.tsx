@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { MovieCard } from '@/components/movie-card';
+import { ParallaxContent } from '@/components/parallax-content';
 import { SeriesCard } from '@/components/series-card';
 import { Topbar } from '@/components/topbar';
 import { SectionDivider } from '@/components/ui/section-divider';
@@ -42,29 +43,33 @@ export default async function ProviderBrowsePage({ params }: Props) {
       <Topbar />
       <div className="pt-20">
         {filteredMovies.length > 0 && (
-          <div className="px-4 md:px-8 mb-6">
-            <SectionDivider label={`${provider.label} Movies`} />
-          </div>
-        )}
-        {filteredMovies.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3 px-4 md:px-8">
-            {filteredMovies.map((movie) => (
-              <MovieCard key={movie.id} movie={movie} />
-            ))}
-          </div>
+          <section className="mb-6">
+            <ParallaxContent direction="right" speed={120}>
+              <div className="px-4 md:px-8 mb-6">
+                <SectionDivider label={`${provider.label} Movies`} />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3 px-4 md:px-8">
+                {filteredMovies.map((movie) => (
+                  <MovieCard key={movie.id} movie={movie} />
+                ))}
+              </div>
+            </ParallaxContent>
+          </section>
         )}
 
         {filteredSeries.length > 0 && (
-          <div className="px-4 md:px-8 mb-6 mt-10">
-            <SectionDivider label={`${provider.label} Series`} />
-          </div>
-        )}
-        {filteredSeries.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3 px-4 md:px-8">
-            {filteredSeries.map((s) => (
-              <SeriesCard key={s.id} series={s} />
-            ))}
-          </div>
+          <section className="mt-10">
+            <ParallaxContent direction="left" speed={120}>
+              <div className="px-4 md:px-8 mb-6">
+                <SectionDivider label={`${provider.label} Series`} />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3 px-4 md:px-8">
+                {filteredSeries.map((s) => (
+                  <SeriesCard key={s.id} series={s} />
+                ))}
+              </div>
+            </ParallaxContent>
+          </section>
         )}
 
         <div className="h-16" />

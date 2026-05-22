@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 
 import { BackdropPlayer } from '@/app/movie/[id]/backdrop-player';
 import { ActorProfileImage } from '@/components/actor-profile-image';
+import { ParallaxContent } from '@/components/parallax-content';
 import { PersonCard } from '@/components/person-card';
 import { Topbar } from '@/components/topbar';
 import { ExpandableText } from '@/components/ui/expandable-text';
@@ -153,140 +154,152 @@ export default async function PersonPage({ params }: Props) {
     <>
       <Topbar />
       <div>
-        {/* Backdrop hero — show if we found a release with backdrop */}
+        {/* Backdrop hero */}
         {backdropUrl && releaseWithBackdrop && (
-          <BackdropPlayer
-            backdropUrl={backdropUrl}
-            trailerKey={trailerKey}
-            alt={releaseWithBackdrop.title}
-          />
+          <section>
+            <ParallaxContent direction="vertical" speed={360} fade={false}>
+              <BackdropPlayer
+                backdropUrl={backdropUrl}
+                trailerKey={trailerKey}
+                alt={releaseWithBackdrop.title}
+              />
+            </ParallaxContent>
+          </section>
         )}
 
         {/* Info block */}
         <div
           className={`px-4 md:px-8 ${backdropUrl ? '-mt-36 md:-mt-60 relative z-10' : 'pt-24 relative z-10'}`}
         >
-          <div className={`flex gap-4 md:gap-8 ${backdropUrl ? 'h-36 md:h-60' : ''}`}>
-            {/* Photo */}
-            <div className="flex-none w-24 md:w-40 rounded overflow-hidden shadow-2xl">
-              <div className="relative aspect-[2/3]">
-                <ActorProfileImage
-                  src={photo}
-                  alt={person.name}
-                  sizes="(max-width: 768px) 96px, 160px"
-                  className="object-cover"
-                  fallbackSize="lg"
-                />
-              </div>
-            </div>
+          <section>
+            <ParallaxContent direction="left" speed={120}>
+              <div className={`flex gap-4 md:gap-8 ${backdropUrl ? 'h-36 md:h-60' : ''}`}>
+                {/* Photo */}
+                <div className="flex-none w-24 md:w-40 rounded overflow-hidden shadow-2xl">
+                  <div className="relative aspect-[2/3]">
+                    <ActorProfileImage
+                      src={photo}
+                      alt={person.name}
+                      sizes="(max-width: 768px) 96px, 160px"
+                      className="object-cover"
+                      fallbackSize="lg"
+                    />
+                  </div>
+                </div>
 
-            {/* Details */}
-            <div className="flex-1 min-w-0 overflow-hidden flex flex-col justify-end">
-              <h1 className="font-body text-xl md:text-4xl font-bold text-white leading-tight line-clamp-2">
-                {person.name}
-              </h1>
-              {person.known_for_department && (
-                <p className="text-gold text-[10px] md:text-xs mt-0.5 uppercase tracking-widest truncate">
-                  {person.known_for_department}
-                </p>
+                {/* Details */}
+                <div className="flex-1 min-w-0 overflow-hidden flex flex-col justify-end">
+                  <h1 className="font-body text-xl md:text-4xl font-bold text-white leading-tight line-clamp-2">
+                    {person.name}
+                  </h1>
+                  {person.known_for_department && (
+                    <p className="text-gold text-[10px] md:text-xs mt-0.5 uppercase tracking-widest truncate">
+                      {person.known_for_department}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-1 md:gap-2 mt-0.5 md:mt-2 text-[10px] md:text-sm text-white/60">
+                    {person.birthday && (
+                      <span>
+                        {new Date(person.birthday).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </span>
+                    )}
+                    {person.place_of_birth && (
+                      <>
+                        {person.birthday && <span className="text-white/20">·</span>}
+                        <span className="truncate">{person.place_of_birth}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Biography */}
+              {person.biography && (
+                <div className="mt-5 md:mt-8 max-w-2xl">
+                  <ExpandableText text={person.biography} />
+                </div>
               )}
-              <div className="flex flex-wrap items-center gap-1 md:gap-2 mt-0.5 md:mt-2 text-[10px] md:text-sm text-white/60">
-                {person.birthday && (
-                  <span>
-                    {new Date(person.birthday).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </span>
-                )}
-                {person.place_of_birth && (
-                  <>
-                    {person.birthday && <span className="text-white/20">·</span>}
-                    <span className="truncate">{person.place_of_birth}</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Biography */}
-          {person.biography && (
-            <div className="mt-5 md:mt-8 max-w-2xl">
-              <ExpandableText text={person.biography} />
-            </div>
-          )}
+            </ParallaxContent>
+          </section>
         </div>
 
         {/* Known for */}
         {knownFor.length > 0 && (
           <section className="px-4 md:px-8 mt-10 mb-10">
-            <SectionDivider label="Known For" className="mb-4" />
-            <div className="flex gap-3 overflow-x-auto no-scrollbar py-2 px-1">
-              {knownFor.map((credit) => (
-                <PersonCard key={`${credit.id}-${credit.character}`} credit={credit} />
-              ))}
-            </div>
+            <ParallaxContent direction="right" speed={120}>
+              <SectionDivider label="Known For" className="mb-4" />
+              <div className="flex gap-3 overflow-x-auto no-scrollbar py-2 px-1">
+                {knownFor.map((credit) => (
+                  <PersonCard key={`${credit.id}-${credit.character}`} credit={credit} />
+                ))}
+              </div>
+            </ParallaxContent>
           </section>
         )}
 
         {/* Full filmography */}
         {filmography.length > 0 && (
           <section className="px-4 md:px-8 pb-16">
-            <SectionDivider label="Filmography" className="mb-4" />
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3">
-              {filmography.map((credit) => {
-                const poster = tmdbResponsive(credit.poster_path, 'w342', 'w500');
-                return (
-                  <Link
-                    key={`${credit.id}-${credit.character}`}
-                    href={`/movie/${credit.id}`}
-                    prefetch={false}
-                    className="group relative block overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] transition-[transform,box-shadow,border-color] duration-300 ease-out lg:hover:-translate-y-1 lg:hover:ring-white/35 lg:hover:shadow-[0_12px_36px_rgba(255,255,255,0.13)] lg:hover:z-10"
-                  >
-                    <div className="aspect-[2/3] overflow-hidden relative">
-                      {poster ? (
-                        <picture>
-                          <source srcSet={poster.desktop} media="(min-width: 1024px)" />
-                          <Image
-                            src={poster.mobile}
-                            alt={credit.title}
-                            fill
-                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 240px"
-                            className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
-                          />
-                        </picture>
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center bg-white/5 text-white/20 text-xs text-center p-2">
-                          {credit.title}
-                        </div>
-                      )}
-
-                      {/* Type chip top-left */}
-                      <span className="absolute top-1.5 left-2 lg:top-2 lg:left-3 z-10 inline-flex items-center text-[8px] sm:text-[9px] lg:text-[9px] xl:text-[9px] 2xl:text-[9px] font-semibold leading-none tracking-widest uppercase text-white/80 border border-white/40 rounded-full px-2 py-1 lg:px-2 lg:py-1 bg-black/60">
-                        Film
-                      </span>
-
-                      {/* Rating chip top-right */}
-                      {credit.vote_average > 0 && (
-                        <span className="absolute top-1.5 right-2 lg:top-2 lg:right-3 z-10 inline-flex items-center gap-1 rounded-full border border-white/40 px-2 py-1 lg:px-2 lg:py-1 text-[8px] sm:text-[9px] lg:text-[9px] xl:text-[9px] 2xl:text-[9px] font-semibold leading-none tabular-nums text-white bg-black/60">
-                          ★ {credit.vote_average.toFixed(1)}
-                        </span>
-                      )}
-
-                      {/* Title bar at bottom */}
-                      <div className="absolute inset-x-0 bottom-0 flex items-center pointer-events-none z-0">
-                        <div className="w-full bg-gradient-to-t from-black/85 to-black/50 py-1.5 sm:py-2 rounded-t-md px-3">
-                          <p className="text-[10px] sm:text-[11px] font-chesna-grotesk uppercase truncate tracking-[0.2em] font-light text-white/90 text-center">
+            <ParallaxContent direction="left" speed={120}>
+              <SectionDivider label="Filmography" className="mb-4" />
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3">
+                {filmography.map((credit) => {
+                  const poster = tmdbResponsive(credit.poster_path, 'w342', 'w500');
+                  return (
+                    <Link
+                      key={`${credit.id}-${credit.character}`}
+                      href={`/movie/${credit.id}`}
+                      prefetch={false}
+                      className="group relative block overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] transition-[transform,box-shadow,border-color] duration-300 ease-out lg:hover:-translate-y-1 lg:hover:ring-white/35 lg:hover:shadow-[0_12px_36px_rgba(255,255,255,0.13)] lg:hover:z-10"
+                    >
+                      <div className="aspect-[2/3] overflow-hidden relative">
+                        {poster ? (
+                          <picture>
+                            <source srcSet={poster.desktop} media="(min-width: 1024px)" />
+                            <Image
+                              src={poster.mobile}
+                              alt={credit.title}
+                              fill
+                              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 240px"
+                              className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
+                            />
+                          </picture>
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center bg-white/5 text-white/20 text-xs text-center p-2">
                             {credit.title}
-                          </p>
+                          </div>
+                        )}
+
+                        {/* Type chip top-left */}
+                        <span className="absolute top-1.5 left-2 lg:top-2 lg:left-3 z-10 inline-flex items-center text-[8px] sm:text-[9px] lg:text-[9px] xl:text-[9px] 2xl:text-[9px] font-semibold leading-none tracking-widest uppercase text-white/80 border border-white/40 rounded-full px-2 py-1 lg:px-2 lg:py-1 bg-black/60">
+                          Film
+                        </span>
+
+                        {/* Rating chip top-right */}
+                        {credit.vote_average > 0 && (
+                          <span className="absolute top-1.5 right-2 lg:top-2 lg:right-3 z-10 inline-flex items-center gap-1 rounded-full border border-white/40 px-2 py-1 lg:px-2 lg:py-1 text-[8px] sm:text-[9px] lg:text-[9px] xl:text-[9px] 2xl:text-[9px] font-semibold leading-none tabular-nums text-white bg-black/60">
+                            ★ {credit.vote_average.toFixed(1)}
+                          </span>
+                        )}
+
+                        {/* Title bar at bottom */}
+                        <div className="absolute inset-x-0 bottom-0 flex items-center pointer-events-none z-0">
+                          <div className="w-full bg-gradient-to-t from-black/85 to-black/50 py-1.5 sm:py-2 rounded-t-md px-3">
+                            <p className="text-[10px] sm:text-[11px] font-chesna-grotesk uppercase truncate tracking-[0.2em] font-light text-white/90 text-center">
+                              {credit.title}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </ParallaxContent>
           </section>
         )}
       </div>

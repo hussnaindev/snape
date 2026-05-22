@@ -1,6 +1,7 @@
 import { CollectionCard } from '@/components/collection-card';
 import { InfiniteMovieGrid } from '@/components/infinite-movie-grid';
 import { InfiniteSeriesGrid } from '@/components/infinite-series-grid';
+import { ParallaxContent } from '@/components/parallax-content';
 import { SearchActorGrid } from '@/components/search-actor-grid';
 import { SearchHeader } from '@/components/search-header';
 import { parseSearchTab } from '@/components/search-tab-chips';
@@ -77,32 +78,50 @@ export default async function SearchPage({ searchParams }: Props) {
           <>
             <SearchHeader query={query} active={activeTab} totalResults={totalHits} />
             {showMovieGrid && movieSearch && (
-              <InfiniteMovieGrid
-                key={`${query}-movies`}
-                mode="search"
-                query={query}
-                resolvedQuery={movieSearch.resolvedQuery}
-                initialMovies={movies}
-                totalPages={movieSearch.total_pages}
-              />
+              <section>
+                <ParallaxContent direction="right" speed={120}>
+                  <InfiniteMovieGrid
+                    key={`${query}-movies`}
+                    mode="search"
+                    query={query}
+                    resolvedQuery={movieSearch.resolvedQuery}
+                    initialMovies={movies}
+                    totalPages={movieSearch.total_pages}
+                  />
+                </ParallaxContent>
+              </section>
             )}
             {showSeriesGrid && seriesSearch && (
-              <InfiniteSeriesGrid
-                key={`${query}-series`}
-                query={query}
-                resolvedQuery={seriesSearch.resolvedQuery}
-                initialSeries={series}
-                totalPages={seriesSearch.total_pages}
-              />
+              <section>
+                <ParallaxContent direction="left" speed={120}>
+                  <InfiniteSeriesGrid
+                    key={`${query}-series`}
+                    query={query}
+                    resolvedQuery={seriesSearch.resolvedQuery}
+                    initialSeries={series}
+                    totalPages={seriesSearch.total_pages}
+                  />
+                </ParallaxContent>
+              </section>
             )}
             {showCollectionsGrid && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3">
-                {collections.map((collection) => (
-                  <CollectionCard key={collection.id} collection={collection} />
-                ))}
-              </div>
+              <section>
+                <ParallaxContent direction="right" speed={120}>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3">
+                    {collections.map((collection) => (
+                      <CollectionCard key={collection.id} collection={collection} />
+                    ))}
+                  </div>
+                </ParallaxContent>
+              </section>
             )}
-            {showActorGrid && <SearchActorGrid people={people} />}
+            {showActorGrid && (
+              <section>
+                <ParallaxContent direction="left" speed={120}>
+                  <SearchActorGrid people={people} />
+                </ParallaxContent>
+              </section>
+            )}
           </>
         ) : (
           <div className="flex flex-col items-center gap-4">
