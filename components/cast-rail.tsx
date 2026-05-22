@@ -1,5 +1,5 @@
 import { ActorProfileImage } from '@/components/actor-profile-image';
-import { tmdbImage } from '@/lib/tmdb-image';
+import { tmdbResponsive } from '@/lib/tmdb-image';
 import type { TMDBCastMember } from '@/types/tmdb';
 import Link from 'next/link';
 import { SectionDivider } from './ui/section-divider';
@@ -17,7 +17,7 @@ export function CastRail({ cast }: CastRailProps) {
       <SectionDivider label="Starring" className="mb-4" />
       <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
         {visible.map((member, idx) => {
-          const photo = tmdbImage(member.profile_path, 'w185');
+          const photo = tmdbResponsive(member.profile_path, 'w185', 'w342');
           // First 6 fit on most viewports — load eagerly. Later cards lazy-load
           // as the user scrolls the rail horizontally.
           return (
@@ -28,14 +28,28 @@ export function CastRail({ cast }: CastRailProps) {
               className="flex-none w-24 sm:w-28 group"
             >
               <div className="aspect-square rounded-full overflow-hidden bg-white/5 mb-2 relative ring-2 ring-white/10 lg:group-hover:ring-white/30 shadow-[0_8px_24px_rgba(255,255,255,0.06)] lg:group-hover:shadow-[0_12px_32px_rgba(255,255,255,0.12)] transition-[box-shadow,border-color] duration-300 ease-out">
-                <ActorProfileImage
-                  src={photo}
-                  alt={member.name}
-                  sizes="(max-width: 640px) 96px, 112px"
-                  className="object-cover lg:group-hover:scale-105 transition-transform duration-200"
-                  fallbackSize="sm"
-                  loading={idx < 6 ? 'eager' : 'lazy'}
-                />
+                {photo ? (
+                  <picture>
+                    <source srcSet={photo.desktop} media="(min-width: 1024px)" />
+                    <ActorProfileImage
+                      src={photo.mobile}
+                      alt={member.name}
+                      sizes="(max-width: 640px) 96px, 112px"
+                      className="object-cover lg:group-hover:scale-105 transition-transform duration-200"
+                      fallbackSize="sm"
+                      loading={idx < 6 ? 'eager' : 'lazy'}
+                    />
+                  </picture>
+                ) : (
+                  <ActorProfileImage
+                    src=""
+                    alt={member.name}
+                    sizes="(max-width: 640px) 96px, 112px"
+                    className="object-cover lg:group-hover:scale-105 transition-transform duration-200"
+                    fallbackSize="sm"
+                    loading={idx < 6 ? 'eager' : 'lazy'}
+                  />
+                )}
               </div>
               {/* Title bar below circle */}
               <div className="bg-black/70 sm:bg-black/60 sm:backdrop-blur-sm py-1.5 rounded-md px-2">

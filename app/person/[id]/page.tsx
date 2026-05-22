@@ -20,7 +20,7 @@ import {
   getSeriesVideos,
 } from '@/lib/tmdb';
 import { filterHasImages } from '@/lib/tmdb-filters';
-import { tmdbImage } from '@/lib/tmdb-image';
+import { tmdbImage, tmdbResponsive } from '@/lib/tmdb-image';
 
 export const runtime = 'edge';
 export const revalidate = 3600;
@@ -236,7 +236,7 @@ export default async function PersonPage({ params }: Props) {
             <SectionDivider label="Filmography" className="mb-4" />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3">
               {filmography.map((credit) => {
-                const poster = tmdbImage(credit.poster_path, 'w342');
+                const poster = tmdbResponsive(credit.poster_path, 'w342', 'w500');
                 return (
                   <Link
                     key={`${credit.id}-${credit.character}`}
@@ -246,13 +246,16 @@ export default async function PersonPage({ params }: Props) {
                   >
                     <div className="aspect-[2/3] overflow-hidden relative">
                       {poster ? (
-                        <Image
-                          src={poster}
-                          alt={credit.title}
-                          fill
-                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 240px"
-                          className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
-                        />
+                        <picture>
+                          <source srcSet={poster.desktop} media="(min-width: 1024px)" />
+                          <Image
+                            src={poster.mobile}
+                            alt={credit.title}
+                            fill
+                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 240px"
+                            className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
+                          />
+                        </picture>
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center bg-white/5 text-white/20 text-xs text-center p-2">
                           {credit.title}

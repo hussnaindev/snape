@@ -2,7 +2,7 @@
 
 import { AccountLayout } from '@/components/account-layout';
 import { useAuth } from '@/components/auth/auth-provider';
-import { tmdbImage } from '@/lib/tmdb-image';
+import { tmdbImage, tmdbResponsive } from '@/lib/tmdb-image';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';

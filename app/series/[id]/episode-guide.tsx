@@ -1,7 +1,7 @@
 'use client';
 
 import { apiFetch } from '@/lib/api';
-import { tmdbImage } from '@/lib/tmdb-image';
+import { tmdbResponsive } from '@/lib/tmdb-image';
 import type { TMDBEpisode, TMDBSeason, TMDBSeasonSummary } from '@/types/tmdb';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
@@ -191,7 +191,7 @@ function EpisodeCard({
   selectedSeason: number;
   onSelect?: (season: number, episode: number) => void;
 }) {
-  const still = tmdbImage(episode.still_path, 'w300');
+  const still = tmdbResponsive(episode.still_path, 'w300', 'w500');
   const runtime = episode.runtime ? `${episode.runtime}m` : null;
   const rating = episode.vote_average;
 
@@ -217,13 +217,16 @@ function EpisodeCard({
       >
         <div className="aspect-[4/3] overflow-hidden relative">
           {still ? (
-            <Image
-              src={still}
-              alt={episode.name}
-              fill
-              sizes="(max-width: 640px) 180px, (max-width: 768px) 240px, (max-width: 1024px) 260px, (max-width: 1280px) 280px, 300px"
-              className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
-            />
+            <picture>
+              <source srcSet={still.desktop} media="(min-width: 1024px)" />
+              <Image
+                src={still.mobile}
+                alt={episode.name}
+                fill
+                sizes="(max-width: 640px) 180px, (max-width: 768px) 240px, (max-width: 1024px) 260px, (max-width: 1280px) 280px, 300px"
+                className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
+              />
+            </picture>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-white/5 text-white/20 text-sm">
               No Image
@@ -278,7 +281,7 @@ function EpisodeRow({
   selectedSeason: number;
   onSelect?: (season: number, episode: number) => void;
 }) {
-  const still = tmdbImage(episode.still_path, 'w300');
+  const still = tmdbResponsive(episode.still_path, 'w300', 'w500');
   const runtime = episode.runtime ? `${episode.runtime}m` : null;
 
   function handleClick() {
@@ -303,7 +306,10 @@ function EpisodeRow({
       {/* Thumbnail */}
       <div className="flex-none w-20 sm:w-[160px] aspect-video rounded overflow-hidden bg-white/5 relative">
         {still ? (
-          <Image src={still} alt={episode.name} fill sizes="160px" className="object-cover" />
+          <picture>
+            <source srcSet={still.desktop} media="(min-width: 1024px)" />
+            <Image src={still.mobile} alt={episode.name} fill sizes="160px" className="object-cover" />
+          </picture>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
             <svg

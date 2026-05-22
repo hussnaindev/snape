@@ -1,4 +1,4 @@
-import { tmdbImage } from '@/lib/tmdb-image';
+import { tmdbResponsive } from '@/lib/tmdb-image';
 import type { TMDBCollectionSearchHit } from '@/types/tmdb';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -9,8 +9,8 @@ interface CollectionCardProps {
 }
 
 export function CollectionCard({ collection, className }: CollectionCardProps) {
-  const backdrop = tmdbImage(collection.backdrop_path, 'w500');
-  const poster = tmdbImage(collection.poster_path, 'w342');
+  const backdrop = tmdbResponsive(collection.backdrop_path, 'w500', 'w780');
+  const poster = tmdbResponsive(collection.poster_path, 'w342', 'w500');
 
   return (
     <Link
@@ -21,21 +21,27 @@ export function CollectionCard({ collection, className }: CollectionCardProps) {
       {/* Poster (portrait) */}
       <div className="aspect-[2/3] overflow-hidden relative">
         {poster ? (
-          <Image
-            src={poster}
-            alt={collection.name}
-            fill
-            sizes="50vw"
-            className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
-          />
+          <picture>
+            <source srcSet={poster.desktop} media="(min-width: 1024px)" />
+            <Image
+              src={poster.mobile}
+              alt={collection.name}
+              fill
+              sizes="50vw"
+              className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
+            />
+          </picture>
         ) : backdrop ? (
-          <Image
-            src={backdrop}
-            alt={collection.name}
-            fill
-            sizes="50vw"
-            className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
-          />
+          <picture>
+            <source srcSet={backdrop.desktop} media="(min-width: 1024px)" />
+            <Image
+              src={backdrop.mobile}
+              alt={collection.name}
+              fill
+              sizes="50vw"
+              className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
+            />
+          </picture>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-white/5 text-white/20 text-sm">
             No Image

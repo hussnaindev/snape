@@ -1,6 +1,6 @@
 'use client';
 
-import { tmdbImage } from '@/lib/tmdb-image';
+import { tmdbResponsive } from '@/lib/tmdb-image';
 import Image from 'next/image';
 import Link from 'next/link';
 export type MediaItem = {
@@ -20,7 +20,7 @@ interface ProviderCardProps {
 
 export function ProviderCard({ item, rank, prefetch = false }: ProviderCardProps) {
   const href = item.kind === 'movie' ? `/movie/${item.id}` : `/series/${item.id}`;
-  const poster = tmdbImage(item.poster_path, 'w342');
+  const poster = tmdbResponsive(item.poster_path, 'w342', 'w500');
   const isTen = rank === 10;
 
   return (
@@ -31,13 +31,16 @@ export function ProviderCard({ item, rank, prefetch = false }: ProviderCardProps
     >
       <div className="aspect-[2/3] relative overflow-hidden">
         {poster ? (
-          <Image
-            src={poster}
-            alt={item.title}
-            fill
-            sizes="(max-width: 640px) 130px, 175px"
-            className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
-          />
+          <picture>
+            <source srcSet={poster.desktop} media="(min-width: 1024px)" />
+            <Image
+              src={poster.mobile}
+              alt={item.title}
+              fill
+              sizes="(max-width: 640px) 130px, 175px"
+              className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
+            />
+          </picture>
         ) : (
           <div className="absolute inset-0 bg-white/5 flex items-center justify-center text-white/20 text-xs">
             No Image

@@ -1,6 +1,6 @@
 'use client';
 
-import { tmdbImage } from '@/lib/tmdb-image';
+import { tmdbResponsive } from '@/lib/tmdb-image';
 import type { TMDBMovie } from '@/types/tmdb';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -11,7 +11,7 @@ interface MovieCardProps {
 }
 
 export function MovieCard({ movie, className, prefetch = false }: MovieCardProps) {
-  const poster = tmdbImage(movie.poster_path, 'w342');
+  const poster = tmdbResponsive(movie.poster_path, 'w342', 'w500');
 
   return (
     <div
@@ -21,13 +21,16 @@ export function MovieCard({ movie, className, prefetch = false }: MovieCardProps
         {/* Poster (portrait) */}
         <div className="aspect-[2/3] overflow-hidden relative">
           {poster ? (
-            <Image
-              src={poster}
-              alt={movie.title}
-              fill
-              sizes="(max-width: 640px) 130px, (max-width: 1024px) 180px, 240px"
-              className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
-            />
+            <picture>
+              <source srcSet={poster.desktop} media="(min-width: 1024px)" />
+              <Image
+                src={poster.mobile}
+                alt={movie.title}
+                fill
+                sizes="(max-width: 640px) 130px, (max-width: 1024px) 180px, 240px"
+                className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
+              />
+            </picture>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-white/5 text-white/20 text-sm">
               No Image

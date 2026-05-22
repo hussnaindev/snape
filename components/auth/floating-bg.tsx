@@ -1,6 +1,6 @@
  'use client';
 
-import { tmdbImage } from '@/lib/tmdb-image';
+import { tmdbImage, tmdbResponsive } from '@/lib/tmdb-image';
 import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -118,23 +118,26 @@ export function FloatingAuthBg() {
                 }}
               >
                 {track.map((poster, i) => {
-                  const src = tmdbImage(poster.posterPath, 'w342');
-                  if (!src || broken[src]) return null;
+                  const src = tmdbResponsive(poster.posterPath, 'w342', 'w500');
+                  if (!src || broken[src.mobile]) return null;
 
                   return (
                     <div
                       key={`${poster.posterPath}-${i}`}
                       className="relative shrink-0 h-[clamp(200px,22vh,340px)] aspect-[2/3] rounded-2xl overflow-hidden border border-white/10 shadow-[0_18px_60px_rgba(0,0,0,0.65)] bg-white/5"
                     >
-                      <Image
-                        src={src}
-                        alt={poster.title}
-                        fill
-                        sizes="(max-width: 768px) 24vh, 340px"
-                        className="object-cover"
-                        priority={rowIdx === 0 && i < 4}
-                        onError={() => setBroken((b) => ({ ...b, [src]: true }))}
-                      />
+                      <picture>
+                        <source srcSet={src.desktop} media="(min-width: 1024px)" />
+                        <Image
+                          src={src.mobile}
+                          alt={poster.title}
+                          fill
+                          sizes="(max-width: 768px) 24vh, 340px"
+                          className="object-cover"
+                          priority={rowIdx === 0 && i < 4}
+                          onError={() => setBroken((b) => ({ ...b, [src.mobile]: true }))}
+                        />
+                      </picture>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                       <div className="absolute inset-0 ring-1 ring-white/10 rounded-2xl" />
                     </div>
