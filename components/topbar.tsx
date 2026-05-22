@@ -92,12 +92,12 @@ export function Topbar() {
               <button
                 type="button"
                 onClick={() => setBrowseOpen(!browseOpen)}
-                className="text-white/70 hover:text-white transition-colors text-sm font-medium px-2 py-1 cursor-pointer"
+                className="inline-flex items-center leading-none text-white/70 hover:text-white transition-colors text-[11px] font-chesna-grotesk tracking-[0.2em] uppercase px-2 py-1 cursor-pointer"
               >
               Browse
             </button>
             {browseOpen && (
-              <div className="absolute top-full right-0 mt-1 bg-[#1a1a1a] rounded-lg shadow-xl border border-white/10 w-48 overflow-hidden z-50">
+              <div className="absolute top-full right-0 mt-1 bg-black/60 backdrop-blur-sm rounded-lg shadow-xl border border-white/10 w-48 overflow-hidden z-50">
                 {GENRES.map((genre) => (
                      <Link
                         key={genre.id}
