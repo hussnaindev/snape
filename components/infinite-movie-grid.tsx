@@ -1,5 +1,6 @@
 'use client';
 
+import { ParallaxContent } from '@/components/parallax-content';
 import { SnakeLoader } from '@/components/ui/snake-loader';
 import { isAbortError } from '@/lib/utils';
 import type { TMDBMovie } from '@/types/tmdb';
@@ -11,6 +12,7 @@ type BrowseProps = {
   genreId: number;
   initialMovies: TMDBMovie[];
   totalPages: number;
+  parallaxRows?: boolean;
 };
 
 type SearchProps = {
@@ -22,6 +24,16 @@ type SearchProps = {
 };
 
 export type InfiniteMovieGridProps = BrowseProps | SearchProps;
+
+const ROW_SIZE = 6;
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    result.push(arr.slice(i, i + size));
+  }
+  return result;
+}
 
 function parsePageResponse(json: unknown): { ok: boolean; results: TMDBMovie[] } {
   if (typeof json !== 'object' || json === null) return { ok: false, results: [] };
@@ -37,6 +49,7 @@ export function InfiniteMovieGrid(props: InfiniteMovieGridProps) {
   const resolvedQuery = mode === 'search' ? props.resolvedQuery : null;
   const totalPages = props.totalPages;
   const initialMovies = props.initialMovies;
+  const parallaxRows = mode === 'browse' && (props as BrowseProps).parallaxRows;
 
   const [movies, setMovies] = useState(initialMovies);
   const [loading, setLoading] = useState(false);
@@ -150,11 +163,27 @@ export function InfiniteMovieGrid(props: InfiniteMovieGridProps) {
 
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3 px-4 md:px-8">
-        {movies.map((movie) => (
-          <MovieCard key={movie.id} movie={movie} />
-        ))}
-      </div>
+      {parallaxRows ? (
+        <>
+          {chunk(movies, ROW_SIZE).map((row, i) => (
+            <section key={i}>
+              <ParallaxContent direction={i % 2 === 0 ? 'left' : 'right'} speed={120}>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3 px-4 md:px-8">
+                  {row.map((movie) => (
+                    <MovieCard key={movie.id} movie={movie} />
+                  ))}
+                </div>
+              </ParallaxContent>
+            </section>
+          ))}
+        </>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3 px-4 md:px-8">
+          {movies.map((movie) => (
+            <MovieCard key={movie.id} movie={movie} />
+          ))}
+        </div>
+      )}
       {hasMore && <div ref={sentinelRef} className="h-32 flex justify-center items-center py-6" />}
       {loading && (
         <div className="flex justify-center py-6">

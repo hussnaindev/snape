@@ -45,17 +45,14 @@ export default async function BrowseGenrePage({ params, searchParams }: Props) {
             </div>
           </ParallaxContent>
         </section>
-        <section>
-          <ParallaxContent direction="right" speed={120}>
-            <InfiniteMovieGrid
-              key={genreId}
-              mode="browse"
-              genreId={genreId}
-              initialMovies={movies}
-              totalPages={data.total_pages}
-            />
-          </ParallaxContent>
-        </section>
+        <InfiniteMovieGrid
+          key={genreId}
+          mode="browse"
+          genreId={genreId}
+          initialMovies={movies}
+          totalPages={data.total_pages}
+          parallaxRows
+        />
       </div>
     </>
   );
