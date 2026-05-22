@@ -39,10 +39,14 @@ export default async function BrowseGenrePage({ params, searchParams }: Props) {
       <Topbar />
       <div className="pt-20">
         <section>
-          <ParallaxContent>
+          <ParallaxContent direction="left" speed={120}>
             <div className="px-4 md:px-8 mb-6">
               <SectionDivider label={name ? `${name} Movies` : 'Browse by Genre'} />
             </div>
+          </ParallaxContent>
+        </section>
+        <section>
+          <ParallaxContent direction="right" speed={120}>
             <InfiniteMovieGrid
               key={genreId}
               mode="browse"
