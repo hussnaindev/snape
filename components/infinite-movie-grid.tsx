@@ -2,7 +2,7 @@
 
 import { ParallaxContent } from '@/components/parallax-content';
 import { SnakeLoader } from '@/components/ui/snake-loader';
-import { isAbortError } from '@/lib/utils';
+import { chunk, isAbortError } from '@/lib/utils';
 import type { TMDBMovie } from '@/types/tmdb';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MovieCard } from './movie-card';
@@ -21,19 +21,12 @@ type SearchProps = {
   resolvedQuery: string | null;
   initialMovies: TMDBMovie[];
   totalPages: number;
+  parallaxRows?: boolean;
 };
 
 export type InfiniteMovieGridProps = BrowseProps | SearchProps;
 
 const ROW_SIZE = 6;
-
-function chunk<T>(arr: T[], size: number): T[][] {
-  const result: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) {
-    result.push(arr.slice(i, i + size));
-  }
-  return result;
-}
 
 function parsePageResponse(json: unknown): { ok: boolean; results: TMDBMovie[] } {
   if (typeof json !== 'object' || json === null) return { ok: false, results: [] };
@@ -49,7 +42,7 @@ export function InfiniteMovieGrid(props: InfiniteMovieGridProps) {
   const resolvedQuery = mode === 'search' ? props.resolvedQuery : null;
   const totalPages = props.totalPages;
   const initialMovies = props.initialMovies;
-  const parallaxRows = mode === 'browse' && (props as BrowseProps).parallaxRows;
+  const parallaxRows = props.parallaxRows;
 
   const [movies, setMovies] = useState(initialMovies);
   const [loading, setLoading] = useState(false);

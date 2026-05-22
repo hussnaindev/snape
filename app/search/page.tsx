@@ -4,11 +4,15 @@ import { InfiniteSeriesGrid } from '@/components/infinite-series-grid';
 import { ParallaxContent } from '@/components/parallax-content';
 import { SearchActorGrid } from '@/components/search-actor-grid';
 import { SearchHeader } from '@/components/search-header';
+import { SectionDivider } from '@/components/ui/section-divider';
 import { parseSearchTab } from '@/components/search-tab-chips';
 import { Topbar } from '@/components/topbar';
 import { APP_NAME } from '@/lib/config';
+import { chunk } from '@/lib/utils';
 import { searchCollections, searchMovies, searchPeople, searchTvShows } from '@/lib/tmdb';
 import { filterHasImages } from '@/lib/tmdb-filters';
+
+const ROW_SIZE = 6;
 import type { TMDBCollectionSearchHit, TMDBMovie, TMDBPersonSearchHit, TMDBSeries } from '@/types/tmdb';
 import type { Metadata } from 'next';
 
@@ -78,46 +82,49 @@ export default async function SearchPage({ searchParams }: Props) {
           <>
             <SearchHeader query={query} active={activeTab} totalResults={totalHits} />
             {showMovieGrid && movieSearch && (
-              <section>
-                <ParallaxContent direction="right" speed={120}>
-                  <InfiniteMovieGrid
-                    key={`${query}-movies`}
-                    mode="search"
-                    query={query}
-                    resolvedQuery={movieSearch.resolvedQuery}
-                    initialMovies={movies}
-                    totalPages={movieSearch.total_pages}
-                  />
-                </ParallaxContent>
-              </section>
+              <InfiniteMovieGrid
+                key={`${query}-movies`}
+                mode="search"
+                query={query}
+                resolvedQuery={movieSearch.resolvedQuery}
+                initialMovies={movies}
+                totalPages={movieSearch.total_pages}
+                parallaxRows
+              />
             )}
             {showSeriesGrid && seriesSearch && (
-              <section>
-                <ParallaxContent direction="left" speed={120}>
-                  <InfiniteSeriesGrid
-                    key={`${query}-series`}
-                    query={query}
-                    resolvedQuery={seriesSearch.resolvedQuery}
-                    initialSeries={series}
-                    totalPages={seriesSearch.total_pages}
-                  />
-                </ParallaxContent>
-              </section>
+              <InfiniteSeriesGrid
+                key={`${query}-series`}
+                query={query}
+                resolvedQuery={seriesSearch.resolvedQuery}
+                initialSeries={series}
+                totalPages={seriesSearch.total_pages}
+                parallaxRows
+              />
             )}
             {showCollectionsGrid && (
               <section>
-                <ParallaxContent direction="right" speed={120}>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3">
-                    {collections.map((collection) => (
-                      <CollectionCard key={collection.id} collection={collection} />
-                    ))}
+                <ParallaxContent direction="left" speed={120}>
+                  <div className="px-4 md:px-8 mb-6">
+                    <SectionDivider label="Collections" />
                   </div>
                 </ParallaxContent>
+                {chunk(collections, ROW_SIZE).map((row, i) => (
+                  <section key={i}>
+                    <ParallaxContent direction={i % 2 === 0 ? 'right' : 'left'} speed={120}>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3 px-4 md:px-8">
+                        {row.map((collection) => (
+                          <CollectionCard key={collection.id} collection={collection} />
+                        ))}
+                      </div>
+                    </ParallaxContent>
+                  </section>
+                ))}
               </section>
             )}
             {showActorGrid && (
               <section>
-                <ParallaxContent direction="left" speed={120}>
+                <ParallaxContent direction="right" speed={120}>
                   <SearchActorGrid people={people} />
                 </ParallaxContent>
               </section>

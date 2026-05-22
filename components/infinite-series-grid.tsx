@@ -1,7 +1,8 @@
 'use client';
 
+import { ParallaxContent } from '@/components/parallax-content';
 import { SnakeLoader } from '@/components/ui/snake-loader';
-import { isAbortError } from '@/lib/utils';
+import { chunk, isAbortError } from '@/lib/utils';
 import type { TMDBSeries } from '@/types/tmdb';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SeriesCard } from './series-card';
@@ -11,7 +12,10 @@ export interface InfiniteSeriesGridProps {
   resolvedQuery: string | null;
   initialSeries: TMDBSeries[];
   totalPages: number;
+  parallaxRows?: boolean;
 }
+
+const ROW_SIZE = 6;
 
 function parsePageResponse(json: unknown): { ok: boolean; results: TMDBSeries[] } {
   if (typeof json !== 'object' || json === null) return { ok: false, results: [] };
@@ -25,6 +29,7 @@ export function InfiniteSeriesGrid({
   resolvedQuery,
   initialSeries,
   totalPages,
+  parallaxRows,
 }: InfiniteSeriesGridProps) {
   const [series, setSeries] = useState(initialSeries);
   const [loading, setLoading] = useState(false);
@@ -124,13 +129,29 @@ export function InfiniteSeriesGrid({
     return () => obs.disconnect();
   }, [loadMore]);
 
+  const GRID_CLASS = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3 px-4 md:px-8';
+
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3 px-4 md:px-8">
-        {series.map((s) => (
-          <SeriesCard key={s.id} series={s} />
-        ))}
-      </div>
+      {parallaxRows ? (
+        chunk(series, ROW_SIZE).map((row, i) => (
+          <section key={i}>
+            <ParallaxContent direction={i % 2 === 0 ? 'left' : 'right'} speed={120}>
+              <div className={GRID_CLASS}>
+                {row.map((s) => (
+                  <SeriesCard key={s.id} series={s} />
+                ))}
+              </div>
+            </ParallaxContent>
+          </section>
+        ))
+      ) : (
+        <div className={GRID_CLASS}>
+          {series.map((s) => (
+            <SeriesCard key={s.id} series={s} />
+          ))}
+        </div>
+      )}
       {hasMore && <div ref={sentinelRef} className="h-32 flex justify-center items-center py-6" />}
       {loading && (
         <div className="flex justify-center py-6">

@@ -6,9 +6,12 @@ import { ParallaxContent } from '@/components/parallax-content';
 import { SeriesCard } from '@/components/series-card';
 import { Topbar } from '@/components/topbar';
 import { SectionDivider } from '@/components/ui/section-divider';
+import { chunk } from '@/lib/utils';
 import { getMoviesByProvider, getSeriesByProvider } from '@/lib/tmdb';
 import { filterHasImages } from '@/lib/tmdb-filters';
 import { PREFERRED_PROVIDERS } from '@/lib/watch-providers';
+
+const ROW_SIZE = 6;
 
 export const runtime = 'edge';
 
@@ -43,32 +46,44 @@ export default async function ProviderBrowsePage({ params }: Props) {
       <Topbar />
       <div className="pt-20">
         {filteredMovies.length > 0 && (
-          <section className="mb-6">
-            <ParallaxContent direction="right" speed={120}>
+          <section>
+            <ParallaxContent direction="left" speed={120}>
               <div className="px-4 md:px-8 mb-6">
                 <SectionDivider label={`${provider.label} Movies`} />
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3 px-4 md:px-8">
-                {filteredMovies.map((movie) => (
-                  <MovieCard key={movie.id} movie={movie} />
-                ))}
-              </div>
             </ParallaxContent>
+            {chunk(filteredMovies, ROW_SIZE).map((row, i) => (
+              <section key={i}>
+                <ParallaxContent direction={i % 2 === 0 ? 'right' : 'left'} speed={120}>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3 px-4 md:px-8">
+                    {row.map((movie) => (
+                      <MovieCard key={movie.id} movie={movie} />
+                    ))}
+                  </div>
+                </ParallaxContent>
+              </section>
+            ))}
           </section>
         )}
 
         {filteredSeries.length > 0 && (
           <section className="mt-10">
-            <ParallaxContent direction="left" speed={120}>
+            <ParallaxContent direction="right" speed={120}>
               <div className="px-4 md:px-8 mb-6">
                 <SectionDivider label={`${provider.label} Series`} />
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3 px-4 md:px-8">
-                {filteredSeries.map((s) => (
-                  <SeriesCard key={s.id} series={s} />
-                ))}
-              </div>
             </ParallaxContent>
+            {chunk(filteredSeries, ROW_SIZE).map((row, i) => (
+              <section key={i}>
+                <ParallaxContent direction={i % 2 === 0 ? 'left' : 'right'} speed={120}>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3 px-4 md:px-8">
+                    {row.map((s) => (
+                      <SeriesCard key={s.id} series={s} />
+                    ))}
+                  </div>
+                </ParallaxContent>
+              </section>
+            ))}
           </section>
         )}
 
