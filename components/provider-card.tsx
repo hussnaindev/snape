@@ -27,7 +27,7 @@ export function ProviderCard({ item, rank, prefetch = false }: ProviderCardProps
     <Link
       href={href}
       prefetch={prefetch}
-      className="group relative flex-none w-[130px] sm:w-[175px] overflow-hidden rounded-2xl bg-white/5 transition-[transform,box-shadow,border-color] duration-300 ease-out -translate-y-3 ring-1 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] lg:hover:scale-[1.03] lg:hover:-translate-y-5 lg:hover:ring-white/35 lg:hover:shadow-[0_12px_36px_rgba(255,255,255,0.13)] lg:hover:z-10"
+      className="group relative flex-none w-[130px] sm:w-[175px] overflow-hidden rounded-2xl bg-white/5 transition-transform duration-500 ease-out -translate-y-3 ring-1 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] cursor-pointer lg:hover:scale-110 lg:hover:z-40"
     >
       <div className="aspect-[2/3] relative overflow-hidden">
         {poster ? (
@@ -38,7 +38,7 @@ export function ProviderCard({ item, rank, prefetch = false }: ProviderCardProps
               alt={item.title}
               fill
               sizes="(max-width: 640px) 130px, 175px"
-              className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
+              className="object-cover"
             />
           </picture>
         ) : (
