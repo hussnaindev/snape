@@ -29,15 +29,7 @@ export function ProviderCard({ item, rank, prefetch = false }: ProviderCardProps
       prefetch={prefetch}
       className="group relative flex-none w-[130px] sm:w-[175px] overflow-hidden rounded-2xl bg-white/5 transition-transform duration-500 ease-out -translate-y-3 ring-1 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] cursor-pointer lg:hover:scale-110 lg:hover:z-40"
     >
-      {/* Rotating border glow on hover — desktop only */}
-      <div className="hidden lg:block absolute inset-0 overflow-hidden rounded-2xl opacity-0 lg:group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[160px] h-[160%] lg:group-hover:animate-[spin_5s_linear_infinite]">
-          <div className="w-full h-full bg-gradient-to-r from-transparent via-white via-white/90 via-white to-transparent" />
-        </div>
-      </div>
-      {/* Card content inset to reveal border glow — desktop only */}
-      <div className="lg:m-[2px] rounded-2xl overflow-hidden">
-        <div className="aspect-[2/3] relative overflow-hidden">
+      <div className="aspect-[2/3] relative overflow-hidden">
           {poster ? (
             <picture>
               <source srcSet={poster.desktop} media="(min-width: 1024px)" />
@@ -86,7 +78,6 @@ export function ProviderCard({ item, rank, prefetch = false }: ProviderCardProps
               </p>
             </div>
           </div>
-        </div>
       </div>
     </Link>
   );
