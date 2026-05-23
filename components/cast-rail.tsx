@@ -25,9 +25,9 @@ export function CastRail({ cast }: CastRailProps) {
               key={member.id}
               href={`/person/${member.id}`}
               prefetch={false}
-              className="flex-none w-24 sm:w-28 group"
+              className="flex-none w-24 sm:w-28 group lg:hover:scale-110 transition-transform duration-500 ease-out"
             >
-              <div className="aspect-square rounded-full overflow-hidden bg-white/5 mb-2 relative ring-2 ring-white/10 lg:group-hover:ring-white/30 shadow-[0_8px_24px_rgba(255,255,255,0.06)] lg:group-hover:shadow-[0_12px_32px_rgba(255,255,255,0.12)] transition-[box-shadow,border-color] duration-300 ease-out">
+              <div className="aspect-square rounded-full overflow-hidden bg-white/5 mb-2 relative ring-2 ring-white/10 shadow-[0_8px_24px_rgba(255,255,255,0.06)] transition-transform duration-500 ease-out">
                 {photo ? (
                   <picture>
                     <source srcSet={photo.desktop} media="(min-width: 1024px)" />
@@ -35,7 +35,7 @@ export function CastRail({ cast }: CastRailProps) {
                       src={photo.mobile}
                       alt={member.name}
                       sizes="(max-width: 640px) 96px, 112px"
-                      className="object-cover lg:group-hover:scale-105 transition-transform duration-200"
+                      className="object-cover will-change-transform transition-transform duration-500 lg:group-hover:animate-breath"
                       fallbackSize="sm"
                       loading={idx < 6 ? 'eager' : 'lazy'}
                     />
@@ -45,7 +45,7 @@ export function CastRail({ cast }: CastRailProps) {
                     src=""
                     alt={member.name}
                     sizes="(max-width: 640px) 96px, 112px"
-                    className="object-cover lg:group-hover:scale-105 transition-transform duration-200"
+                    className="object-cover will-change-transform transition-transform duration-500 lg:group-hover:animate-breath"
                     fallbackSize="sm"
                     loading={idx < 6 ? 'eager' : 'lazy'}
                   />

@@ -135,7 +135,7 @@ export function InfiniteSeriesGrid({
     <>
       {parallaxRows ? (
         chunk(series, ROW_SIZE).map((row, i) => (
-          <section key={i}>
+          <section key={i} className="relative z-0 hover:z-50">
             <ParallaxContent direction={i % 2 === 0 ? 'left' : 'right'} speed={120}>
               <div className={GRID_CLASS}>
                 {row.map((s) => (

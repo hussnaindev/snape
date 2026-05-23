@@ -251,7 +251,7 @@ export default async function PersonPage({ params }: Props) {
               <SectionDivider label="Filmography" className="mb-4" />
             </div>
             {chunk(filmography, ROW_SIZE).map((row, i) => (
-              <section key={i} className="px-4 md:px-8">
+              <section key={i} className="relative z-0 hover:z-50 px-4 md:px-8">
                 <ParallaxContent direction={i % 2 === 0 ? 'left' : 'right'} speed={120}>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3">
                     {row.map((credit) => {
@@ -261,7 +261,7 @@ export default async function PersonPage({ params }: Props) {
                           key={`${credit.id}-${credit.character}`}
                           href={`/movie/${credit.id}`}
                           prefetch={false}
-                          className="group relative block overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] transition-[transform,box-shadow,border-color] duration-300 ease-out lg:hover:-translate-y-1 lg:hover:ring-white/35 lg:hover:shadow-[0_12px_36px_rgba(255,255,255,0.13)] lg:hover:z-10"
+                          className="group relative block overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] transition-transform duration-500 ease-out lg:hover:scale-110 lg:hover:z-40"
                         >
                           <div className="aspect-[2/3] overflow-hidden relative">
                             {poster ? (
@@ -272,7 +272,7 @@ export default async function PersonPage({ params }: Props) {
                                   alt={credit.title}
                                   fill
                                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 240px"
-                                  className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
+                                  className="object-cover will-change-transform transition-transform duration-500 lg:group-hover:animate-breath"
                                 />
                               </picture>
                             ) : (

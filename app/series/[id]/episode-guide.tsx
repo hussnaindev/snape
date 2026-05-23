@@ -209,7 +209,7 @@ function EpisodeCard({
   }
 
   return (
-    <div className="group relative block overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] transition-[transform,box-shadow,border-color] duration-300 ease-out lg:hover:-translate-y-1 lg:hover:ring-white/35 lg:hover:shadow-[0_12px_36px_rgba(255,255,255,0.13)] lg:hover:z-10">
+    <div className="group relative block overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] transition-transform duration-500 ease-out lg:hover:scale-110 lg:hover:z-40">
       <button
         type="button"
         onClick={handleClick}
@@ -224,7 +224,7 @@ function EpisodeCard({
                 alt={episode.name}
                 fill
                 sizes="(max-width: 640px) 180px, (max-width: 768px) 240px, (max-width: 1024px) 260px, (max-width: 1280px) 280px, 300px"
-                className="object-cover transition-transform duration-500 ease-out lg:group-hover:scale-105"
+                className="object-cover will-change-transform transition-transform duration-500 lg:group-hover:animate-breath"
               />
             </picture>
           ) : (
