@@ -14,7 +14,7 @@ export function MovieCarousel({ title, movies }: MovieCarouselProps) {
         <SectionDivider label={title} className="mb-2" />
       </div>
       <div className="overflow-x-auto no-scrollbar">
-        <div className="flex gap-2 px-4 md:px-8 pt-3 pb-2">
+        <div className="flex gap-2 px-4 md:px-8 py-8">
           {movies.map((movie, idx) => (
             <div
               key={movie.id}

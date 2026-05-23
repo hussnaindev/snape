@@ -136,7 +136,7 @@ export function EpisodeGuide({ seriesId, seasons, initialSeason, initialSelected
       ) : episodes.length > 0 ? (
         variant === 'carousel' ? (
           <div className="overflow-x-auto no-scrollbar">
-            <div className="flex gap-2 px-4 md:px-8 pt-1 pb-2">
+            <div className="flex gap-2 px-4 md:px-8 py-8">
               {episodes.map((ep) => (
                 <div
                   key={ep.id}

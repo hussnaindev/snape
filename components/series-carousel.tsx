@@ -14,7 +14,7 @@ export function SeriesCarousel({ title, series }: SeriesCarouselProps) {
         <SectionDivider label={title} className="mb-2" />
       </div>
       <div className="overflow-x-auto no-scrollbar">
-        <div className="flex gap-2 px-4 md:px-8 pt-3 pb-2">
+        <div className="flex gap-2 px-4 md:px-8 py-8">
           {series.map((s, idx) => (
             <div
               key={s.id}
