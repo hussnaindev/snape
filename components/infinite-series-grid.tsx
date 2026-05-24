@@ -129,7 +129,7 @@ export function InfiniteSeriesGrid({
     return () => obs.disconnect();
   }, [loadMore]);
 
-  const GRID_CLASS = 'grid grid-cols-[repeat(auto-fit,minmax(165px,210px))] justify-center gap-3 px-4 md:px-8';
+  const GRID_CLASS = 'grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(165px,210px))] sm:justify-center gap-3 px-4 md:px-8';
 
   return (
     <>
