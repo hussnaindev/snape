@@ -161,7 +161,7 @@ export function InfiniteMovieGrid(props: InfiniteMovieGridProps) {
           {chunk(movies, ROW_SIZE).map((row, i) => (
             <section key={i} className="relative z-0 hover:z-50">
               <ParallaxContent direction={i % 2 === 0 ? 'left' : 'right'} speed={120}>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3 px-4 md:px-8">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(165px,210px))] justify-center gap-3 px-4 md:px-8">
                   {row.map((movie) => (
                     <MovieCard key={movie.id} movie={movie} />
                   ))}
@@ -171,7 +171,7 @@ export function InfiniteMovieGrid(props: InfiniteMovieGridProps) {
           ))}
         </>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 3xl:grid-cols-8 gap-3 px-4 md:px-8">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(165px,210px))] justify-center gap-3 px-4 md:px-8">
           {movies.map((movie) => (
             <MovieCard key={movie.id} movie={movie} />
           ))}

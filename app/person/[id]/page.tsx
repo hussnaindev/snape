@@ -253,7 +253,7 @@ export default async function PersonPage({ params }: Props) {
             {chunk(filmography, ROW_SIZE).map((row, i) => (
               <section key={i} className="relative z-0 hover:z-50 px-4 md:px-8">
                 <ParallaxContent direction={i % 2 === 0 ? 'left' : 'right'} speed={120}>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 py-8">
+                  <div className="grid grid-cols-[repeat(auto-fit,minmax(165px,210px))] justify-center gap-3 py-8">
                     {row.map((credit) => {
                       const poster = tmdbResponsive(credit.poster_path, 'w342', 'w500');
                       return (
