@@ -261,7 +261,7 @@ export default async function PersonPage({ params }: Props) {
                           key={`${credit.id}-${credit.character}`}
                           href={`/movie/${credit.id}`}
                           prefetch={false}
-                          className="group relative block overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] transition-transform duration-500 ease-out lg:hover:scale-110 lg:hover:z-40"
+                          className="group relative block overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)]"
                         >
                           <div className="aspect-[2/3] overflow-hidden relative">
                             {poster ? (
@@ -272,7 +272,7 @@ export default async function PersonPage({ params }: Props) {
                                   alt={credit.title}
                                   fill
                                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 240px"
-                                  className="object-cover will-change-transform transition-transform duration-500 lg:group-hover:animate-breath"
+                                  className="object-cover"
                                 />
                               </picture>
                             ) : (

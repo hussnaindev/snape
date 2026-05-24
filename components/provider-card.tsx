@@ -27,7 +27,7 @@ export function ProviderCard({ item, rank, prefetch = false }: ProviderCardProps
     <Link
       href={href}
       prefetch={prefetch}
-      className="group relative flex-none w-[130px] sm:w-[175px] overflow-hidden rounded-2xl bg-white/5 transition-transform duration-500 ease-out -translate-y-3 ring-1 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] cursor-pointer lg:hover:scale-110 lg:hover:z-40"
+      className="group relative flex-none w-[130px] sm:w-[175px] overflow-hidden rounded-2xl bg-white/5 -translate-y-3 ring-1 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] cursor-pointer"
     >
       <div className="aspect-[2/3] relative overflow-hidden">
           {poster ? (
@@ -38,7 +38,7 @@ export function ProviderCard({ item, rank, prefetch = false }: ProviderCardProps
                 alt={item.title}
                 fill
                 sizes="(max-width: 640px) 130px, 175px"
-                className="object-cover will-change-transform transition-transform duration-500 lg:group-hover:animate-breath"
+                className="object-cover"
               />
             </picture>
           ) : (
@@ -50,7 +50,7 @@ export function ProviderCard({ item, rank, prefetch = false }: ProviderCardProps
           {/* Rank number hidden — kept for future use */}
 
           {/* Play overlay on hover */}
-          <div className="absolute inset-0 bg-black/50 opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200 hidden lg:flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 opacity-0 hidden items-center justify-center">
             <div className="w-12 h-12 rounded-full border border-white/50 bg-black/30 flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.12)]">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="white" aria-hidden="true">
                 <polygon points="6,4 20,12 6,20" />

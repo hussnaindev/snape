@@ -209,7 +209,7 @@ function EpisodeCard({
   }
 
   return (
-    <div className="group relative block overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] transition-transform duration-500 ease-out lg:hover:scale-110 lg:hover:z-40">
+    <div className="group relative block overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)]">
       <button
         type="button"
         onClick={handleClick}
@@ -224,7 +224,7 @@ function EpisodeCard({
                 alt={episode.name}
                 fill
                 sizes="(max-width: 640px) 180px, (max-width: 768px) 240px, (max-width: 1024px) 260px, (max-width: 1280px) 280px, 300px"
-                className="object-cover will-change-transform transition-transform duration-500 lg:group-hover:animate-breath"
+                className="object-cover"
               />
             </picture>
           ) : (
@@ -234,7 +234,7 @@ function EpisodeCard({
           )}
 
           {/* Play overlay on hover (desktop only) */}
-          <div className="absolute inset-0 bg-black/50 opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center hidden lg:flex">
+          <div className="absolute inset-0 bg-black/50 opacity-0 flex items-center justify-center hidden">
             <div className="w-12 h-12 rounded-full border border-white/50 bg-black/30 flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.12)]">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="white" aria-hidden="true">
                 <polygon points="6,4 20,12 6,20" />

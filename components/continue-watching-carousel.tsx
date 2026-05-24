@@ -27,7 +27,7 @@ function ContinueWatchingCard({ entry, prefetch }: { entry: WatchHistoryEntry; p
     <Link
       href={href}
       prefetch={prefetch}
-      className="group relative flex-none w-[130px] sm:w-[300px] md:w-[340px] lg:w-[380px] overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 transition-transform duration-500 ease-out ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] lg:hover:scale-110 lg:hover:z-40"
+      className="group relative flex-none w-[130px] sm:w-[300px] md:w-[340px] lg:w-[380px] overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)]"
     >
       {/* Mobile: portrait card with poster */}
       <div className="sm:hidden aspect-[2/3] relative overflow-hidden">
@@ -37,7 +37,7 @@ function ContinueWatchingCard({ entry, prefetch }: { entry: WatchHistoryEntry; p
             alt={entry.title}
             fill
             sizes="130px"
-            className="object-cover will-change-transform transition-transform duration-500 lg:group-hover:animate-breath"
+            className="object-cover"
           />
         ) : (
           <div className="absolute inset-0 bg-white/5 flex items-center justify-center text-white/20 text-xs">
@@ -46,7 +46,7 @@ function ContinueWatchingCard({ entry, prefetch }: { entry: WatchHistoryEntry; p
         )}
 
         {/* Play overlay on hover */}
-        <div className="absolute inset-0 bg-black/50 opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200 hidden lg:flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/50 opacity-0 hidden items-center justify-center">
           <div className="w-12 h-12 rounded-full border border-white/50 bg-black/30 flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.12)]">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="white" aria-hidden="true">
               <polygon points="6,4 20,12 6,20" />
@@ -89,7 +89,7 @@ function ContinueWatchingCard({ entry, prefetch }: { entry: WatchHistoryEntry; p
             alt={entry.title}
             fill
             sizes="(max-width: 1024px) 300px, 380px"
-            className="object-cover will-change-transform transition-transform duration-500 lg:group-hover:animate-breath"
+            className="object-cover"
           />
         ) : (
           <div className="absolute inset-0 bg-white/5 flex items-center justify-center text-white/20 text-sm">
@@ -98,7 +98,7 @@ function ContinueWatchingCard({ entry, prefetch }: { entry: WatchHistoryEntry; p
         )}
 
         {/* Play overlay on hover */}
-        <div className="absolute inset-0 bg-black/50 opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200 hidden lg:flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/50 opacity-0 hidden items-center justify-center">
           <div className="w-12 h-12 rounded-full border border-white/50 bg-black/30 flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.12)]">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="white" aria-hidden="true">
               <polygon points="6,4 20,12 6,20" />
