@@ -4,7 +4,8 @@
 //   • ONE rAF per scroll burst
 //   • Section rects cached — no getBoundingClientRect() inside the tick loop
 //   • IntersectionObserver gates updates so off-screen sections cost nothing
-//   • will-change toggled on/off with viewport visibility (no leaked GPU layers)
+//   • will-change: transform toggled with viewport visibility (no leaked GPU layers)
+//   • Transform-only effects — no opacity (avoids scroll repaints on desktop)
 
 type Effect = (progress: number) => void;
 
@@ -78,7 +79,7 @@ function onVisibilityChange(entries: IntersectionObserverEntry[]) {
       anyVisibleChanged = true;
       // Promote/demote the layer in sync with viewport visibility so we
       // don't keep dozens of dormant composited layers in GPU memory.
-      s.el.style.willChange = s.visible ? 'transform, opacity' : 'auto';
+      s.el.style.willChange = s.visible ? 'transform' : 'auto';
     }
   }
   if (anyVisibleChanged) schedule();
@@ -174,5 +175,7 @@ export function registerParallax(
       sectionRefCounts.set(section, next);
     }
     el.style.willChange = 'auto';
+    el.style.transform = '';
+    el.style.opacity = '';
   };
 }

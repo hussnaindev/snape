@@ -160,7 +160,7 @@ export default async function PersonPage({ params }: Props) {
         {/* Backdrop hero */}
         {backdropUrl && releaseWithBackdrop && (
           <section>
-            <ParallaxContent direction="vertical" speed={360} fade={false}>
+            <ParallaxContent direction="vertical" speed={360}>
               <BackdropPlayer
                 backdropUrl={backdropUrl}
                 trailerKey={trailerKey}

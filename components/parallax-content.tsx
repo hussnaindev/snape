@@ -8,7 +8,6 @@ interface ParallaxContentProps {
   className?: string;
   speed?: number;
   direction?: 'left' | 'right' | 'vertical';
-  fade?: boolean;
 }
 
 export function ParallaxContent({
@@ -16,7 +15,6 @@ export function ParallaxContent({
   className,
   speed = 120,
   direction = 'right',
-  fade = true,
 }: ParallaxContentProps) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -32,11 +30,8 @@ export function ParallaxContent({
         const dir = direction === 'left' ? -1 : 1;
         el.style.transform = `translate3d(${(t - 0.5) * speed * dir}px, 0, 0)`;
       }
-      if (fade) {
-        el.style.opacity = String(Math.max(0, Math.min(t / 0.25, (1 - t) / 0.2)));
-      }
     });
-  }, [speed, direction, fade]);
+  }, [speed, direction]);
 
   return (
     <div ref={ref} className={className}>

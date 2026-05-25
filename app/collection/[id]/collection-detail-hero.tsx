@@ -118,14 +118,13 @@ export function CollectionDetailHero({
     });
   }, []);
 
-  // Parallax: metadata horizontal movement + fade
+  // Parallax: metadata horizontal movement
   useEffect(() => {
     const el = metaRef.current;
     const section = sectionRef.current;
     if (!el || !section) return;
     return registerParallax(el, section, (t) => {
       el.style.transform = `translate3d(${(t - 0.5) * -120}px, 0, 0)`;
-      el.style.opacity = String(Math.max(0, Math.min(t / 0.25, (1 - t) / 0.2)));
     });
   }, []);
 
