@@ -244,14 +244,14 @@ function EpisodeCard({
 
           {/* Runtime chip top-left */}
           {runtime && (
-            <span className="absolute top-1.5 left-2 lg:top-2 lg:left-3 z-10 inline-flex items-center text-[8px] sm:text-[9px] lg:text-[9px] font-semibold leading-none tracking-widest uppercase text-white/80 border border-white/40 rounded-full px-2 py-1 bg-black/60">
+            <span className="absolute top-1.5 left-2 lg:top-2 lg:left-3 z-10 inline-flex items-center text-[8px] sm:text-[9px] lg:text-[9px] font-semibold tracking-widest uppercase text-white/80 border border-white/40 rounded-full px-2 py-1 bg-black/60">
               {runtime}
             </span>
           )}
 
           {/* Rating chip top-right */}
           {rating > 0 && (
-            <span className="absolute top-1.5 right-2 lg:top-2 lg:right-3 z-10 inline-flex items-center gap-1 rounded-full border border-white/40 px-2 py-1 text-[8px] sm:text-[9px] lg:text-[9px] font-semibold leading-none tabular-nums text-white bg-black/60">
+            <span className="absolute top-1.5 right-2 lg:top-2 lg:right-3 z-10 inline-flex items-center gap-1 rounded-full border border-white/40 px-2 py-1 text-[8px] sm:text-[9px] lg:text-[9px] font-semibold tabular-nums text-white bg-black/60">
               ★ {rating.toFixed(1)}
             </span>
           )}

@@ -29,7 +29,7 @@ export function UserMenu() {
     return (
       <Link
         href="/auth/login"
-        className="hidden md:inline-flex items-center leading-none text-[11px] font-chesna-grotesk tracking-[0.2em] uppercase text-white/70 hover:text-white transition-colors px-4 py-2 rounded-lg border border-white/20 hover:border-white/40"
+        className="hidden md:inline-flex h-8 items-center justify-center text-[11px] font-chesna-grotesk tracking-[0.2em] uppercase text-white/70 hover:text-white transition-colors px-4 rounded-lg border border-white/20 hover:border-white/40"
       >
         Login
       </Link>
