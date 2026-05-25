@@ -1,10 +1,13 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
 
-import { InfiniteMovieGrid } from '@/components/infinite-movie-grid';
+import { InfiniteScrollSentinel } from '@/components/infinite-scroll-sentinel';
+import { MovieCardGrid } from '@/components/movie-card-grid';
 import { ParallaxContent } from '@/components/parallax-content';
 import { Topbar } from '@/components/topbar';
 import { SectionDivider } from '@/components/ui/section-divider';
+import { mergePaginatedResults, parsePageParam } from '@/lib/paginated-tmdb';
 import { getMoviesByGenre } from '@/lib/tmdb';
 import { filterHasImages } from '@/lib/tmdb-filters';
 
@@ -12,7 +15,7 @@ export const runtime = 'edge';
 
 interface Props {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ name?: string }>;
+  searchParams: Promise<{ name?: string; page?: string }>;
 }
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
@@ -24,15 +27,18 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 
 export default async function BrowseGenrePage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { name } = await searchParams;
+  const { name, page: pageParam } = await searchParams;
 
   const genreId = Number(id);
   if (Number.isNaN(genreId)) notFound();
 
-  const data = await getMoviesByGenre(genreId).catch(() => null);
-  if (!data || data.results.length === 0) notFound();
+  const firstPage = await getMoviesByGenre(genreId, 1).catch(() => null);
+  if (!firstPage || firstPage.results.length === 0) notFound();
 
-  const movies = filterHasImages(data.results);
+  const page = parsePageParam(pageParam, firstPage.total_pages);
+  const movies = filterHasImages(
+    await mergePaginatedResults(page, (p) => getMoviesByGenre(genreId, p)),
+  );
 
   return (
     <>
@@ -45,14 +51,10 @@ export default async function BrowseGenrePage({ params, searchParams }: Props) {
             </div>
           </ParallaxContent>
         </section>
-        <InfiniteMovieGrid
-          key={genreId}
-          mode="browse"
-          genreId={genreId}
-          initialMovies={movies}
-          totalPages={data.total_pages}
-          parallaxRows
-        />
+        <MovieCardGrid movies={movies} parallaxRows />
+        <Suspense fallback={null}>
+          <InfiniteScrollSentinel hasMore={page < firstPage.total_pages} />
+        </Suspense>
       </div>
     </>
   );

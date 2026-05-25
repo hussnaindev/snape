@@ -1,6 +1,7 @@
 import { CollectionCard } from '@/components/collection-card';
-import { InfiniteMovieGrid } from '@/components/infinite-movie-grid';
-import { InfiniteSeriesGrid } from '@/components/infinite-series-grid';
+import { InfiniteScrollSentinel } from '@/components/infinite-scroll-sentinel';
+import { MovieCardGrid } from '@/components/movie-card-grid';
+import { SeriesCardGrid } from '@/components/series-card-grid';
 import { ParallaxContent } from '@/components/parallax-content';
 import { SearchActorGrid } from '@/components/search-actor-grid';
 import { SearchHeader } from '@/components/search-header';
@@ -8,9 +9,11 @@ import { SectionDivider } from '@/components/ui/section-divider';
 import { parseSearchTab } from '@/components/search-tab-chips';
 import { Topbar } from '@/components/topbar';
 import { APP_NAME } from '@/lib/config';
+import { mergePaginatedResults, parsePageParam } from '@/lib/paginated-tmdb';
 import { chunk } from '@/lib/utils';
 import { searchCollections, searchMovies, searchPeople, searchTvShows } from '@/lib/tmdb';
 import { filterHasImages } from '@/lib/tmdb-filters';
+import { Suspense } from 'react';
 
 const ROW_SIZE = 6;
 import type { TMDBCollectionSearchHit, TMDBMovie, TMDBPersonSearchHit, TMDBSeries } from '@/types/tmdb';
@@ -20,7 +23,7 @@ export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 interface Props {
-  searchParams: Promise<{ q?: string; tab?: string }>;
+  searchParams: Promise<{ q?: string; tab?: string; page?: string }>;
 }
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
@@ -29,7 +32,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 }
 
 export default async function SearchPage({ searchParams }: Props) {
-  const { q, tab } = await searchParams;
+  const { q, tab, page: pageParam } = await searchParams;
   const query = q?.trim() ?? '';
   const activeTab = parseSearchTab(tab);
 
@@ -39,15 +42,31 @@ export default async function SearchPage({ searchParams }: Props) {
   let collections: TMDBCollectionSearchHit[] = [];
   let movieSearch: Awaited<ReturnType<typeof searchMovies>> | null = null;
   let seriesSearch: Awaited<ReturnType<typeof searchTvShows>> | null = null;
+  let moviePage = 1;
+  let seriesPage = 1;
 
   if (query) {
     try {
       if (activeTab === 'movies') {
         movieSearch = await searchMovies(query, 1, undefined, false);
-        movies = filterHasImages(movieSearch.results);
+        moviePage = parsePageParam(pageParam, movieSearch.total_pages);
+        if (movieSearch.resolvedQuery) {
+          movies = filterHasImages(
+            await mergePaginatedResults(moviePage, (p) =>
+              searchMovies(query, p, movieSearch!.resolvedQuery!, false),
+            ),
+          );
+        }
       } else if (activeTab === 'series') {
         seriesSearch = await searchTvShows(query, 1, undefined, false);
-        series = filterHasImages(seriesSearch.results);
+        seriesPage = parsePageParam(pageParam, seriesSearch.total_pages);
+        if (seriesSearch.resolvedQuery) {
+          series = filterHasImages(
+            await mergePaginatedResults(seriesPage, (p) =>
+              searchTvShows(query, p, seriesSearch!.resolvedQuery!, false),
+            ),
+          );
+        }
       } else if (activeTab === 'collections') {
         collections = await searchCollections(query, false);
       } else {
@@ -82,25 +101,20 @@ export default async function SearchPage({ searchParams }: Props) {
           <>
             <SearchHeader query={query} active={activeTab} totalResults={totalHits} />
             {showMovieGrid && movieSearch && (
-              <InfiniteMovieGrid
-                key={`${query}-movies`}
-                mode="search"
-                query={query}
-                resolvedQuery={movieSearch.resolvedQuery}
-                initialMovies={movies}
-                totalPages={movieSearch.total_pages}
-                parallaxRows
-              />
+              <>
+                <MovieCardGrid movies={movies} parallaxRows />
+                <Suspense fallback={null}>
+                  <InfiniteScrollSentinel hasMore={moviePage < movieSearch.total_pages} />
+                </Suspense>
+              </>
             )}
             {showSeriesGrid && seriesSearch && (
-              <InfiniteSeriesGrid
-                key={`${query}-series`}
-                query={query}
-                resolvedQuery={seriesSearch.resolvedQuery}
-                initialSeries={series}
-                totalPages={seriesSearch.total_pages}
-                parallaxRows
-              />
+              <>
+                <SeriesCardGrid series={series} parallaxRows />
+                <Suspense fallback={null}>
+                  <InfiniteScrollSentinel hasMore={seriesPage < seriesSearch.total_pages} />
+                </Suspense>
+              </>
             )}
             {showCollectionsGrid && (
               <section>

@@ -5,7 +5,8 @@ import Image from 'next/image';
 import { ParallaxBackdrop } from './parallax-backdrop';
 import { ParallaxCarousel } from './parallax-carousel';
 import { ParallaxMeta } from './parallax-meta';
-import { ProviderCard, type MediaItem } from './provider-card';
+import type { MediaItem } from '@/lib/media-item';
+import { ProviderCard } from './provider-card';
 import Link from 'next/link';
 
 const BACKDROP_ART: Partial<Record<PreferredProviderKey, string>> = {

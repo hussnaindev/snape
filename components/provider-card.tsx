@@ -1,16 +1,7 @@
-'use client';
-
+import type { MediaItem } from '@/lib/media-item';
 import { tmdbResponsive } from '@/lib/tmdb-image';
 import Image from 'next/image';
 import Link from 'next/link';
-export type MediaItem = {
-  kind: 'movie' | 'series';
-  id: number;
-  title: string;
-  poster_path: string | null;
-  vote_average: number;
-  popularity: number;
-};
 
 interface ProviderCardProps {
   item: MediaItem;
@@ -21,7 +12,6 @@ interface ProviderCardProps {
 export function ProviderCard({ item, rank, prefetch = false }: ProviderCardProps) {
   const href = item.kind === 'movie' ? `/movie/${item.id}` : `/series/${item.id}`;
   const poster = tmdbResponsive(item.poster_path, 'w342', 'w500');
-  const isTen = rank === 10;
 
   return (
     <Link

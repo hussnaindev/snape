@@ -1,5 +1,3 @@
-'use client';
-
 import { tmdbResponsive } from '@/lib/tmdb-image';
 import type { TMDBSeries } from '@/types/tmdb';
 import Image from 'next/image';
