@@ -95,7 +95,7 @@ export function Topbar() {
               <button
                 type="button"
                 onClick={() => setBrowseOpen(!browseOpen)}
-                className="inline-flex items-center text-white/70 hover:text-white transition-colors text-[11px] font-chesna-grotesk tracking-[0.2em] uppercase px-2 py-1 cursor-pointer"
+                className="inline-flex items-center leading-none text-white/70 hover:text-white transition-colors text-[11px] font-chesna-grotesk tracking-[0.2em] uppercase px-2 py-1 cursor-pointer"
               >
               Browse
             </button>
