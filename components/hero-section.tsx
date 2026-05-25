@@ -721,19 +721,11 @@ export function HeroSection() {
 
       {/* ── Pagination indicator (fixed to container, above the track) ── */}
       <div className="absolute bottom-3 left-0 right-0 flex justify-center items-center pointer-events-none z-10">
-        <div
-          className="pointer-events-auto flex items-center"
-          style={{
-            borderRadius: 20,
-            padding: '3px 6px',
-            backgroundColor: 'rgba(7,11,8,0.72)',
-            border: '1px solid rgba(255,255,255,0.12)',
-          }}
-        >
+        <div className="pointer-events-auto flex items-center rounded-[14px] md:rounded-[20px] px-1 py-0.5 md:px-1.5 md:py-[3px] bg-[rgba(7,11,8,0.72)] border border-white/[0.12]">
           <div
             ref={dotsRef}
-            className="inline-flex items-center shrink-0 overflow-hidden"
-            style={{ maxWidth: 160, scrollBehavior: 'smooth' }}
+            className="inline-flex items-center shrink-0 overflow-hidden max-w-[120px] md:max-w-[160px]"
+            style={{ scrollBehavior: 'smooth' }}
           >
             {SLIDES.map((s, i) => {
               const dist = Math.abs(i - current);
@@ -745,29 +737,13 @@ export function HeroSection() {
                   type="button"
                   onClick={() => handleDotClick(i)}
                   aria-label={`Go to slide ${i + 1}`}
-                  style={{
-                    width: 20,
-                    height: 20,
-                    padding: 0,
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
+                  className="size-3.5 md:size-5 p-0 border-none bg-transparent cursor-pointer shrink-0 flex items-center justify-center"
                 >
                   <span
+                    className="block size-3.5 md:size-5 rounded-full transition-[transform,background-color] duration-100 will-change-transform"
                     style={{
-                      display: 'block',
-                      width: 20,
-                      height: 20,
-                      borderRadius: '50%',
                       backgroundColor: isActive ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)',
                       transform: `scale3d(${scale},${scale},${scale})`,
-                      transition: 'transform 0.1s, background-color 0.3s',
-                      willChange: 'transform',
                     }}
                   />
                 </button>
