@@ -20,8 +20,47 @@ import type {
   TMDBWatchProvidersResult,
 } from '@/types/tmdb';
 import type { CuratedProviderKey } from '@/lib/curated-providers';
+import {
+  filterReleasedSearchMovies,
+  filterReleasedSearchSeries,
+} from '@/lib/search-release-filter';
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
+
+/** ISO date (YYYY-MM-DD) for today in UTC. */
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Cached per UTC day — search runs filter on every result set; avoids repeated Date work. */
+let cachedSearchReleaseCutoff = '';
+let cachedSearchReleaseCutoffDay = -1;
+
+function searchReleaseCutoff(): string {
+  const day = Math.floor(Date.now() / 86_400_000);
+  if (day !== cachedSearchReleaseCutoffDay) {
+    cachedSearchReleaseCutoffDay = day;
+    cachedSearchReleaseCutoff = todayIsoDate();
+  }
+  return cachedSearchReleaseCutoff;
+}
+
+/** TMDB discover/movie — only titles whose primary release is on or before today. */
+function releasedMovieDiscoverParams(params: Record<string, string> = {}): Record<string, string> {
+  return {
+    'primary_release_date.lte': todayIsoDate(),
+    ...params,
+  };
+}
+
+/** TMDB discover/tv — only shows that have aired on or before today. */
+function releasedTvDiscoverParams(params: Record<string, string> = {}): Record<string, string> {
+  return {
+    'first_air_date.lte': todayIsoDate(),
+    include_null_first_air_dates: 'false',
+    ...params,
+  };
+}
 
 async function tmdbFetch<T>(
   endpoint: string,
@@ -76,7 +115,18 @@ export async function getMovieVideos(id: number): Promise<TMDBVideosResult> {
   return tmdbFetch<TMDBVideosResult>(`/movie/${id}/videos`);
 }
 
-export async function getMovieRecommendations(id: number): Promise<TMDBMovie[]> {
+/** Uses discover + release-date filters when genre IDs are available (recommendations endpoint has no date filter). */
+export async function getMovieRecommendations(id: number, genreIds: number[] = []): Promise<TMDBMovie[]> {
+  if (genreIds.length > 0) {
+    const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(
+      '/discover/movie',
+      releasedMovieDiscoverParams({
+        with_genres: genreIds.slice(0, 5).join('|'),
+        sort_by: 'popularity.desc',
+      }),
+    );
+    return data.results.filter((m) => m.id !== id).slice(0, 20);
+  }
   const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(`/movie/${id}/recommendations`);
   return data.results;
 }
@@ -101,85 +151,112 @@ export async function getMoviesByGenre(
   genreId: number,
   page = 1,
 ): Promise<TMDBListResult<TMDBMovie>> {
-  return tmdbFetch<TMDBListResult<TMDBMovie>>('/discover/movie', {
-    with_genres: String(genreId),
-    sort_by: 'popularity.desc',
-    page: String(page),
-  });
+  return tmdbFetch<TMDBListResult<TMDBMovie>>(
+    '/discover/movie',
+    releasedMovieDiscoverParams({
+      with_genres: String(genreId),
+      sort_by: 'popularity.desc',
+      page: String(page),
+    }),
+  );
 }
 
 export async function getMoviesByProvider(providerId: number, region = 'US'): Promise<TMDBMovie[]> {
-  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>('/discover/movie', {
-    with_watch_providers: String(providerId),
-    watch_region: region,
-    sort_by: 'popularity.desc',
-  });
+  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(
+    '/discover/movie',
+    releasedMovieDiscoverParams({
+      with_watch_providers: String(providerId),
+      watch_region: region,
+      sort_by: 'popularity.desc',
+    }),
+  );
   return data.results;
 }
 
 export async function getSeriesByProvider(providerId: number, region = 'US'): Promise<TMDBSeries[]> {
-  const data = await tmdbFetch<TMDBListResult<TMDBSeries>>('/discover/tv', {
-    with_watch_providers: String(providerId),
-    watch_region: region,
-    sort_by: 'popularity.desc',
-  });
+  const data = await tmdbFetch<TMDBListResult<TMDBSeries>>(
+    '/discover/tv',
+    releasedTvDiscoverParams({
+      with_watch_providers: String(providerId),
+      watch_region: region,
+      sort_by: 'popularity.desc',
+    }),
+  );
   return data.results;
 }
 
 export async function getBollywoodMovies(page = 1): Promise<TMDBMovie[]> {
-  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>('/discover/movie', {
-    with_original_language: 'hi',
-    sort_by: 'popularity.desc',
-    page: String(page),
-  });
+  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(
+    '/discover/movie',
+    releasedMovieDiscoverParams({
+      with_original_language: 'hi',
+      sort_by: 'popularity.desc',
+      page: String(page),
+    }),
+  );
   return data.results;
 }
 
 export async function getPunjabiMovies(page = 1): Promise<TMDBMovie[]> {
-  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>('/discover/movie', {
-    with_original_language: 'pa',
-    sort_by: 'popularity.desc',
-    page: String(page),
-  });
+  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(
+    '/discover/movie',
+    releasedMovieDiscoverParams({
+      with_original_language: 'pa',
+      sort_by: 'popularity.desc',
+      page: String(page),
+    }),
+  );
   return data.results;
 }
 
 export async function getTamilMovies(page = 1): Promise<TMDBMovie[]> {
-  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>('/discover/movie', {
-    with_original_language: 'ta',
-    sort_by: 'popularity.desc',
-    page: String(page),
-  });
+  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(
+    '/discover/movie',
+    releasedMovieDiscoverParams({
+      with_original_language: 'ta',
+      sort_by: 'popularity.desc',
+      page: String(page),
+    }),
+  );
   return data.results;
 }
 
 export async function getAnimationMovies(page = 1): Promise<TMDBMovie[]> {
-  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>('/discover/movie', {
-    with_genres: '16',
-    sort_by: 'popularity.desc',
-    page: String(page),
-  });
+  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(
+    '/discover/movie',
+    releasedMovieDiscoverParams({
+      with_genres: '16',
+      sort_by: 'popularity.desc',
+      page: String(page),
+    }),
+  );
   return data.results;
 }
 
 /** Animation genre (16) + Japanese — trending anime films. */
 export async function getAnimeMovies(page = 1): Promise<TMDBMovie[]> {
-  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>('/discover/movie', {
-    with_genres: '16',
-    with_original_language: 'ja',
-    sort_by: 'popularity.desc',
-    page: String(page),
-  });
+  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(
+    '/discover/movie',
+    releasedMovieDiscoverParams({
+      with_genres: '16',
+      with_original_language: 'ja',
+      sort_by: 'popularity.desc',
+      page: String(page),
+    }),
+  );
   return data.results;
 }
 
 export async function getHollywoodMovies(page = 1): Promise<TMDBMovie[]> {
-  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>('/discover/movie', {
-    with_original_language: 'en',
-    with_origin_country: 'US',
-    sort_by: 'popularity.desc',
-    page: String(page),
-  });
+  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(
+    '/discover/movie',
+    releasedMovieDiscoverParams({
+      with_original_language: 'en',
+      with_origin_country: 'US',
+      sort_by: 'popularity.desc',
+      page: String(page),
+    }),
+  );
   return data.results;
 }
 
@@ -254,8 +331,7 @@ export async function searchMovies(
       { query: resolvedQuery, page: String(page), include_adult: String(includeAdult) },
       600,
     );
-    // Filter out collections that may appear in movie search
-    data.results = data.results.filter((item) => (item as { media_type?: string }).media_type !== 'collection');
+    data.results = filterReleasedSearchMovies(data.results, searchReleaseCutoff());
     return { ...data, resolvedQuery };
   }
   if (page !== 1) {
@@ -267,8 +343,8 @@ export async function searchMovies(
       { query: variant, page: '1', include_adult: String(includeAdult) },
       600,
     );
+    data.results = filterReleasedSearchMovies(data.results, searchReleaseCutoff());
     if (data.results.length > 0) {
-      data.results = data.results.filter((item) => (item as { media_type?: string }).media_type !== 'collection');
       return { ...data, resolvedQuery: variant };
     }
   }
@@ -287,8 +363,7 @@ export async function searchTvShows(
       { query: resolvedQuery, page: String(page), include_adult: String(includeAdult) },
       600,
     );
-    // Filter out collections that may appear in TV search
-    data.results = data.results.filter((item) => (item as { media_type?: string }).media_type !== 'collection');
+    data.results = filterReleasedSearchSeries(data.results, searchReleaseCutoff());
     return { ...data, resolvedQuery };
   }
   if (page !== 1) {
@@ -300,8 +375,8 @@ export async function searchTvShows(
       { query: variant, page: '1', include_adult: String(includeAdult) },
       600,
     );
+    data.results = filterReleasedSearchSeries(data.results, searchReleaseCutoff());
     if (data.results.length > 0) {
-      data.results = data.results.filter((item) => (item as { media_type?: string }).media_type !== 'collection');
       return { ...data, resolvedQuery: variant };
     }
   }
@@ -329,11 +404,14 @@ export async function getTopRatedSeries(): Promise<TMDBSeries[]> {
 }
 
 export async function getSeriesByGenre(genreId: number, page = 1): Promise<TMDBSeries[]> {
-  const data = await tmdbFetch<TMDBListResult<TMDBSeries>>('/discover/tv', {
-    with_genres: String(genreId),
-    sort_by: 'popularity.desc',
-    page: String(page),
-  });
+  const data = await tmdbFetch<TMDBListResult<TMDBSeries>>(
+    '/discover/tv',
+    releasedTvDiscoverParams({
+      with_genres: String(genreId),
+      sort_by: 'popularity.desc',
+      page: String(page),
+    }),
+  );
   return data.results;
 }
 
@@ -349,7 +427,18 @@ export async function getSeriesVideos(id: number): Promise<TMDBVideosResult> {
   return tmdbFetch<TMDBVideosResult>(`/tv/${id}/videos`);
 }
 
-export async function getSeriesRecommendations(id: number): Promise<TMDBSeries[]> {
+/** Uses discover + air-date filters when genre IDs are available (recommendations endpoint has no date filter). */
+export async function getSeriesRecommendations(id: number, genreIds: number[] = []): Promise<TMDBSeries[]> {
+  if (genreIds.length > 0) {
+    const data = await tmdbFetch<TMDBListResult<TMDBSeries>>(
+      '/discover/tv',
+      releasedTvDiscoverParams({
+        with_genres: genreIds.slice(0, 5).join('|'),
+        sort_by: 'popularity.desc',
+      }),
+    );
+    return data.results.filter((s) => s.id !== id).slice(0, 20);
+  }
   const data = await tmdbFetch<TMDBListResult<TMDBSeries>>(`/tv/${id}/recommendations`);
   return data.results;
 }

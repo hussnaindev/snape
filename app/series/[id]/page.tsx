@@ -54,15 +54,16 @@ export default async function SeriesPage({ params }: Props) {
 
   const country = 'US';
 
-  const [series, credits, recommendations, videos, providers] = await Promise.all([
-    getSeriesDetail(seriesId).catch(() => null),
+  const series = await getSeriesDetail(seriesId).catch(() => null);
+  if (!series) notFound();
+
+  const genreIds = series.genres.map((g) => g.id);
+  const [credits, recommendations, videos, providers] = await Promise.all([
     getSeriesCredits(seriesId).catch(() => ({ cast: [], crew: [] })),
-    getSeriesRecommendations(seriesId).catch(() => []),
+    getSeriesRecommendations(seriesId, genreIds).catch(() => []),
     getSeriesVideos(seriesId).catch(() => ({ results: [] })),
     getSeriesWatchProviders(seriesId).catch(() => null),
   ]);
-
-  if (!series) notFound();
 
   const trailerKey = await getEmbeddableTrailerKey(videos);
   const backdrop = tmdbImage(series.backdrop_path, 'original');

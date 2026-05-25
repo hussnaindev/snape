@@ -45,15 +45,16 @@ export default async function MoviePage({ params }: Props) {
 
   const country = 'US';
 
-  const [movie, credits, recommendations, videos, providers] = await Promise.all([
-    getMovieDetail(movieId).catch(() => null),
+  const movie = await getMovieDetail(movieId).catch(() => null);
+  if (!movie) notFound();
+
+  const genreIds = movie.genres.map((g) => g.id);
+  const [credits, recommendations, videos, providers] = await Promise.all([
     getMovieCredits(movieId).catch(() => ({ cast: [], crew: [] })),
-    getMovieRecommendations(movieId).catch(() => []),
+    getMovieRecommendations(movieId, genreIds).catch(() => []),
     getMovieVideos(movieId).catch(() => ({ results: [] })),
     getMovieWatchProviders(movieId).catch(() => null),
   ]);
-
-  if (!movie) notFound();
 
   const backdrop = tmdbImage(movie.backdrop_path, 'original');
   const trailerKey = await getEmbeddableTrailerKey(videos);
