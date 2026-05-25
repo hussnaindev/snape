@@ -8,8 +8,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { usePlayerControls } from '@/lib/player-controls-context';
 import { useAuth } from './auth/auth-provider';
-import { useEffect, useRef, useState } from 'react';
-import { SearchAutocomplete } from '@/components/search-autocomplete';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { SearchAutocomplete, SearchAutocompleteFallback } from '@/components/search-autocomplete';
 
 const GENRES = [
   { id: 28, name: 'Action' },
@@ -37,6 +37,7 @@ export function Topbar() {
   const browseRef = useRef<HTMLDivElement>(null);
   const searchKeyRef = useRef(0);
   const { controls } = usePlayerControls();
+  const isSearchPage = pathname === '/search';
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -47,11 +48,12 @@ export function Topbar() {
     };
   }, [mobileOpen]);
 
-  // Reset search when navigating — avoids stale autocomplete state across pages.
   useEffect(() => {
-    setSearchOpen(false);
     setBrowseOpen(false);
-  }, [pathname]);
+    if (!isSearchPage) {
+      setSearchOpen(false);
+    }
+  }, [pathname, isSearchPage]);
 
   function openSearch() {
     searchKeyRef.current += 1;
@@ -142,16 +144,20 @@ export function Topbar() {
             </>
           )}
 
-          {searchOpen ? (
+          {isSearchPage || searchOpen ? (
             <div className="flex items-center gap-2 animate-fade-in">
-              <SearchAutocomplete key={searchKeyRef.current} />
+              <Suspense fallback={<SearchAutocompleteFallback />}>
+                <SearchAutocomplete key={isSearchPage ? 'search-page' : searchKeyRef.current} />
+              </Suspense>
+              {!isSearchPage && (
                 <button
                   type="button"
                   onClick={() => setSearchOpen(false)}
                   className="text-white/50 hover:text-white text-lg cursor-pointer"
                 >
-                ✕
-              </button>
+                  ✕
+                </button>
+              )}
             </div>
           ) : (
               <button

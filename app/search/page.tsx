@@ -4,7 +4,7 @@ import { MovieCardGrid } from '@/components/movie-card-grid';
 import { SeriesCardGrid } from '@/components/series-card-grid';
 import { ParallaxContent } from '@/components/parallax-content';
 import { SearchActorGrid } from '@/components/search-actor-grid';
-import { SearchHeader } from '@/components/search-header';
+import { SearchHeader, SearchHeaderFallback } from '@/components/search-header';
 import { SectionDivider } from '@/components/ui/section-divider';
 import { parseSearchTab } from '@/components/search-tab-chips';
 import { Topbar } from '@/components/topbar';
@@ -17,6 +17,7 @@ import { filterHasImages } from '@/lib/tmdb-filters';
 const ROW_SIZE = 6;
 import type { TMDBCollectionSearchHit, TMDBMovie, TMDBPersonSearchHit, TMDBSeries } from '@/types/tmdb';
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
@@ -76,15 +77,6 @@ export default async function SearchPage({ searchParams }: Props) {
     }
   }
 
-  const totalHits =
-    activeTab === 'movies'
-      ? (movieSearch?.total_results ?? 0)
-      : activeTab === 'series'
-        ? (seriesSearch?.total_results ?? 0)
-        : activeTab === 'collections'
-          ? collections.length
-          : people.length;
-
   const showMovieGrid =
     activeTab === 'movies' && movieSearch !== null && movieSearch.total_results > 0;
   const showSeriesGrid =
@@ -98,7 +90,9 @@ export default async function SearchPage({ searchParams }: Props) {
       <main className="pt-24 pb-16 px-4 md:px-8">
         {query ? (
           <>
-            <SearchHeader query={query} active={activeTab} totalResults={totalHits} />
+            <Suspense fallback={<SearchHeaderFallback />}>
+              <SearchHeader active={activeTab} />
+            </Suspense>
             {showMovieGrid && movieSearch && (
               <>
                 <MovieCardGrid movies={movies} parallaxRows />

@@ -2,7 +2,8 @@
 
 import { useDebounce } from '@/lib/use-debounce';
 import { SearchDropdown } from '@/components/search-dropdown';
-import { usePathname, useRouter } from 'next/navigation';
+import { parseSearchTab } from '@/components/search-tab-chips';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   flattenAutocompleteItems,
@@ -21,7 +22,14 @@ const initialSuggestions = {
 export function SearchAutocomplete() {
   const router = useRouter();
   const pathname = usePathname();
-  const [query, setQuery] = useState('');
+  const searchParams = useSearchParams();
+  const isSearchPage = pathname === '/search';
+  const urlQuery = searchParams.get('q') ?? '';
+  const committedQuery = urlQuery.trim();
+
+  const [query, setQuery] = useState(() => (isSearchPage ? urlQuery : ''));
+  const isCommittedResults =
+    isSearchPage && query.trim() === committedQuery && committedQuery.length > 0;
   const [suggestions, setSuggestions] = useState<{
     movies: TMDBMovie[];
     series: TMDBSeries[];
@@ -38,25 +46,52 @@ export function SearchAutocomplete() {
   const prevPathnameRef = useRef(pathname);
 
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (!isSearchPage) {
+      inputRef.current?.focus();
+    }
+  }, [isSearchPage]);
 
-  // Reset when route changes (skip initial mount so opening search on a page still works).
+  // Keep input in sync with URL on the search results page (back/forward, new results).
+  useEffect(() => {
+    if (isSearchPage) {
+      setQuery(urlQuery);
+      setShowDropdown(false);
+      fetchGenerationRef.current += 1;
+    }
+  }, [isSearchPage, urlQuery]);
+
+  // Reset autocomplete UI when leaving the search page.
   useEffect(() => {
     if (prevPathnameRef.current === pathname) return;
+    const wasSearchPage = prevPathnameRef.current === '/search';
     prevPathnameRef.current = pathname;
+
     fetchGenerationRef.current += 1;
-    setQuery('');
     setSuggestions(null);
     setSuggestionsLoading(false);
     setSuggestionsError(false);
     setSelectedIndex(-1);
     setShowDropdown(false);
-  }, [pathname]);
+
+    if (pathname === '/search') {
+      setQuery(urlQuery);
+    } else if (wasSearchPage) {
+      setQuery('');
+    }
+  }, [pathname, urlQuery]);
 
   useEffect(() => {
     const q = debouncedQuery.trim();
     if (!shouldFetchAutocomplete(q)) {
+      setSuggestions(null);
+      setSuggestionsLoading(false);
+      setSuggestionsError(false);
+      setShowDropdown(false);
+      return;
+    }
+
+    // On results page, only suggest while the user is editing away from the committed URL query.
+    if (isSearchPage && q === committedQuery) {
       setSuggestions(null);
       setSuggestionsLoading(false);
       setSuggestionsError(false);
@@ -107,7 +142,7 @@ export function SearchAutocomplete() {
     return () => {
       controller.abort();
     };
-  }, [debouncedQuery]);
+  }, [debouncedQuery, isSearchPage, committedQuery]);
 
   useEffect(() => {
     setSelectedIndex(-1);
@@ -143,8 +178,10 @@ export function SearchAutocomplete() {
     } else if (e.key === 'Enter' && isValidSelection(selectedIndex, total)) {
       e.preventDefault();
       router.push(items[selectedIndex]!.href);
-      setQuery('');
       setShowDropdown(false);
+      if (!isSearchPage) {
+        setQuery('');
+      }
     }
   }
 
@@ -153,15 +190,16 @@ export function SearchAutocomplete() {
       e.preventDefault();
       const q = query.trim();
       if (!q) return;
-      const url = `/search?q=${encodeURIComponent(q)}&tab=movies`;
+      const tab = isSearchPage ? parseSearchTab(searchParams.get('tab') ?? undefined) : 'movies';
+      const url = `/search?q=${encodeURIComponent(q)}&tab=${tab}`;
       router.push(url);
       if (pathname === '/search') {
         setTimeout(() => router.refresh(), 0);
       }
-      setQuery('');
       setShowDropdown(false);
+      fetchGenerationRef.current += 1;
     },
-    [query, pathname, router],
+    [query, pathname, router, isSearchPage, searchParams],
   );
 
   return (
@@ -177,20 +215,26 @@ export function SearchAutocomplete() {
             if (!shouldFetchAutocomplete(next)) {
               setShowDropdown(false);
               setSuggestionsError(false);
-            } else {
+            } else if (!isSearchPage || next.trim() !== committedQuery) {
               setShowDropdown(true);
+            } else {
+              setShowDropdown(false);
             }
           }}
           onKeyDown={handleKeyDown}
           onFocus={() => {
-            if (shouldFetchAutocomplete(query) && !suggestionsLoading) {
+            if (
+              shouldFetchAutocomplete(query) &&
+              !suggestionsLoading &&
+              (!isSearchPage || query.trim() !== committedQuery)
+            ) {
               setShowDropdown(true);
             }
           }}
           placeholder="Search movies, TV, cast…"
           className="bg-black/60 border border-white/20 rounded px-3 py-1.5 text-sm text-white placeholder-white/40 outline-none focus:border-white/60 w-44 md:w-64"
         />
-        {showDropdown && shouldFetchAutocomplete(query) && (
+        {showDropdown && shouldFetchAutocomplete(query) && !isCommittedResults && (
           <SearchDropdown
             movies={suggestions?.movies ?? initialSuggestions.movies}
             series={suggestions?.series ?? initialSuggestions.series}
@@ -199,13 +243,20 @@ export function SearchAutocomplete() {
             loading={suggestionsLoading}
             error={suggestionsError}
             selectedIndex={selectedIndex}
-            onClose={() => {
-              setShowDropdown(false);
-              setQuery('');
-            }}
+            onClose={() => setShowDropdown(false)}
           />
         )}
       </div>
     </form>
+  );
+}
+
+/** Placeholder while search params hydrate (Suspense). */
+export function SearchAutocompleteFallback() {
+  return (
+    <div
+      className="bg-black/60 border border-white/20 rounded px-3 py-1.5 text-sm w-44 md:w-64 h-[34px]"
+      aria-hidden
+    />
   );
 }
