@@ -113,7 +113,7 @@ export default async function CollectionPage({ params }: Props) {
               <h2 className="text-white font-body font-semibold text-base md:text-lg mb-4">
                 Movies in this collection
               </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(165px,210px))] sm:justify-center gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {collection.parts.map((movie) => (
                   <MovieCard key={movie.id} movie={movie} />
                 ))}

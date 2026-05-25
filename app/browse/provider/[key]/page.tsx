@@ -52,17 +52,24 @@ export default async function ProviderBrowsePage({ params }: Props) {
                 <SectionDivider label={`${provider.label} Movies`} />
               </div>
             </ParallaxContent>
-            {chunk(filteredMovies, ROW_SIZE).map((row, i) => (
-              <section key={i} className="relative z-0 hover:z-50">
-                <ParallaxContent direction={i % 2 === 0 ? 'right' : 'left'} speed={120}>
-                  <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(165px,210px))] sm:justify-center gap-3 px-4 md:px-8">
-                    {row.map((movie) => (
-                      <MovieCard key={movie.id} movie={movie} />
-                    ))}
-                  </div>
-                </ParallaxContent>
-              </section>
-            ))}
+            <div className="grid grid-cols-2 gap-3 px-4 sm:hidden">
+              {filteredMovies.map((movie) => (
+                <MovieCard key={movie.id} movie={movie} />
+              ))}
+            </div>
+            <div className="hidden sm:block">
+              {chunk(filteredMovies, ROW_SIZE).map((row, i) => (
+                <section key={i} className="relative z-0 hover:z-50">
+                  <ParallaxContent direction={i % 2 === 0 ? 'right' : 'left'} speed={120}>
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(165px,210px))] justify-center gap-3 px-4 md:px-8">
+                      {row.map((movie) => (
+                        <MovieCard key={movie.id} movie={movie} />
+                      ))}
+                    </div>
+                  </ParallaxContent>
+                </section>
+              ))}
+            </div>
           </section>
         )}
 
@@ -73,17 +80,24 @@ export default async function ProviderBrowsePage({ params }: Props) {
                 <SectionDivider label={`${provider.label} Series`} />
               </div>
             </ParallaxContent>
-            {chunk(filteredSeries, ROW_SIZE).map((row, i) => (
-              <section key={i} className="relative z-0 hover:z-50">
-                <ParallaxContent direction={i % 2 === 0 ? 'left' : 'right'} speed={120}>
-                  <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(165px,210px))] sm:justify-center gap-3 px-4 md:px-8">
-                    {row.map((s) => (
-                      <SeriesCard key={s.id} series={s} />
-                    ))}
-                  </div>
-                </ParallaxContent>
-              </section>
-            ))}
+            <div className="grid grid-cols-2 gap-3 px-4 sm:hidden">
+              {filteredSeries.map((s) => (
+                <SeriesCard key={s.id} series={s} />
+              ))}
+            </div>
+            <div className="hidden sm:block">
+              {chunk(filteredSeries, ROW_SIZE).map((row, i) => (
+                <section key={i} className="relative z-0 hover:z-50">
+                  <ParallaxContent direction={i % 2 === 0 ? 'left' : 'right'} speed={120}>
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(165px,210px))] justify-center gap-3 px-4 md:px-8">
+                      {row.map((s) => (
+                        <SeriesCard key={s.id} series={s} />
+                      ))}
+                    </div>
+                  </ParallaxContent>
+                </section>
+              ))}
+            </div>
           </section>
         )}
 

@@ -129,22 +129,31 @@ export function InfiniteSeriesGrid({
     return () => obs.disconnect();
   }, [loadMore]);
 
-  const GRID_CLASS = 'grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(165px,210px))] sm:justify-center gap-3 px-4 md:px-8';
+  const GRID_CLASS = 'grid grid-cols-2 gap-3 px-4';
 
   return (
     <>
       {parallaxRows ? (
-        chunk(series, ROW_SIZE).map((row, i) => (
-          <section key={i} className="relative z-0 hover:z-50">
-            <ParallaxContent direction={i % 2 === 0 ? 'left' : 'right'} speed={120}>
-              <div className={GRID_CLASS}>
-                {row.map((s) => (
-                  <SeriesCard key={s.id} series={s} />
-                ))}
-              </div>
-            </ParallaxContent>
-          </section>
-        ))
+        <>
+          <div className={GRID_CLASS + ' sm:hidden'}>
+            {series.map((s) => (
+              <SeriesCard key={s.id} series={s} />
+            ))}
+          </div>
+          <div className="hidden sm:block">
+            {chunk(series, ROW_SIZE).map((row, i) => (
+              <section key={i} className="relative z-0 hover:z-50">
+                <ParallaxContent direction={i % 2 === 0 ? 'left' : 'right'} speed={120}>
+                  <div className="grid grid-cols-[repeat(auto-fit,minmax(165px,210px))] justify-center gap-3 px-4 md:px-8">
+                    {row.map((s) => (
+                      <SeriesCard key={s.id} series={s} />
+                    ))}
+                  </div>
+                </ParallaxContent>
+              </section>
+            ))}
+          </div>
+        </>
       ) : (
         <div className={GRID_CLASS}>
           {series.map((s) => (

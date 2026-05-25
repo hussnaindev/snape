@@ -11,7 +11,7 @@ export function SearchActorGrid({ people }: SearchActorGridProps) {
   if (people.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(165px,210px))] sm:justify-center gap-4 px-4 md:px-8">
+    <div className="grid grid-cols-2 gap-4 px-4">
       {people.map((person) => {
         const photo = tmdbResponsive(person.profile_path, 'w185', 'w342');
         return (

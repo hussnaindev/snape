@@ -109,17 +109,24 @@ export default async function SearchPage({ searchParams }: Props) {
                     <SectionDivider label="Collections" />
                   </div>
                 </ParallaxContent>
-                {chunk(collections, ROW_SIZE).map((row, i) => (
-                  <section key={i}>
-                    <ParallaxContent direction={i % 2 === 0 ? 'right' : 'left'} speed={120}>
-                      <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(165px,210px))] sm:justify-center gap-3 px-4 md:px-8">
-                        {row.map((collection) => (
-                          <CollectionCard key={collection.id} collection={collection} />
-                        ))}
-                      </div>
-                    </ParallaxContent>
-                  </section>
-                ))}
+                <div className="grid grid-cols-2 gap-3 px-4 sm:hidden">
+                  {collections.map((collection) => (
+                    <CollectionCard key={collection.id} collection={collection} />
+                  ))}
+                </div>
+                <div className="hidden sm:block">
+                  {chunk(collections, ROW_SIZE).map((row, i) => (
+                    <section key={i}>
+                      <ParallaxContent direction={i % 2 === 0 ? 'right' : 'left'} speed={120}>
+                        <div className="grid grid-cols-[repeat(auto-fit,minmax(165px,210px))] justify-center gap-3 px-4 md:px-8">
+                          {row.map((collection) => (
+                            <CollectionCard key={collection.id} collection={collection} />
+                          ))}
+                        </div>
+                      </ParallaxContent>
+                    </section>
+                  ))}
+                </div>
               </section>
             )}
             {showActorGrid && (
