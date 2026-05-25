@@ -1,9 +1,28 @@
 'use client';
 
-import Hls from 'hls.js';
+import type Hls from 'hls.js';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+
+type HlsConstructor = typeof Hls;
+
+let hlsModulePromise: Promise<HlsConstructor> | null = null;
+
+function loadHlsModule(): Promise<HlsConstructor> {
+  hlsModulePromise ??= import('hls.js').then((m) => m.default);
+  return hlsModulePromise;
+}
+
+/** Active slide plus immediate neighbors (carousel wraps at ends). */
+function mountedSlideIndices(active: number, len: number): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < len; i++) {
+    const diff = Math.abs(i - active);
+    if (diff <= 1 || diff === len - 1) out.push(i);
+  }
+  return out;
+}
 
 type Slide = {
   id: string | null;
@@ -155,11 +174,17 @@ export function HeroSection() {
   const dragStartX = useRef<number | null>(null);
   const dragBaseOffset = useRef(0);
   const wheelDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
-  const hlsRef = useRef<Hls | null>(null);
+  const videoRefs = useRef<Map<number, HTMLVideoElement>>(new Map());
+  const hlsRef = useRef<InstanceType<HlsConstructor> | null>(null);
+  const attachGenerationRef = useRef(0);
   const trailerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showVideo, setShowVideo] = useState(false);
   const heroVisibleRef = useRef(true);
+
+  const videoMountIndices = useMemo(
+    () => new Set(mountedSlideIndices(current, SLIDES.length)),
+    [current],
+  );
 
   function trackWidth() {
     return containerRef.current?.offsetWidth ?? 0;
@@ -174,21 +199,25 @@ export function HeroSection() {
     el.style.transform = `translateX(${px}px)`;
   }
 
-  function attachHls(idx: number) {
-    const video = videoRefs.current[idx];
+  async function attachHls(idx: number) {
+    const generation = ++attachGenerationRef.current;
+    const video = videoRefs.current.get(idx);
     const slide = SLIDES[idx];
     if (!video || !slide) return;
+
     hlsRef.current?.destroy();
     hlsRef.current = null;
-    if (Hls.isSupported()) {
-      // Adaptive bitrate selection — let HLS pick a rendition that matches
-      // the bandwidth + viewport. Forcing the top rendition (UHD) on mobile
-      // burns multiple MB before the hero is even past slide 1.
-      const hls = new Hls({ autoStartLoad: true, capLevelToPlayerSize: true });
+
+    const HlsCtor = await loadHlsModule();
+    if (attachGenerationRef.current !== generation || currentRef.current !== idx) return;
+
+    if (HlsCtor.isSupported()) {
+      const hls = new HlsCtor({ autoStartLoad: true, capLevelToPlayerSize: true });
       hlsRef.current = hls;
       hls.loadSource(slide.trailerUrl);
       hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      hls.on(HlsCtor.Events.MANIFEST_PARSED, () => {
+        if (attachGenerationRef.current !== generation || currentRef.current !== idx) return;
         hls.currentLevel = -1;
         video.play().catch(() => {});
       });
@@ -201,13 +230,15 @@ export function HeroSection() {
   function resetTrailerTimer(idx: number) {
     if (trailerTimerRef.current) clearTimeout(trailerTimerRef.current);
     setShowVideo(false);
-    for (const v of videoRefs.current) v?.pause();
+    attachGenerationRef.current += 1;
+    hlsRef.current?.destroy();
+    hlsRef.current = null;
+    for (const v of videoRefs.current.values()) v.pause();
+    void loadHlsModule();
     trailerTimerRef.current = setTimeout(() => {
-      // Skip trailer load if user has already scrolled past the hero —
-      // saves several MB of HLS segment fetches on mobile.
       if (!heroVisibleRef.current) return;
       setShowVideo(true);
-      attachHls(idx);
+      void attachHls(idx);
     }, 2000);
   }
 
@@ -237,7 +268,8 @@ export function HeroSection() {
         if (!entry) return;
         heroVisibleRef.current = entry.isIntersecting;
         if (!entry.isIntersecting) {
-          for (const v of videoRefs.current) v?.pause();
+          attachGenerationRef.current += 1;
+          for (const v of videoRefs.current.values()) v.pause();
           hlsRef.current?.destroy();
           hlsRef.current = null;
           if (trailerTimerRef.current) {
@@ -246,7 +278,7 @@ export function HeroSection() {
           }
           setShowVideo(false);
         } else {
-          // Re-arm the trailer when user scrolls back to hero.
+          void loadHlsModule();
           resetTrailerTimer(currentRef.current);
         }
       },
@@ -398,14 +430,21 @@ export function HeroSection() {
               sizes="100vw"
               className="hidden sm:block object-cover object-center"
             />
-            {/* Trailer video */}
-            <video
-              ref={(el) => { videoRefs.current[i] = el; }}
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${i === current && showVideo ? 'opacity-100' : 'opacity-0'}`}
-              muted
-              playsInline
-              onEnded={() => { if (i === currentRef.current) navigate((i + 1) % SLIDES.length); }}
-            />
+            {/* Trailer video — only mount active ±1 (wraps) to limit decode layers */}
+            {videoMountIndices.has(i) && (
+              <video
+                ref={(el) => {
+                  if (el) videoRefs.current.set(i, el);
+                  else videoRefs.current.delete(i);
+                }}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${i === current && showVideo ? 'opacity-100' : 'opacity-0'}`}
+                muted
+                playsInline
+                onEnded={() => {
+                  if (i === currentRef.current) navigate((i + 1) % SLIDES.length);
+                }}
+              />
+            )}
             {/* Desktop gradient scrim */}
             <div
               className="absolute inset-0 hidden sm:block"
@@ -433,9 +472,8 @@ export function HeroSection() {
                     fontSize: 13,
                     padding: '5px 12px',
                     borderRadius: 20,
-                    background: 'rgba(255,255,255,0.15)',
-                    backdropFilter: 'blur(10px)',
-                    WebkitBackdropFilter: 'blur(10px)',
+                    background: 'rgba(255,255,255,0.22)',
+                    border: '1px solid rgba(255,255,255,0.28)',
                   }}
                 >
                   {s.badge}
@@ -688,9 +726,8 @@ export function HeroSection() {
           style={{
             borderRadius: 20,
             padding: '3px 6px',
-            backdropFilter: 'saturate(180%) blur(10px)',
-            WebkitBackdropFilter: 'saturate(180%) blur(10px)',
-            backgroundColor: 'rgba(0,0,0,.3)',
+            backgroundColor: 'rgba(7,11,8,0.72)',
+            border: '1px solid rgba(255,255,255,0.12)',
           }}
         >
           <div
