@@ -1,10 +1,12 @@
 import { AuthProvider } from '@/components/auth/auth-provider';
+import { Topbar } from '@/components/topbar';
 import { PlayerControlsProvider } from '@/lib/player-controls-context';
 import { FullStoryInit } from '@/components/fullstory-init';
 import { PwaInstallPrompt } from '@/components/pwa-install-prompt';
 import { APP_NAME } from '@/lib/config';
 import type { Metadata, Viewport } from 'next';
 import { DM_Sans } from 'next/font/google';
+import { Suspense } from 'react';
 import NextTopLoader from 'nextjs-toploader';
 import './globals.css';
 import { GoogleAnalytics } from '@next/third-parties/google';
@@ -49,7 +51,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <FullStoryInit />
         <PwaInstallPrompt />
         <PlayerControlsProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <Suspense fallback={null}>
+              <Topbar />
+            </Suspense>
+            {children}
+          </AuthProvider>
         </PlayerControlsProvider>
       </body>
       <GoogleAnalytics gaId="G-J9LY8F7YKQ" />

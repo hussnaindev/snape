@@ -11,6 +11,9 @@ import { useAuth } from './auth/auth-provider';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { SearchAutocomplete, SearchAutocompleteFallback } from '@/components/search-autocomplete';
 
+const navLinkClass =
+  'inline-flex items-center text-[11px] font-chesna-grotesk tracking-[0.2em] uppercase px-2 py-1 transition-colors';
+
 const GENRES = [
   { id: 28, name: 'Action' },
   { id: 12, name: 'Adventure' },
@@ -70,7 +73,7 @@ export function Topbar() {
 
       <div className="relative h-16 flex items-center justify-between px-4 md:px-8">
         {/* Wordmark */}
-        <Link href="/" target="_top" className="flex items-center gap-2 text-white">
+        <Link href="/" className="flex items-center gap-2 text-white">
           <Logo className="w-5 h-5 md:w-7 md:h-7 text-white" />
           {/** Keeping it commented for future use */}
           {/* <span className="font-body text-sm md:text-xl font-bold tracking-widest uppercase">
@@ -80,29 +83,39 @@ export function Topbar() {
 
         {/* Browse + Search */}
         <div className="flex items-center gap-3">
-          {/* Browse dropdown */}
-          <div className="relative hidden md:block" ref={browseRef}>
+          <div className="hidden md:flex items-center gap-3">
+            <Link
+              href="/browse/streaming"
+              className={`${navLinkClass} ${
+                pathname === '/browse/streaming' ? 'text-white' : 'text-white/70 hover:text-white'
+              }`}
+            >
+              Streaming
+            </Link>
+
+            <div className="relative" ref={browseRef}>
               <button
                 type="button"
                 onClick={() => setBrowseOpen(!browseOpen)}
-                className="inline-flex items-center text-white/70 hover:text-white transition-colors text-[11px] font-chesna-grotesk tracking-[0.2em] uppercase px-2 py-1 cursor-pointer"
+                className={`${navLinkClass} text-white/70 hover:text-white cursor-pointer`}
               >
-              Browse
-            </button>
-            {browseOpen && (
-              <div className="absolute top-full right-0 mt-1 bg-black/80 rounded-lg shadow-xl border border-white/10 w-48 overflow-hidden z-50">
-                {GENRES.map((genre) => (
-                     <Link
-                        key={genre.id}
-                        href={`/browse/${genre.id}?name=${encodeURIComponent(genre.name)}`}
-                        onClick={() => setBrowseOpen(false)}
-                        className="block px-4 py-2 text-white/70 hover:text-white hover:bg-white/5 transition-colors text-sm cursor-pointer"
-                      >
-                    {genre.name}
-                  </Link>
-                ))}
-              </div>
-            )}
+                Browse
+              </button>
+              {browseOpen && (
+                <div className="absolute top-full right-0 mt-1 bg-black/80 rounded-lg shadow-xl border border-white/10 w-48 overflow-hidden z-50">
+                  {GENRES.map((genre) => (
+                    <Link
+                      key={genre.id}
+                      href={`/browse/${genre.id}?name=${encodeURIComponent(genre.name)}`}
+                      onClick={() => setBrowseOpen(false)}
+                      className="block px-4 py-2 text-white/70 hover:text-white hover:bg-white/5 transition-colors text-sm cursor-pointer"
+                    >
+                      {genre.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <UserMenu />
@@ -229,8 +242,25 @@ export function Topbar() {
             </div>
 
             <div className="flex-1 overflow-y-auto">
-              {/* Browse */}
               <div className="px-4 pt-4 pb-2">
+                <p className="text-white/40 text-[11px] font-semibold tracking-wider uppercase">Streaming</p>
+              </div>
+              <nav className="px-3 pb-1 space-y-0.5">
+                <Link
+                  href="/browse/streaming"
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center justify-between px-4 py-3 text-sm font-medium rounded-xl transition-colors ${
+                    pathname === '/browse/streaming'
+                      ? 'text-white bg-white/5'
+                      : 'text-white/70 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span>Streaming Providers</span>
+                  <ChevronIcon />
+                </Link>
+              </nav>
+
+              <div className="px-4 pt-3 pb-2 border-t border-white/10">
                 <p className="text-white/40 text-[11px] font-semibold tracking-wider uppercase">Browse</p>
               </div>
               <nav className="px-3 pb-3 space-y-0.5">

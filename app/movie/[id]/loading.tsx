@@ -1,9 +1,6 @@
-import { Topbar } from '@/components/topbar';
-
 export default function Loading() {
   return (
     <>
-      <Topbar />
       <div className="animate-pulse">
         {/* Backdrop skeleton */}
         <div className="w-full h-[55vw] max-h-[480px] bg-white/5" />

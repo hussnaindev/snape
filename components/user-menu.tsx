@@ -22,7 +22,7 @@ export function UserMenu() {
   }, []);
 
   if (isLoading) {
-    return <div className="w-7 h-7 rounded-full bg-white/10 animate-pulse" />;
+    return <div className="hidden md:block w-7 h-7 rounded-full bg-white/10 animate-pulse shrink-0" />;
   }
 
   if (!user) {

@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation';
 
 import { CastRail } from '@/components/cast-rail';
 import { SeriesCarousel } from '@/components/series-carousel';
-import { Topbar } from '@/components/topbar';
 import {
   getEmbeddableTrailerKey,
   getSeriesCredits,
@@ -107,8 +106,6 @@ export default async function SeriesPage({ params }: Props) {
 
   return (
     <>
-      <Topbar />
-
       <div>
         <SeriesDetailHero
           backdropUrl={backdrop}

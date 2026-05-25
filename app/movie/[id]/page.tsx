@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation';
 
 import { CastRail } from '@/components/cast-rail';
 import { MovieCarousel } from '@/components/movie-carousel';
-import { Topbar } from '@/components/topbar';
 import {
   getEmbeddableTrailerKey,
   getMovieCredits,
@@ -69,8 +68,6 @@ export default async function MoviePage({ params }: Props) {
 
   return (
     <>
-      <Topbar />
-
       <div>
         <MovieDetailHero
           backdropUrl={backdrop}

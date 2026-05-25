@@ -1,59 +1,103 @@
 import { Banner } from '@/components/banner';
+
 import { ContinueWatchingCarousel } from '@/components/continue-watching-carousel';
+
+import { CuratedProviderSection } from '@/components/curated-provider-section';
+
 import { HeroSection } from '@/components/hero-section';
-import { ProviderSection } from '@/components/provider-section';
-import { Topbar } from '@/components/topbar';
+
 import { APP_NAME } from '@/lib/config';
-import { getMoviesByProvider, getSeriesByProvider } from '@/lib/tmdb';
-import { PREFERRED_PROVIDERS } from '@/lib/watch-providers';
+
+import { CURATED_PROVIDERS } from '@/lib/curated-providers';
+
+import { getCuratedProviderMovies } from '@/lib/tmdb';
+
 import type { Metadata } from 'next';
+
 import { cookies } from 'next/headers';
+
+
 
 export const runtime = 'edge';
 
+
+
 export const metadata: Metadata = {
+
   title: `${APP_NAME} — Stream Movies Instantly`,
+
 };
 
+
+
 export default async function HomePage() {
+
   const cookieStore = await cookies();
+
   const hasHistory = cookieStore.has('hwh');
 
-  const providersWithData = await Promise.all(
-    PREFERRED_PROVIDERS.map(async (p) => {
-      const [movies, series] = await Promise.all([
-        getMoviesByProvider(p.tmdbId),
-        getSeriesByProvider(p.tmdbId),
-      ]);
-      return { provider: p, movies, series };
-    }),
+
+
+  const curatedMovieLists = await Promise.all(
+
+    CURATED_PROVIDERS.map((c) => getCuratedProviderMovies(c.key)),
+
   );
 
-  return (
-    <>
-      <Topbar />
 
+
+  const curatedMoviesByKey = Object.fromEntries(
+
+    CURATED_PROVIDERS.map((c, i) => [c.key, curatedMovieLists[i]]),
+
+  ) as Record<(typeof CURATED_PROVIDERS)[number]['key'], (typeof curatedMovieLists)[number]>;
+
+
+
+  return (
+
+    <>
       <div style={{ overflowX: 'clip' }}>
+
         <HeroSection />
+
+
 
         <ContinueWatchingCarousel hasHistory={hasHistory} />
 
+
+
         <div className="flex flex-col">
-          {providersWithData.map(({ provider, movies, series }) => (
-            <ProviderSection
-              key={provider.key}
-              providerKey={provider.key}
-              label={provider.label}
-              assetPath={provider.assetPath}
-              brandColor={provider.brandColor}
-              movies={movies}
-              series={series}
+
+          {CURATED_PROVIDERS.map((curated) => (
+
+            <CuratedProviderSection
+
+              key={curated.key}
+
+              providerKey={curated.key}
+
+              label={curated.label}
+
+              brandColor={curated.brandColor}
+
+              movies={curatedMoviesByKey[curated.key]}
+
             />
+
           ))}
+
         </div>
 
+
+
         <Banner />
+
       </div>
+
     </>
+
   );
+
 }
+

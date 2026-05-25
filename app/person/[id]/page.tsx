@@ -7,7 +7,6 @@ import { BackdropPlayer } from '@/app/movie/[id]/backdrop-player';
 import { ActorProfileImage } from '@/components/actor-profile-image';
 import { ParallaxContent } from '@/components/parallax-content';
 import { PersonCard } from '@/components/person-card';
-import { Topbar } from '@/components/topbar';
 import { ExpandableText } from '@/components/ui/expandable-text';
 import { SectionDivider } from '@/components/ui/section-divider';
 import {
@@ -155,7 +154,6 @@ export default async function PersonPage({ params }: Props) {
 
   return (
     <>
-      <Topbar />
       <div>
         {/* Backdrop hero */}
         {backdropUrl && releaseWithBackdrop && (

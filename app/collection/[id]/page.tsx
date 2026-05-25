@@ -1,5 +1,4 @@
 import { MovieCard } from '@/components/movie-card';
-import { Topbar } from '@/components/topbar';
 import { APP_NAME } from '@/lib/config';
 import { getCollection } from '@/lib/tmdb';
 import { tmdbImage } from '@/lib/tmdb-image';
@@ -60,7 +59,6 @@ export default async function CollectionPage({ params }: Props) {
   } catch {
     return (
       <>
-        <Topbar />
         <main className="pt-24 pb-16 px-4 md:px-8 text-center">
           <p className="text-white/50">Collection not found.</p>
         </main>
@@ -88,8 +86,6 @@ export default async function CollectionPage({ params }: Props) {
 
   return (
     <>
-      <Topbar />
-
       <div>
         <CollectionDetailHero
           collection={collection}

@@ -4,7 +4,6 @@ import { notFound } from 'next/navigation';
 import { InfiniteScrollSentinel } from '@/components/infinite-scroll-sentinel';
 import { MovieCardGrid } from '@/components/movie-card-grid';
 import { ParallaxContent } from '@/components/parallax-content';
-import { Topbar } from '@/components/topbar';
 import { SectionDivider } from '@/components/ui/section-divider';
 import { buildPageHref, mergePaginatedResults, parsePageParam } from '@/lib/paginated-tmdb';
 import { getMoviesByGenre } from '@/lib/tmdb';
@@ -46,7 +45,6 @@ export default async function BrowseGenrePage({ params, searchParams }: Props) {
 
   return (
     <>
-      <Topbar />
       <div className="pt-20">
         <section>
           <ParallaxContent direction="left" speed={120}>

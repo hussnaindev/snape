@@ -1,9 +1,6 @@
-import { Topbar } from '@/components/topbar';
-
 export default function Loading() {
   return (
     <>
-      <Topbar />
       <div className="pt-20 animate-pulse">
         {/* Movies section */}
         <section>

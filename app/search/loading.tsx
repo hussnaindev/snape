@@ -1,9 +1,7 @@
-import { Topbar } from '@/components/topbar';
 
 export default function Loading() {
   return (
     <>
-      <Topbar />
       <div className="pt-24 pb-16 px-4 md:px-8 animate-pulse">
         <div className="flex flex-col items-center mb-8">
           <div className="h-9 bg-white/10 rounded-lg w-56" />

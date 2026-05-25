@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@/components/auth/auth-provider';
-import { Topbar } from '@/components/topbar';
 import { UserAvatar } from '@/components/user-avatar';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -26,7 +25,6 @@ export function AccountLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <Topbar />
 
        {/* Mobile-only tab strip — spans full viewport top with solid background */}
        <div className="md:hidden fixed top-0 inset-x-0 z-40 bg-[#070b08] border-b border-white/10 pt-16">

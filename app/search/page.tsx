@@ -7,7 +7,6 @@ import { SearchActorGrid } from '@/components/search-actor-grid';
 import { SearchHeader, SearchHeaderFallback } from '@/components/search-header';
 import { SectionDivider } from '@/components/ui/section-divider';
 import { parseSearchTab } from '@/components/search-tab-chips';
-import { Topbar } from '@/components/topbar';
 import { APP_NAME } from '@/lib/config';
 import { buildPageHref, mergePaginatedResults, parsePageParam } from '@/lib/paginated-tmdb';
 import { chunk } from '@/lib/utils';
@@ -86,7 +85,6 @@ export default async function SearchPage({ searchParams }: Props) {
 
   return (
     <>
-      <Topbar />
       <main className="pt-24 pb-16 px-4 md:px-8">
         {query ? (
           <>

@@ -19,6 +19,7 @@ import type {
   TMDBVideosResult,
   TMDBWatchProvidersResult,
 } from '@/types/tmdb';
+import type { CuratedProviderKey } from '@/lib/curated-providers';
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 
@@ -132,6 +133,70 @@ export async function getBollywoodMovies(page = 1): Promise<TMDBMovie[]> {
     page: String(page),
   });
   return data.results;
+}
+
+export async function getPunjabiMovies(page = 1): Promise<TMDBMovie[]> {
+  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>('/discover/movie', {
+    with_original_language: 'pa',
+    sort_by: 'popularity.desc',
+    page: String(page),
+  });
+  return data.results;
+}
+
+export async function getTamilMovies(page = 1): Promise<TMDBMovie[]> {
+  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>('/discover/movie', {
+    with_original_language: 'ta',
+    sort_by: 'popularity.desc',
+    page: String(page),
+  });
+  return data.results;
+}
+
+export async function getAnimationMovies(page = 1): Promise<TMDBMovie[]> {
+  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>('/discover/movie', {
+    with_genres: '16',
+    sort_by: 'popularity.desc',
+    page: String(page),
+  });
+  return data.results;
+}
+
+/** Animation genre (16) + Japanese — trending anime films. */
+export async function getAnimeMovies(page = 1): Promise<TMDBMovie[]> {
+  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>('/discover/movie', {
+    with_genres: '16',
+    with_original_language: 'ja',
+    sort_by: 'popularity.desc',
+    page: String(page),
+  });
+  return data.results;
+}
+
+export async function getHollywoodMovies(page = 1): Promise<TMDBMovie[]> {
+  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>('/discover/movie', {
+    with_original_language: 'en',
+    with_origin_country: 'US',
+    sort_by: 'popularity.desc',
+    page: String(page),
+  });
+  return data.results;
+}
+
+const CURATED_MOVIE_FETCHERS: Record<
+  CuratedProviderKey,
+  (page?: number) => Promise<TMDBMovie[]>
+> = {
+  hollywood: getHollywoodMovies,
+  bollywood: getBollywoodMovies,
+  punjabi: getPunjabiMovies,
+  tamil: getTamilMovies,
+  animation: getAnimationMovies,
+  anime: getAnimeMovies,
+};
+
+export async function getCuratedProviderMovies(key: CuratedProviderKey, page = 1): Promise<TMDBMovie[]> {
+  return CURATED_MOVIE_FETCHERS[key](page);
 }
 
 /** Alternate query strings to try when the exact title yields no TMDB hits (typos, extra words). */
