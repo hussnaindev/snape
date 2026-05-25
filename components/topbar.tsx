@@ -9,6 +9,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { usePlayerControls } from '@/lib/player-controls-context';
 import { useAuth } from './auth/auth-provider';
 import { useEffect, useRef, useState } from 'react';
+import { SearchAutocomplete } from '@/components/search-autocomplete';
 
 const GENRES = [
   { id: 28, name: 'Action' },
@@ -33,9 +34,8 @@ export function Topbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [browseOpen, setBrowseOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
   const browseRef = useRef<HTMLDivElement>(null);
+  const searchKeyRef = useRef(0);
   const { controls } = usePlayerControls();
 
   useEffect(() => {
@@ -47,27 +47,15 @@ export function Topbar() {
     };
   }, [mobileOpen]);
 
+  // Reset search when navigating — avoids stale autocomplete state across pages.
   useEffect(() => {
-    if (searchOpen) inputRef.current?.focus();
-  }, [searchOpen]);
+    setSearchOpen(false);
+    setBrowseOpen(false);
+  }, [pathname]);
 
   function openSearch() {
+    searchKeyRef.current += 1;
     setSearchOpen(true);
-  }
-
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    const q = query.trim();
-    if (!q) return;
-    const url = `/search?q=${encodeURIComponent(q)}&tab=movies`;
-    router.push(url);
-    // Same pathname with a new `q` only updates the URL; the `/search` RSC payload can stay
-    // cached and skip re-fetching. Refresh forces the server page to run with the new query.
-    if (pathname === '/search') {
-      setTimeout(() => router.refresh(), 0);
-    }
-    setSearchOpen(false);
-    setQuery('');
   }
 
   return (
@@ -155,15 +143,8 @@ export function Topbar() {
           )}
 
           {searchOpen ? (
-            <form onSubmit={handleSearch} className="flex items-center gap-2 animate-fade-in">
-              <input
-                ref={inputRef}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Escape' && setSearchOpen(false)}
-                placeholder="Search movies, TV, cast…"
-                className="bg-black/60 border border-white/20 rounded px-3 py-1.5 text-sm text-white placeholder-white/40 outline-none focus:border-white/60 w-44 md:w-64"
-              />
+            <div className="flex items-center gap-2 animate-fade-in">
+              <SearchAutocomplete key={searchKeyRef.current} />
                 <button
                   type="button"
                   onClick={() => setSearchOpen(false)}
@@ -171,7 +152,7 @@ export function Topbar() {
                 >
                 ✕
               </button>
-            </form>
+            </div>
           ) : (
               <button
                 type="button"
