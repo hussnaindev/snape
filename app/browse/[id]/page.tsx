@@ -1,13 +1,12 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { Suspense } from 'react';
 
 import { InfiniteScrollSentinel } from '@/components/infinite-scroll-sentinel';
 import { MovieCardGrid } from '@/components/movie-card-grid';
 import { ParallaxContent } from '@/components/parallax-content';
 import { Topbar } from '@/components/topbar';
 import { SectionDivider } from '@/components/ui/section-divider';
-import { mergePaginatedResults, parsePageParam } from '@/lib/paginated-tmdb';
+import { buildPageHref, mergePaginatedResults, parsePageParam } from '@/lib/paginated-tmdb';
 import { getMoviesByGenre } from '@/lib/tmdb';
 import { filterHasImages } from '@/lib/tmdb-filters';
 
@@ -40,6 +39,11 @@ export default async function BrowseGenrePage({ params, searchParams }: Props) {
     await mergePaginatedResults(page, (p) => getMoviesByGenre(genreId, p)),
   );
 
+  const hasMore = page < firstPage.total_pages;
+  const nextHref = hasMore
+    ? buildPageHref(`/browse/${genreId}`, { name, page: page + 1 })
+    : null;
+
   return (
     <>
       <Topbar />
@@ -52,9 +56,7 @@ export default async function BrowseGenrePage({ params, searchParams }: Props) {
           </ParallaxContent>
         </section>
         <MovieCardGrid movies={movies} parallaxRows />
-        <Suspense fallback={null}>
-          <InfiniteScrollSentinel hasMore={page < firstPage.total_pages} />
-        </Suspense>
+        <InfiniteScrollSentinel hasMore={hasMore} nextHref={nextHref} />
       </div>
     </>
   );

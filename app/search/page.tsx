@@ -9,11 +9,10 @@ import { SectionDivider } from '@/components/ui/section-divider';
 import { parseSearchTab } from '@/components/search-tab-chips';
 import { Topbar } from '@/components/topbar';
 import { APP_NAME } from '@/lib/config';
-import { mergePaginatedResults, parsePageParam } from '@/lib/paginated-tmdb';
+import { buildPageHref, mergePaginatedResults, parsePageParam } from '@/lib/paginated-tmdb';
 import { chunk } from '@/lib/utils';
 import { searchCollections, searchMovies, searchPeople, searchTvShows } from '@/lib/tmdb';
 import { filterHasImages } from '@/lib/tmdb-filters';
-import { Suspense } from 'react';
 
 const ROW_SIZE = 6;
 import type { TMDBCollectionSearchHit, TMDBMovie, TMDBPersonSearchHit, TMDBSeries } from '@/types/tmdb';
@@ -103,17 +102,35 @@ export default async function SearchPage({ searchParams }: Props) {
             {showMovieGrid && movieSearch && (
               <>
                 <MovieCardGrid movies={movies} parallaxRows />
-                <Suspense fallback={null}>
-                  <InfiniteScrollSentinel hasMore={moviePage < movieSearch.total_pages} />
-                </Suspense>
+                <InfiniteScrollSentinel
+                  hasMore={moviePage < movieSearch.total_pages}
+                  nextHref={
+                    moviePage < movieSearch.total_pages
+                      ? buildPageHref('/search', {
+                          q: query,
+                          tab: 'movies',
+                          page: moviePage + 1,
+                        })
+                      : null
+                  }
+                />
               </>
             )}
             {showSeriesGrid && seriesSearch && (
               <>
                 <SeriesCardGrid series={series} parallaxRows />
-                <Suspense fallback={null}>
-                  <InfiniteScrollSentinel hasMore={seriesPage < seriesSearch.total_pages} />
-                </Suspense>
+                <InfiniteScrollSentinel
+                  hasMore={seriesPage < seriesSearch.total_pages}
+                  nextHref={
+                    seriesPage < seriesSearch.total_pages
+                      ? buildPageHref('/search', {
+                          q: query,
+                          tab: 'series',
+                          page: seriesPage + 1,
+                        })
+                      : null
+                  }
+                />
               </>
             )}
             {showCollectionsGrid && (

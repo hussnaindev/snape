@@ -27,3 +27,16 @@ export function parsePageParam(
   if (!Number.isFinite(n) || n < 1) return 1;
   return Math.min(Math.floor(n), Math.max(1, totalPages));
 }
+
+/** Build a path + query string for the next infinite-scroll page (computed on the server). */
+export function buildPageHref(
+  pathname: string,
+  params: Record<string, string | number | undefined>,
+): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') search.set(key, String(value));
+  }
+  const q = search.toString();
+  return q ? `${pathname}?${q}` : pathname;
+}
