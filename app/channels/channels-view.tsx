@@ -59,11 +59,6 @@ export function ChannelsView() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchSelectedIdx, setSearchSelectedIdx] = useState(-1);
   const [playerFullscreen, setPlayerFullscreen] = useState(false);
-  const [mobilePlayerAspect, setMobilePlayerAspect] = useState(16 / 9);
-
-  useEffect(() => {
-    setMobilePlayerAspect(16 / 9);
-  }, [selectedChannel?.streamUrl]);
 
   // 200 ms debounce — smooth typing, no lag
   const debouncedSearch = useDebounce(searchQuery, 200);
@@ -371,12 +366,9 @@ export function ChannelsView() {
       >
         <div
           className={cn(
-            'relative w-full shrink-0 bg-black',
-            playerFullscreen && '!fixed inset-0 z-[60] h-full max-h-[100dvh]',
+            'relative w-full shrink-0 bg-black aspect-video',
+            playerFullscreen && '!fixed inset-0 z-[60] aspect-auto h-full max-h-[100dvh]',
           )}
-          style={
-            playerFullscreen ? undefined : { aspectRatio: mobilePlayerAspect }
-          }
         >
           {selectedChannel ? (
             <TvPlayer
@@ -386,7 +378,6 @@ export function ChannelsView() {
               }}
               className="w-full h-full"
               onFullscreenChange={setPlayerFullscreen}
-              onAspectRatioChange={setMobilePlayerAspect}
             />
           ) : (
             <div

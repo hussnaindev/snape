@@ -21,18 +21,11 @@ interface TvPlayerProps {
   channel: Channel;
   className?: string;
   onFullscreenChange?: (isFullscreen: boolean) => void;
-  /** Fired when intrinsic video dimensions are known (width / height). */
-  onAspectRatioChange?: (aspectRatio: number) => void;
 }
 
 type PlayerState = 'loading' | 'playing' | 'paused' | 'buffering' | 'error';
 
-export function TvPlayer({
-  channel,
-  className,
-  onFullscreenChange,
-  onAspectRatioChange,
-}: TvPlayerProps) {
+export function TvPlayer({ channel, className, onFullscreenChange }: TvPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<import('hls.js').default | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -183,27 +176,6 @@ export function TvPlayer({
       document.documentElement.removeAttribute('data-tv-fullscreen');
     };
   }, []);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !onAspectRatioChange) return;
-
-    const report = () => {
-      const { videoWidth, videoHeight } = video;
-      if (videoWidth > 0 && videoHeight > 0) {
-        onAspectRatioChange(videoWidth / videoHeight);
-      }
-    };
-
-    video.addEventListener('loadedmetadata', report);
-    video.addEventListener('resize', report);
-    report();
-
-    return () => {
-      video.removeEventListener('loadedmetadata', report);
-      video.removeEventListener('resize', report);
-    };
-  }, [channel.streamUrl, onAspectRatioChange]);
 
   useEffect(() => {
     const video = videoRef.current;
