@@ -190,11 +190,27 @@ export function TvPlayer({ channel, className }: TvPlayerProps) {
     revealControls();
   }
 
-  function toggleFullscreen() {
+  async function toggleFullscreen() {
     if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen().catch(() => {});
+      await containerRef.current?.requestFullscreen().catch(() => {});
+      // Lock to landscape on mobile browsers that support it
+      try {
+        const orient = screen.orientation as unknown as {
+          lock?: (o: string) => Promise<void>;
+        };
+        await orient.lock?.('landscape');
+      } catch {
+        // Not supported or denied — ignore
+      }
     } else {
       document.exitFullscreen().catch(() => {});
+      // Release orientation lock
+      try {
+        const orient = screen.orientation as unknown as { unlock?: () => void };
+        orient.unlock?.();
+      } catch {
+        // ignore
+      }
     }
     revealControls();
   }

@@ -6,4 +6,5 @@ export interface Channel {
   languages: string[];
   categories: string[];
   streamUrl: string;
+  quality: string;
 }

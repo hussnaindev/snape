@@ -4,7 +4,7 @@ import { TvPlayer } from '@/components/tv-player';
 import { useDebounce } from '@/lib/use-debounce';
 import { cn } from '@/lib/utils';
 import type { Channel } from '@/types/channels';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const DISPLAY_CATEGORIES = [
   { id: 'all', label: 'All' },
@@ -29,6 +29,10 @@ const DISPLAY_CATEGORIES = [
   { id: 'xxx', label: 'NSFW' },
 ];
 
+// How many items to render in the list at once
+const LIST_CAP = 400;
+const SEARCH_LIST_CAP = 200;
+
 export function ChannelsView() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loadingChannels, setLoadingChannels] = useState(true);
@@ -38,10 +42,12 @@ export function ChannelsView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchSelectedIdx, setSearchSelectedIdx] = useState(-1);
-  const debouncedSearch = useDebounce(searchQuery, 150);
+
+  // 200 ms debounce — smooth typing, no lag
+  const debouncedSearch = useDebounce(searchQuery, 200);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // Fetch channels on mount
+  // ── Fetch channels on mount ──────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     fetch('/api/channels')
@@ -66,7 +72,7 @@ export function ChannelsView() {
     return () => { cancelled = true; };
   }, []);
 
-  // Close dropdown on outside click
+  // ── Close dropdown on outside click ─────────────────────────────────
   useEffect(() => {
     function onMouseDown(e: MouseEvent) {
       if (
@@ -80,33 +86,45 @@ export function ChannelsView() {
     return () => document.removeEventListener('mousedown', onMouseDown);
   }, []);
 
-  // Channels filtered by category
-  const categoryFiltered =
-    activeCategory === 'all'
-      ? channels
-      : channels.filter((ch) =>
-          ch.categories.some((c) => c.toLowerCase() === activeCategory),
-        );
+  // ── Memoised derived lists ────────────────────────────────────────────
 
-  // Channels visible in the list (also filtered by search when typed)
-  const visibleChannels =
-    debouncedSearch.trim()
-      ? categoryFiltered.filter((ch) =>
-          ch.name.toLowerCase().includes(debouncedSearch.toLowerCase()),
-        )
-      : categoryFiltered;
+  // Dropdown: global search across ALL channels (not category-specific), capped at 25
+  const dropdownResults = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    if (q.length < 1) return [] as Channel[];
+    return channels
+      .filter((ch) => ch.name.toLowerCase().includes(q))
+      .slice(0, 25);
+  }, [channels, debouncedSearch]);
 
-  // Dropdown results (capped for performance)
-  const dropdownResults =
-    debouncedSearch.trim().length >= 1
-      ? categoryFiltered
-          .filter((ch) =>
-            ch.name.toLowerCase().includes(debouncedSearch.toLowerCase()),
-          )
-          .slice(0, 25)
-      : [];
+  // Category-filtered list (used when no search query)
+  const categoryChannels = useMemo(() => {
+    if (activeCategory === 'all') return channels;
+    return channels.filter((ch) =>
+      ch.categories.some((c) => c.toLowerCase() === activeCategory),
+    );
+  }, [channels, activeCategory]);
 
-  const showDropdown = dropdownOpen && dropdownResults.length > 0;
+  // Main list: global search when query present; category view otherwise
+  const visibleChannels = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    if (q.length >= 1) {
+      // Global search — ignores active category
+      return channels
+        .filter((ch) => ch.name.toLowerCase().includes(q))
+        .slice(0, SEARCH_LIST_CAP);
+    }
+    return categoryChannels.slice(0, LIST_CAP);
+  }, [channels, categoryChannels, debouncedSearch]);
+
+  const showDropdown =
+    dropdownOpen && debouncedSearch.trim().length >= 1 && dropdownResults.length > 0;
+
+  const totalForCategory = debouncedSearch.trim().length >= 1
+    ? channels.filter((ch) => ch.name.toLowerCase().includes(debouncedSearch.toLowerCase())).length
+    : categoryChannels.length;
+
+  // ── Interaction handlers ─────────────────────────────────────────────
 
   function selectChannel(ch: Channel) {
     setSelectedChannel(ch);
@@ -126,25 +144,28 @@ export function ChannelsView() {
       setSearchSelectedIdx((p) => (p - 1 + total) % total);
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      const ch =
-        dropdownResults[searchSelectedIdx >= 0 ? searchSelectedIdx : 0];
+      const ch = dropdownResults[searchSelectedIdx >= 0 ? searchSelectedIdx : 0];
       if (ch) selectChannel(ch);
     } else if (e.key === 'Escape') {
       setDropdownOpen(false);
     }
   }
 
-  // ------------------------------------------------------------------ //
-  //  Sidebar content (shared between desktop + mobile)
-  // ------------------------------------------------------------------ //
+  // ── Shared sidebar content ────────────────────────────────────────────
   const sidebarContent = (
+    // flex col, h-full; the list is the only scrolling child
     <div className="flex flex-col h-full">
-      {/* Search */}
-      <div className="p-3 border-b border-white/10 shrink-0">
+
+      {/* ── Search ── */}
+      {/*
+        overflow-visible here so the dropdown isn't clipped.
+        Only the list further down gets overflow-y-auto.
+      */}
+      <div className="p-3 border-b border-white/10 shrink-0 relative z-[65]">
         <div ref={searchContainerRef} className="relative">
           <div className="relative flex items-center">
             <svg
-              className="absolute left-3 text-white/35 pointer-events-none"
+              className="absolute left-3 text-white/35 pointer-events-none shrink-0"
               width="14"
               height="14"
               viewBox="0 0 24 24"
@@ -170,7 +191,7 @@ export function ChannelsView() {
                 if (searchQuery.trim().length >= 1) setDropdownOpen(true);
               }}
               onKeyDown={handleSearchKeyDown}
-              placeholder="Search channels…"
+              placeholder="Search all channels…"
               className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-8 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition-colors"
             />
             {searchQuery && (
@@ -184,16 +205,7 @@ export function ChannelsView() {
                 className="absolute right-2.5 text-white/30 hover:text-white/60 transition-colors cursor-pointer"
                 aria-label="Clear search"
               >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  aria-hidden="true"
-                >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
@@ -201,13 +213,13 @@ export function ChannelsView() {
             )}
           </div>
 
-          {/* Search dropdown */}
+          {/* Search dropdown — absolute, not clipped */}
           {showDropdown && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-[#111113] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-[70] animate-fade-in">
               <div className="max-h-64 overflow-y-auto no-scrollbar py-1">
                 {dropdownResults.map((ch, i) => (
                   <button
-                    key={`${ch.id}-${ch.streamUrl}`}
+                    key={`dd-${ch.id}-${ch.streamUrl}`}
                     type="button"
                     onClick={() => selectChannel(ch)}
                     className={cn(
@@ -217,25 +229,20 @@ export function ChannelsView() {
                         : 'text-white/70 hover:bg-white/5 hover:text-white',
                     )}
                   >
-                    {ch.logo ? (
-                      <img
-                        src={ch.logo}
-                        alt=""
-                        className="w-9 h-6 object-contain rounded shrink-0 bg-white/5"
-                      />
-                    ) : (
-                      <div className="w-9 h-6 rounded bg-white/5 shrink-0 flex items-center justify-center ring-1 ring-inset ring-white/10">
-                        <TvIcon size={12} />
-                      </div>
-                    )}
+                    <ChannelLogo ch={ch} size="sm" />
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium">{ch.name}</div>
-                      {ch.categories[0] && (
-                        <div className="text-xs text-white/35 truncate capitalize">
-                          {ch.categories[0]}
-                          {ch.country ? ` · ${ch.country}` : ''}
-                        </div>
-                      )}
+                      <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                        {ch.quality && (
+                          <MetaChip>{ch.quality}</MetaChip>
+                        )}
+                        {ch.languages[0] && (
+                          <MetaChip>{ch.languages[0]}</MetaChip>
+                        )}
+                        {ch.categories[0] && (
+                          <span className="text-[10px] text-white/35 capitalize">{ch.categories[0]}</span>
+                        )}
+                      </div>
                     </div>
                   </button>
                 ))}
@@ -245,7 +252,7 @@ export function ChannelsView() {
         </div>
       </div>
 
-      {/* Category tabs */}
+      {/* ── Category tabs ── */}
       <div className="shrink-0 border-b border-white/10">
         <div className="flex gap-1.5 overflow-x-auto no-scrollbar px-3 py-2">
           {DISPLAY_CATEGORIES.map((cat) => (
@@ -254,10 +261,10 @@ export function ChannelsView() {
               type="button"
               onClick={() => setActiveCategory(cat.id)}
               className={cn(
-                'shrink-0 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap cursor-pointer transition-colors',
+                'shrink-0 px-3 py-1 rounded-full text-[11px] font-chesna-grotesk tracking-[0.1em] uppercase whitespace-nowrap cursor-pointer transition-colors',
                 activeCategory === cat.id
                   ? 'bg-white text-black'
-                  : 'bg-white/5 text-white/55 hover:bg-white/10 hover:text-white',
+                  : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white',
               )}
             >
               {cat.label}
@@ -266,20 +273,11 @@ export function ChannelsView() {
         </div>
       </div>
 
-      {/* Channel list */}
-      <div className="flex-1 overflow-y-auto no-scrollbar">
+      {/* ── Channel list (only this section scrolls) ── */}
+      <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
         {loadingChannels && (
           <div className="flex flex-col items-center justify-center gap-3 py-16 text-white/35">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="animate-spin"
-              aria-hidden="true"
-            >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin" aria-hidden="true">
               <path d="M21 12a9 9 0 1 1-6.219-8.56" />
             </svg>
             <span className="text-sm">Loading channels…</span>
@@ -305,7 +303,7 @@ export function ChannelsView() {
               const isActive = selectedChannel?.streamUrl === ch.streamUrl;
               return (
                 <button
-                  key={`${ch.id}-${ch.streamUrl}`}
+                  key={`list-${ch.id}-${ch.streamUrl}`}
                   type="button"
                   onClick={() => setSelectedChannel(ch)}
                   className={cn(
@@ -315,25 +313,17 @@ export function ChannelsView() {
                       : 'text-white/65 hover:bg-white/5 hover:text-white',
                   )}
                 >
-                  {ch.logo ? (
-                    <img
-                      src={ch.logo}
-                      alt=""
-                      className="w-10 h-7 object-contain rounded shrink-0 bg-white/5"
-                    />
-                  ) : (
-                    <div className="w-10 h-7 rounded bg-white/5 shrink-0 flex items-center justify-center ring-1 ring-inset ring-white/10">
-                      <TvIcon size={14} />
-                    </div>
-                  )}
+                  <ChannelLogo ch={ch} size="md" />
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-medium truncate">{ch.name}</div>
-                    {(ch.categories[0] ?? ch.country) && (
-                      <div className="text-xs text-white/35 truncate capitalize">
-                        {ch.categories[0]}
-                        {ch.country ? ` · ${ch.country}` : ''}
-                      </div>
-                    )}
+                    {/* Metadata chips */}
+                    <div className="flex items-center gap-1 mt-1 flex-wrap">
+                      {ch.quality && <MetaChip>{ch.quality}</MetaChip>}
+                      {ch.languages[0] && <MetaChip>{ch.languages[0]}</MetaChip>}
+                      {ch.country && (
+                        <MetaChip variant="geo">{ch.country}</MetaChip>
+                      )}
+                    </div>
                   </div>
                   {isActive && (
                     <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-red-500" />
@@ -344,9 +334,11 @@ export function ChannelsView() {
           </div>
         )}
 
-        {!loadingChannels && !loadError && visibleChannels.length > 0 && (
-          <div className="px-3 py-3 text-center text-xs text-white/20 border-t border-white/5">
-            {visibleChannels.length.toLocaleString()} channels
+        {!loadingChannels && !loadError && (
+          <div className="px-3 py-3 text-center text-[10px] font-chesna-grotesk tracking-[0.1em] uppercase text-white/20 border-t border-white/5">
+            {visibleChannels.length < totalForCategory
+              ? `${visibleChannels.length.toLocaleString()} of ${totalForCategory.toLocaleString()} channels`
+              : `${visibleChannels.length.toLocaleString()} channels`}
           </div>
         )}
       </div>
@@ -364,16 +356,19 @@ export function ChannelsView() {
   );
 
   return (
-    <div className="min-h-screen bg-black flex flex-col">
-      {/* Topbar spacer */}
+    <>
+      {/* ── Mobile layout: full viewport height, player fixed, list scrolls ── */}
       <div
-        className="h-16 shrink-0"
-        style={{ paddingTop: 'env(safe-area-inset-top)' }}
-      />
-
-      {/* ---- Mobile layout: player on top, list below ---- */}
-      <div className="md:hidden flex flex-col flex-1">
-        <div className="w-full bg-black aspect-video">
+        className="md:hidden flex flex-col bg-black"
+        style={{ height: '100dvh' }}
+      >
+        {/* Topbar spacer */}
+        <div
+          className="shrink-0 h-16"
+          style={{ paddingTop: 'env(safe-area-inset-top)' }}
+        />
+        {/* Player */}
+        <div className="w-full shrink-0 bg-black aspect-video">
           {selectedChannel ? (
             <TvPlayer channel={selectedChannel} className="w-full h-full" />
           ) : (
@@ -382,33 +377,92 @@ export function ChannelsView() {
             </div>
           )}
         </div>
-        <div
-          className="bg-[#0a0a0b] border-t border-white/10 flex flex-col"
-          style={{ minHeight: '60vh' }}
-        >
+        {/* List — flex-1 with internal scroll, never pushes player away */}
+        <div className="flex-1 min-h-0 bg-[#0a0a0b] border-t border-white/10 flex flex-col overflow-visible">
           {sidebarContent}
         </div>
       </div>
 
-      {/* ---- Desktop layout: sidebar + player ---- */}
+      {/* ── Desktop layout: sidebar + player, full viewport height ── */}
       <div
-        className="hidden md:flex flex-1 overflow-hidden"
-        style={{ height: 'calc(100vh - 4rem)' }}
+        className="hidden md:flex bg-black"
+        style={{ height: '100dvh' }}
       >
-        {/* Sidebar */}
-        <div className="w-[17rem] xl:w-72 shrink-0 bg-[#0a0a0b] border-r border-white/10 flex flex-col overflow-hidden">
-          {sidebarContent}
+        {/* Topbar spacer column on the sidebar only */}
+        <div className="w-[17rem] xl:w-72 shrink-0 flex flex-col bg-[#0a0a0b] border-r border-white/10">
+          {/* spacer matching topbar */}
+          <div
+            className="shrink-0 h-16"
+            style={{ paddingTop: 'env(safe-area-inset-top)' }}
+          />
+          {/* Sidebar content fills remaining height */}
+          <div className="flex-1 min-h-0 overflow-visible flex flex-col">
+            {sidebarContent}
+          </div>
         </div>
 
-        {/* Player area */}
-        <div className="flex-1 bg-black flex items-center justify-center overflow-hidden">
-          {selectedChannel ? (
-            <TvPlayer channel={selectedChannel} className="w-full h-full" />
-          ) : (
-            emptyPlayer
-          )}
+        {/* Player — full height right side */}
+        <div className="flex-1 flex flex-col bg-black">
+          {/* spacer matching topbar */}
+          <div
+            className="shrink-0 h-16"
+            style={{ paddingTop: 'env(safe-area-inset-top)' }}
+          />
+          <div className="flex-1 min-h-0 flex items-center justify-center">
+            {selectedChannel ? (
+              <TvPlayer channel={selectedChannel} className="w-full h-full" />
+            ) : (
+              emptyPlayer
+            )}
+          </div>
         </div>
       </div>
+    </>
+  );
+}
+
+// ── Small components ──────────────────────────────────────────────────
+
+function MetaChip({
+  children,
+  variant = 'default',
+}: {
+  children: React.ReactNode;
+  variant?: 'default' | 'geo';
+}) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center shrink-0 rounded-full text-[9px] font-chesna-grotesk tracking-[0.05em] uppercase px-1.5 py-px leading-none',
+        variant === 'geo'
+          ? 'bg-white/8 text-white/40'
+          : 'bg-white/8 text-white/55',
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function ChannelLogo({ ch, size }: { ch: Channel; size: 'sm' | 'md' }) {
+  const cls = size === 'sm' ? 'w-9 h-6' : 'w-10 h-7';
+  if (ch.logo) {
+    return (
+      <img
+        src={ch.logo}
+        alt=""
+        className={cn(cls, 'object-contain rounded shrink-0 bg-white/5')}
+      />
+    );
+  }
+  return (
+    <div
+      className={cn(
+        cls,
+        'rounded bg-white/5 shrink-0 flex items-center justify-center ring-1 ring-inset ring-white/10',
+      )}
+    >
+      <TvIcon size={size === 'sm' ? 12 : 14} />
     </div>
   );
 }
