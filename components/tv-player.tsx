@@ -4,16 +4,29 @@ import { cn } from '@/lib/utils';
 import type { Channel } from '@/types/channels';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+type ExtendedOrientation = ScreenOrientation & {
+  lock?: (orientation: string) => Promise<void>;
+  unlock?: () => void;
+};
+
+function releaseOrientation() {
+  try {
+    (screen.orientation as ExtendedOrientation).unlock?.();
+  } catch {
+    // ignore
+  }
+}
+
 interface TvPlayerProps {
   channel: Channel;
   className?: string;
+  onFullscreenChange?: (isFullscreen: boolean) => void;
 }
 
 type PlayerState = 'loading' | 'playing' | 'paused' | 'buffering' | 'error';
 
-export function TvPlayer({ channel, className }: TvPlayerProps) {
+export function TvPlayer({ channel, className, onFullscreenChange }: TvPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<import('hls.js').default | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -48,7 +61,6 @@ export function TvPlayer({ channel, className }: TvPlayerProps) {
     async function setupPlayer() {
       if (!video || cancelled) return;
 
-      // Tear down the previous HLS instance
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
@@ -89,7 +101,6 @@ export function TvPlayer({ channel, className }: TvPlayerProps) {
         hlsInstance.loadSource(channel.streamUrl);
         hlsInstance.attachMedia(video);
       } else if (video.canPlayType('application/vnd.apple.mpegurl') || !looksLikeHls) {
-        // Native HLS (Safari) or direct video URL
         video.src = channel.streamUrl;
         video.play().catch(() => {
           if (!cancelled) setPlayerState('paused');
@@ -118,7 +129,6 @@ export function TvPlayer({ channel, className }: TvPlayerProps) {
     };
   }, [channel.streamUrl]);
 
-  // Sync video events → playerState
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -143,21 +153,30 @@ export function TvPlayer({ channel, className }: TvPlayerProps) {
     };
   }, []);
 
-  // Sync fullscreen state
   useEffect(() => {
-    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    function onFsChange() {
+      const inFs = !!document.fullscreenElement;
+      setIsFullscreen(inFs);
+      onFullscreenChange?.(inFs);
+      document.documentElement.toggleAttribute('data-tv-fullscreen', inFs);
+      if (!inFs) releaseOrientation();
+    }
     document.addEventListener('fullscreenchange', onFsChange);
-    return () => document.removeEventListener('fullscreenchange', onFsChange);
-  }, []);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange);
+      document.documentElement.removeAttribute('data-tv-fullscreen');
+    };
+  }, [onFullscreenChange]);
 
-  // Cleanup hide timer on unmount
   useEffect(() => {
     return () => {
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+      document.exitFullscreen().catch(() => {});
+      releaseOrientation();
+      document.documentElement.removeAttribute('data-tv-fullscreen');
     };
   }, []);
 
-  // Sync volume / mute to video element
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -165,7 +184,6 @@ export function TvPlayer({ channel, className }: TvPlayerProps) {
     video.volume = volume;
   }, [muted, volume]);
 
-  // Start hiding controls once playing
   useEffect(() => {
     if (playerState === 'playing') scheduleHide();
     else {
@@ -190,30 +208,24 @@ export function TvPlayer({ channel, className }: TvPlayerProps) {
     revealControls();
   }
 
-  async function toggleFullscreen() {
-    if (!document.fullscreenElement) {
-      await containerRef.current?.requestFullscreen().catch(() => {});
-      // Lock to landscape on mobile browsers that support it
-      try {
-        const orient = screen.orientation as unknown as {
-          lock?: (o: string) => Promise<void>;
-        };
-        await orient.lock?.('landscape');
-      } catch {
-        // Not supported or denied — ignore
-      }
+  const toggleFullscreen = useCallback(async () => {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen().catch(() => {});
+      releaseOrientation();
     } else {
-      document.exitFullscreen().catch(() => {});
-      // Release orientation lock
       try {
-        const orient = screen.orientation as unknown as { unlock?: () => void };
-        orient.unlock?.();
+        await document.documentElement.requestFullscreen();
+        if (window.innerHeight > window.innerWidth) {
+          await (screen.orientation as ExtendedOrientation)
+            .lock?.('landscape')
+            .catch(() => {});
+        }
       } catch {
-        // ignore
+        // Fullscreen denied or unsupported
       }
     }
     revealControls();
-  }
+  }, [revealControls]);
 
   function retry() {
     const video = videoRef.current;
@@ -238,9 +250,9 @@ export function TvPlayer({ channel, className }: TvPlayerProps) {
 
   return (
     <div
-      ref={containerRef}
       className={cn(
-        'relative bg-black w-full h-full overflow-hidden select-none group',
+        'relative bg-black w-full h-full overflow-hidden select-none group tv-player-root',
+        isFullscreen && 'fixed inset-0 z-[60]',
         className,
       )}
       onMouseMove={revealControls}
@@ -250,7 +262,6 @@ export function TvPlayer({ channel, className }: TvPlayerProps) {
       onTouchStart={revealControls}
       onClick={togglePlayPause}
     >
-      {/* Video */}
       <video
         ref={videoRef}
         className="w-full h-full object-contain"
@@ -259,7 +270,6 @@ export function TvPlayer({ channel, className }: TvPlayerProps) {
         muted={muted}
       />
 
-      {/* Buffering spinner */}
       {isLoading && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
           <div className="w-10 h-10 rounded-full border-2 border-white/20 border-t-white animate-spin" />
@@ -267,9 +277,8 @@ export function TvPlayer({ channel, className }: TvPlayerProps) {
         </div>
       )}
 
-      {/* Error state */}
       {isError && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/70">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/70 pointer-events-auto">
           <div className="flex flex-col items-center gap-3 text-center px-8 max-w-sm">
             <svg
               width="44"
@@ -305,51 +314,17 @@ export function TvPlayer({ channel, className }: TvPlayerProps) {
         </div>
       )}
 
-      {/* Top-left channel badge — fades with controls */}
-      <div
-        className={cn(
-          'absolute top-4 left-4 flex items-center gap-2.5 pointer-events-none transition-opacity duration-300',
-          showControls ? 'opacity-100' : 'opacity-0',
-        )}
-      >
-        {channel.logo && (
-          <div className="bg-black/50 rounded-md p-1 backdrop-blur-sm">
-            <img
-              src={channel.logo}
-              alt=""
-              className="h-6 w-10 object-contain"
-            />
-          </div>
-        )}
-        <div>
-          <p className="text-white text-sm font-semibold drop-shadow-md leading-tight">
-            {channel.name}
-          </p>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="inline-flex items-center gap-1 bg-red-600 text-white text-[10px] font-bold px-1.5 py-px rounded leading-none">
-              <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
-              LIVE
-            </span>
-            {channel.country && (
-              <span className="text-white/50 text-xs">{channel.country}</span>
-            )}
-          </div>
-        </div>
-      </div>
-
       {/* Bottom controls bar */}
       <div
         className={cn(
           'absolute bottom-0 inset-x-0 transition-opacity duration-300',
-          showControls ? 'opacity-100' : 'opacity-0',
+          showControls ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* gradient */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent pointer-events-none" />
 
         <div className="relative flex items-center gap-2 px-4 pb-4 pt-10">
-          {/* Play / Pause */}
           <button
             type="button"
             onClick={togglePlayPause}
@@ -359,7 +334,6 @@ export function TvPlayer({ channel, className }: TvPlayerProps) {
             {isPlaying ? <PauseIcon /> : <PlayIcon />}
           </button>
 
-          {/* Mute + volume */}
           <button
             type="button"
             onClick={toggleMute}
@@ -386,7 +360,6 @@ export function TvPlayer({ channel, className }: TvPlayerProps) {
             className="w-20 accent-white cursor-pointer shrink-0 hidden sm:block"
           />
 
-          {/* Channel name + live badge */}
           <div className="flex-1 min-w-0 ml-1 flex items-center gap-2">
             <span className="text-white text-sm font-medium truncate">{channel.name}</span>
             <span className="shrink-0 text-[10px] font-bold bg-red-600 text-white px-1.5 py-px rounded">
@@ -394,10 +367,12 @@ export function TvPlayer({ channel, className }: TvPlayerProps) {
             </span>
           </div>
 
-          {/* Fullscreen */}
           <button
             type="button"
-            onClick={toggleFullscreen}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleFullscreen();
+            }}
             aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
             className="text-white hover:text-white/80 transition-colors p-1.5 cursor-pointer shrink-0"
           >

@@ -1,3 +1,4 @@
+import { parseChannelName } from '@/lib/parse-channel-name';
 import type { Channel } from '@/types/channels';
 
 export const runtime = 'edge';
@@ -23,18 +24,7 @@ const FETCH_CATEGORIES = [
   'family',
   'weather',
   'auto',
-  'xxx',
 ];
-
-// Matches quality tokens that appear as standalone words in a channel name.
-const QUALITY_RE = /\b(4K|UHD|FHD|1080[pPiI]|HD|720[pPiI]|SD|HQ)\b/g;
-
-function extractQuality(name: string): { quality: string; cleanName: string } {
-  const match = name.match(QUALITY_RE);
-  const quality = match ? match[0]!.toUpperCase() : '';
-  const cleanName = name.replace(QUALITY_RE, '').replace(/\s{2,}/g, ' ').trim();
-  return { quality, cleanName };
-}
 
 function parseM3U(content: string, defaultCategory: string): Channel[] {
   const channels: Channel[] = [];
@@ -57,17 +47,18 @@ function parseM3U(content: string, defaultCategory: string): Channel[] {
     const rawName = commaIdx >= 0 ? line.slice(commaIdx + 1).trim() : '';
     if (!rawName) continue;
 
-    const { quality, cleanName } = extractQuality(rawName);
+    const { name, quality, tags } = parseChannelName(rawName);
 
     channels.push({
       id: tvgId || `${defaultCategory}-${i}`,
-      name: cleanName || rawName,
+      name,
       logo: tvgLogo,
       country: countryAttr.toUpperCase(),
       languages: langAttr ? [langAttr] : [],
       categories: [(groupTitle.toLowerCase() || defaultCategory)],
       streamUrl: urlLine,
       quality,
+      tags,
     });
 
     i++;
