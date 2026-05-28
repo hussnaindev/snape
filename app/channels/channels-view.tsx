@@ -5,7 +5,7 @@ import { parseChannelName } from '@/lib/parse-channel-name';
 import { useDebounce } from '@/lib/use-debounce';
 import { cn } from '@/lib/utils';
 import type { Channel } from '@/types/channels';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const DISPLAY_CATEGORIES = [
   { id: 'all', label: 'All' },
@@ -56,13 +56,10 @@ export function ChannelsView() {
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [searchSelectedIdx, setSearchSelectedIdx] = useState(-1);
   const [playerFullscreen, setPlayerFullscreen] = useState(false);
 
   // 200 ms debounce — smooth typing, no lag
   const debouncedSearch = useDebounce(searchQuery, 200);
-  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   // ── Fetch channels on mount ──────────────────────────────────────────
   useEffect(() => {
@@ -89,30 +86,7 @@ export function ChannelsView() {
     return () => { cancelled = true; };
   }, []);
 
-  // ── Close dropdown on outside click ─────────────────────────────────
-  useEffect(() => {
-    function onMouseDown(e: MouseEvent) {
-      if (
-        searchContainerRef.current &&
-        !searchContainerRef.current.contains(e.target as Node)
-      ) {
-        setDropdownOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', onMouseDown);
-    return () => document.removeEventListener('mousedown', onMouseDown);
-  }, []);
-
   // ── Memoised derived lists ────────────────────────────────────────────
-
-  // Dropdown: global search across ALL channels (not category-specific), capped at 25
-  const dropdownResults = useMemo(() => {
-    const q = debouncedSearch.trim().toLowerCase();
-    if (q.length < 1) return [] as Channel[];
-    return channels
-      .filter((ch) => channelDisplay(ch).name.toLowerCase().includes(q))
-      .slice(0, 25);
-  }, [channels, debouncedSearch]);
 
   // Category-filtered list (used when no search query)
   const categoryChannels = useMemo(() => {
@@ -134,41 +108,11 @@ export function ChannelsView() {
     return categoryChannels.slice(0, LIST_CAP);
   }, [channels, categoryChannels, debouncedSearch]);
 
-  const showDropdown =
-    dropdownOpen && debouncedSearch.trim().length >= 1 && dropdownResults.length > 0;
-
   const totalForCategory = debouncedSearch.trim().length >= 1
     ? channels.filter((ch) =>
         channelDisplay(ch).name.toLowerCase().includes(debouncedSearch.toLowerCase()),
       ).length
     : categoryChannels.length;
-
-  // ── Interaction handlers ─────────────────────────────────────────────
-
-  function selectChannel(ch: Channel) {
-    setSelectedChannel(ch);
-    setDropdownOpen(false);
-    setSearchQuery('');
-    setSearchSelectedIdx(-1);
-  }
-
-  function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (!showDropdown) return;
-    const total = dropdownResults.length;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setSearchSelectedIdx((p) => (p + 1) % total);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setSearchSelectedIdx((p) => (p - 1 + total) % total);
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      const ch = dropdownResults[searchSelectedIdx >= 0 ? searchSelectedIdx : 0];
-      if (ch) selectChannel(ch);
-    } else if (e.key === 'Escape') {
-      setDropdownOpen(false);
-    }
-  }
 
   // ── Shared sidebar content ────────────────────────────────────────────
   const sidebarContent = (
@@ -176,87 +120,42 @@ export function ChannelsView() {
     <div className="flex flex-col h-full">
 
       {/* ── Search ── */}
-      {/*
-        overflow-visible here so the dropdown isn't clipped.
-        Only the list further down gets overflow-y-auto.
-      */}
-      <div className="p-3 border-b border-white/10 shrink-0 relative z-[65]">
-        <div ref={searchContainerRef} className="relative">
-          <div className="relative flex items-center">
-            <svg
-              className="absolute left-3 text-white/35 pointer-events-none shrink-0"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
+      <div className="p-3 border-b border-white/10 shrink-0">
+        <div className="relative flex items-center">
+          <svg
+            className="absolute left-3 text-white/35 pointer-events-none shrink-0"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search all channels…"
+            className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-8 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition-colors"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 text-white/30 hover:text-white/60 transition-colors cursor-pointer"
+              aria-label="Clear search"
             >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setSearchSelectedIdx(-1);
-                setDropdownOpen(e.target.value.trim().length >= 1);
-              }}
-              onFocus={() => {
-                if (searchQuery.trim().length >= 1) setDropdownOpen(true);
-              }}
-              onKeyDown={handleSearchKeyDown}
-              placeholder="Search all channels…"
-              className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-8 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition-colors"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery('');
-                  setDropdownOpen(false);
-                  setSearchSelectedIdx(-1);
-                }}
-                className="absolute right-2.5 text-white/30 hover:text-white/60 transition-colors cursor-pointer"
-                aria-label="Clear search"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            )}
-          </div>
-
-          {/* Search dropdown — absolute, not clipped */}
-          {showDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-[#111113] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-[70] animate-fade-in">
-              <div className="max-h-64 overflow-y-auto no-scrollbar py-1">
-                {dropdownResults.map((ch, i) => (
-                  <button
-                    key={`dd-${ch.id}-${ch.streamUrl}`}
-                    type="button"
-                    onClick={() => selectChannel(ch)}
-                    className={cn(
-                      'w-full flex items-center gap-3 px-3 py-2 text-sm text-left cursor-pointer transition-colors',
-                      i === searchSelectedIdx
-                        ? 'bg-white/10 text-white'
-                        : 'text-white/70 hover:bg-white/5 hover:text-white',
-                    )}
-                  >
-                    <ChannelLogo ch={ch} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <ChannelName>{channelDisplay(ch).name}</ChannelName>
-                      <ChannelMetaRow tags={channelDisplay(ch).tags} ch={ch} />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
           )}
         </div>
       </div>
@@ -268,7 +167,7 @@ export function ChannelsView() {
             <button
               key={cat.id}
               type="button"
-              onClick={() => setActiveCategory(cat.id)}
+              onClick={() => { setActiveCategory(cat.id); setSearchQuery(''); }}
               className={cn(
                 'shrink-0 px-3 py-1 rounded-full text-[11px] font-chesna-grotesk tracking-[0.1em] uppercase whitespace-nowrap cursor-pointer transition-colors',
                 activeCategory === cat.id
