@@ -26,7 +26,6 @@ const DISPLAY_CATEGORIES = [
   { id: 'cooking', label: 'Cooking' },
   { id: 'education', label: 'Education' },
   { id: 'weather', label: 'Weather' },
-  { id: 'xxx', label: 'NSFW' },
 ];
 
 // How many items to render in the list at once
@@ -283,17 +282,8 @@ export function ChannelsView() {
         )}
 
         {!loadingChannels && !loadError && visibleChannels.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-2 py-16 text-white/35 text-sm px-4 text-center">
-            {activeCategory === 'xxx' ? (
-              <>
-                <span>No NSFW channels available</span>
-                <span className="text-[11px] text-white/25 max-w-xs leading-relaxed">
-                  The iptv-org source playlist for this category is empty — there are no adult channels in the public index.
-                </span>
-              </>
-            ) : (
-              <span>No channels found</span>
-            )}
+          <div className="flex flex-col items-center justify-center gap-2 py-16 text-white/35 text-sm">
+            No channels found
           </div>
         )}
 
