@@ -47,7 +47,7 @@ function parseM3U(content: string, defaultCategory: string): Channel[] {
     const rawName = commaIdx >= 0 ? line.slice(commaIdx + 1).trim() : '';
     if (!rawName) continue;
 
-    const { name, quality, tags } = parseChannelName(rawName);
+    const { name, tags } = parseChannelName(rawName);
 
     channels.push({
       id: tvgId || `${defaultCategory}-${i}`,
@@ -57,7 +57,6 @@ function parseM3U(content: string, defaultCategory: string): Channel[] {
       languages: langAttr ? [langAttr] : [],
       categories: [(groupTitle.toLowerCase() || defaultCategory)],
       streamUrl: urlLine,
-      quality,
       tags,
     });
 
