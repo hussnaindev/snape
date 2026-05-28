@@ -1,75 +1,94 @@
 export interface ParsedChannelName {
   name: string;
-  quality: string;
   tags: string[];
 }
 
-const QUALITY_WORD_RE =
-  /\b(4K|UHD|FHD|1080[pPiI]?|720[pPiI]?|576[pPiI]?|567[pPiI]?|678[pPiI]?|480[pPiI]?|360[pPiI]?|240[pPiI]?|HD|SD|HQ)\b/gi;
+const OPEN_BRACKET = /[([{]/;
 
-/** Tokens that denote video quality (standalone or inside delimiters). */
-const QUALITY_TOKEN_RE =
-  /^(?:4K|UHD|FHD|HD|SD|HQ|\d{3,4}[pPiI]?)$/i;
+/** Outermost bracket groups first — avoids [[x]] matching inner [x]. */
+const BRACKET_EXTRACTORS = [
+  /\[\[([^\]]*)\]\]/,
+  /\(([^)]*)\)/,
+  /\[([^\]]*)\]/,
+  /\{([^}]*)\}/,
+] as const;
 
-function isQualityToken(token: string): boolean {
-  return QUALITY_TOKEN_RE.test(token.trim());
+function extractTags(rawName: string): string[] {
+  const tags: string[] = [];
+  const seen = new Set<string>();
+  let work = rawName;
+
+  let found = true;
+  while (found) {
+    found = false;
+    for (const re of BRACKET_EXTRACTORS) {
+      const match = work.match(re);
+      if (!match || match.index === undefined) continue;
+
+      const token = match[1]?.trim();
+      if (token) {
+        const key = token.toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          tags.push(token);
+        }
+      }
+
+      work = `${work.slice(0, match.index)} ${work.slice(match.index + match[0].length)}`;
+      found = true;
+      break;
+    }
+  }
+
+  return tags;
 }
 
-function normalizeQuality(token: string): string {
-  const t = token.trim();
-  const digits = t.match(/^(\d{3,4})[pPiI]?$/i);
-  if (digits) return `${digits[1]}P`;
-  return t.toUpperCase();
-}
-
-function absorbToken(token: string, quality: string, tags: string[]): string {
-  const trimmed = token.trim();
-  if (!trimmed) return quality;
-  if (!quality && isQualityToken(trimmed)) {
-    return normalizeQuality(trimmed);
+function stripAllBrackets(rawName: string): string {
+  let work = rawName;
+  let found = true;
+  while (found) {
+    found = false;
+    for (const re of BRACKET_EXTRACTORS) {
+      const match = work.match(re);
+      if (!match || match.index === undefined) continue;
+      work = `${work.slice(0, match.index)} ${work.slice(match.index + match[0].length)}`;
+      found = true;
+      break;
+    }
   }
-  if (!tags.includes(trimmed)) {
-    tags.push(trimmed);
-  }
-  return quality;
+  return work.replace(/\s{2,}/g, ' ').trim();
 }
 
 /**
- * Pulls quality and metadata out of IPTV display names.
- * Supports (), [], [[]], and standalone quality words.
+ * Channel name = text before the first `(`, `[`, or `{`.
+ * Every non-empty bracket segment in the full string becomes a tag chip.
  */
 export function parseChannelName(rawName: string): ParsedChannelName {
-  const tags: string[] = [];
-  let quality = '';
-  let name = rawName;
+  const trimmed = rawName.trim();
+  if (!trimmed) {
+    return { name: '', tags: [] };
+  }
 
-  const stripDelimited = (pattern: RegExp) => {
-    name = name.replace(pattern, (_match, inner: string) => {
-      quality = absorbToken(inner, quality, tags);
-      return ' ';
-    });
-  };
+  const tags = extractTags(trimmed);
+  const bracketAt = trimmed.search(OPEN_BRACKET);
 
-  stripDelimited(/\[\[([^\]]+)\]\]/g);
-  stripDelimited(/\[([^\]]+)\]/g);
-  stripDelimited(/\(([^)]+)\)/g);
+  let name =
+    bracketAt === -1
+      ? trimmed
+      : trimmed.slice(0, bracketAt).trim();
 
-  const wordMatches = name.match(QUALITY_WORD_RE);
-  if (wordMatches) {
-    for (const word of wordMatches) {
-      quality = absorbToken(word, quality, tags);
-    }
-    name = name.replace(QUALITY_WORD_RE, ' ');
+  // e.g. "(1080p) ESPN" — no leading name before first bracket
+  if (!name) {
+    name = stripAllBrackets(trimmed);
   }
 
   name = name
-    .replace(/[()[\]]+/g, ' ')
+    .replace(/[()[\]{}]+/g, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim();
 
   return {
-    name: name || rawName.trim(),
-    quality,
+    name: name || stripAllBrackets(trimmed) || trimmed,
     tags,
   };
 }

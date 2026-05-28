@@ -6,7 +6,6 @@ export interface Channel {
   languages: string[];
   categories: string[];
   streamUrl: string;
-  quality: string;
-  /** Extra metadata parsed from the display name (e.g. backup, geo, source). */
+  /** Metadata parsed from bracket segments in the display name. */
   tags: string[];
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { TvPlayer } from '@/components/tv-player';
+import { parseChannelName } from '@/lib/parse-channel-name';
 import { useDebounce } from '@/lib/use-debounce';
 import { cn } from '@/lib/utils';
 import type { Channel } from '@/types/channels';
@@ -31,6 +32,22 @@ const DISPLAY_CATEGORIES = [
 // How many items to render in the list at once
 const LIST_CAP = 400;
 const SEARCH_LIST_CAP = 200;
+
+/** Parsed display name + merged tags (client-side so cached API payloads still clean up). */
+function channelDisplay(ch: Channel): { name: string; tags: string[] } {
+  const parsed = parseChannelName(ch.name);
+  const seen = new Set<string>();
+  const tags: string[] = [];
+  for (const t of [...(ch.tags ?? []), ...parsed.tags]) {
+    const token = t.trim();
+    if (!token) continue;
+    const key = token.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    tags.push(token);
+  }
+  return { name: parsed.name, tags };
+}
 
 export function ChannelsView() {
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -93,7 +110,7 @@ export function ChannelsView() {
     const q = debouncedSearch.trim().toLowerCase();
     if (q.length < 1) return [] as Channel[];
     return channels
-      .filter((ch) => ch.name.toLowerCase().includes(q))
+      .filter((ch) => channelDisplay(ch).name.toLowerCase().includes(q))
       .slice(0, 25);
   }, [channels, debouncedSearch]);
 
@@ -111,7 +128,7 @@ export function ChannelsView() {
     if (q.length >= 1) {
       // Global search — ignores active category
       return channels
-        .filter((ch) => ch.name.toLowerCase().includes(q))
+        .filter((ch) => channelDisplay(ch).name.toLowerCase().includes(q))
         .slice(0, SEARCH_LIST_CAP);
     }
     return categoryChannels.slice(0, LIST_CAP);
@@ -121,7 +138,9 @@ export function ChannelsView() {
     dropdownOpen && debouncedSearch.trim().length >= 1 && dropdownResults.length > 0;
 
   const totalForCategory = debouncedSearch.trim().length >= 1
-    ? channels.filter((ch) => ch.name.toLowerCase().includes(debouncedSearch.toLowerCase())).length
+    ? channels.filter((ch) =>
+        channelDisplay(ch).name.toLowerCase().includes(debouncedSearch.toLowerCase()),
+      ).length
     : categoryChannels.length;
 
   // ── Interaction handlers ─────────────────────────────────────────────
@@ -231,8 +250,8 @@ export function ChannelsView() {
                   >
                     <ChannelLogo ch={ch} size="sm" />
                     <div className="min-w-0 flex-1">
-                      <ChannelName>{ch.name}</ChannelName>
-                      <ChannelMetaRow ch={ch} />
+                      <ChannelName>{channelDisplay(ch).name}</ChannelName>
+                      <ChannelMetaRow tags={channelDisplay(ch).tags} ch={ch} />
                     </div>
                   </button>
                 ))}
@@ -305,8 +324,8 @@ export function ChannelsView() {
                 >
                   <ChannelLogo ch={ch} size="md" />
                   <div className="min-w-0 flex-1">
-                    <ChannelName>{ch.name}</ChannelName>
-                    <ChannelMetaRow ch={ch} className="mt-1" />
+                    <ChannelName>{channelDisplay(ch).name}</ChannelName>
+                    <ChannelMetaRow tags={channelDisplay(ch).tags} ch={ch} className="mt-1" />
                   </div>
                   {isActive && (
                     <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-red-500" />
@@ -347,13 +366,16 @@ export function ChannelsView() {
       >
         <div
           className={cn(
-            'relative w-full shrink-0 bg-black aspect-video',
-            playerFullscreen && '!fixed inset-0 z-[60] aspect-auto h-full max-h-[100dvh]',
+            'relative w-full shrink-0 bg-black h-[48dvh] min-h-[220px]',
+            playerFullscreen && '!fixed inset-0 z-[60] h-full max-h-[100dvh] min-h-0',
           )}
         >
           {selectedChannel ? (
             <TvPlayer
-              channel={selectedChannel}
+              channel={{
+                ...selectedChannel,
+                name: channelDisplay(selectedChannel).name,
+              }}
               className="w-full h-full"
               onFullscreenChange={setPlayerFullscreen}
             />
@@ -393,7 +415,10 @@ export function ChannelsView() {
         <div className="flex-1 relative bg-black min-h-0">
           {selectedChannel ? (
             <TvPlayer
-              channel={selectedChannel}
+              channel={{
+                ...selectedChannel,
+                name: channelDisplay(selectedChannel).name,
+              }}
               className="absolute inset-0 w-full h-full"
               onFullscreenChange={setPlayerFullscreen}
             />
@@ -433,11 +458,18 @@ function ChannelName({
   );
 }
 
-function ChannelMetaRow({ ch, className }: { ch: Channel; className?: string }) {
+function ChannelMetaRow({
+  ch,
+  tags,
+  className,
+}: {
+  ch: Channel;
+  tags: string[];
+  className?: string;
+}) {
   return (
     <div className={cn('flex items-center gap-1 flex-wrap', className)}>
-      {ch.quality && <MetaChip>{ch.quality}</MetaChip>}
-      {(ch.tags ?? []).map((tag) => (
+      {tags.map((tag) => (
         <MetaChip key={tag}>{tag}</MetaChip>
       ))}
       {ch.languages[0] && <MetaChip>{ch.languages[0]}</MetaChip>}
