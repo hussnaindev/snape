@@ -221,10 +221,10 @@ export async function getTamilMovies(page = 1): Promise<TMDBMovie[]> {
   return data.results;
 }
 
-export async function getKoreanMovies(page = 1): Promise<TMDBMovie[]> {
-  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(
-    '/discover/movie',
-    releasedMovieDiscoverParams({
+export async function getKoreanSeries(page = 1): Promise<TMDBSeries[]> {
+  const data = await tmdbFetch<TMDBListResult<TMDBSeries>>(
+    '/discover/tv',
+    releasedTvDiscoverParams({
       with_original_language: 'ko',
       sort_by: 'popularity.desc',
       page: String(page),
@@ -233,10 +233,10 @@ export async function getKoreanMovies(page = 1): Promise<TMDBMovie[]> {
   return data.results;
 }
 
-export async function getTurkishMovies(page = 1): Promise<TMDBMovie[]> {
-  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(
-    '/discover/movie',
-    releasedMovieDiscoverParams({
+export async function getTurkishSeries(page = 1): Promise<TMDBSeries[]> {
+  const data = await tmdbFetch<TMDBListResult<TMDBSeries>>(
+    '/discover/tv',
+    releasedTvDiscoverParams({
       with_original_language: 'tr',
       sort_by: 'popularity.desc',
       page: String(page),
@@ -284,22 +284,22 @@ export async function getHollywoodMovies(page = 1): Promise<TMDBMovie[]> {
   return data.results;
 }
 
-const CURATED_MOVIE_FETCHERS: Record<
+const CURATED_FETCHERS: Record<
   CuratedProviderKey,
-  (page?: number) => Promise<TMDBMovie[]>
+  (page?: number) => Promise<TMDBMovie[] | TMDBSeries[]>
 > = {
   hollywood: getHollywoodMovies,
   bollywood: getBollywoodMovies,
   punjabi: getPunjabiMovies,
   tamil: getTamilMovies,
-  korean: getKoreanMovies,
-  turkish: getTurkishMovies,
+  korean: getKoreanSeries,
+  turkish: getTurkishSeries,
   animation: getAnimationMovies,
   anime: getAnimeMovies,
 };
 
-export async function getCuratedProviderMovies(key: CuratedProviderKey, page = 1): Promise<TMDBMovie[]> {
-  return CURATED_MOVIE_FETCHERS[key](page);
+export async function getCuratedProviderMovies(key: CuratedProviderKey, page = 1): Promise<TMDBMovie[] | TMDBSeries[]> {
+  return CURATED_FETCHERS[key](page);
 }
 
 /** Alternate query strings to try when the exact title yields no TMDB hits (typos, extra words). */

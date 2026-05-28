@@ -81,6 +81,8 @@ export default async function HomePage() {
 
               brandColor={curated.brandColor}
 
+              mediaType={curated.mediaType}
+
               movies={curatedMoviesByKey[curated.key]}
 
             />

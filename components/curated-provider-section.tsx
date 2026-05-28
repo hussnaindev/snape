@@ -1,6 +1,6 @@
 import { tmdbImage } from '@/lib/tmdb-image';
 import type { CuratedProviderKey } from '@/lib/curated-providers';
-import type { TMDBMovie } from '@/types/tmdb';
+import type { TMDBMovie, TMDBSeries } from '@/types/tmdb';
 import Image from 'next/image';
 import { ParallaxBackdrop } from './parallax-backdrop';
 import { ParallaxCarousel } from './parallax-carousel';
@@ -24,10 +24,19 @@ interface CuratedProviderSectionProps {
   providerKey: CuratedProviderKey;
   label: string;
   brandColor: string;
-  movies: TMDBMovie[];
+  mediaType: 'movie' | 'series';
+  movies: TMDBMovie[] | TMDBSeries[];
 }
 
-export function CuratedProviderSection({ providerKey, label, brandColor, movies }: CuratedProviderSectionProps) {
+function itemTitle(m: TMDBMovie | TMDBSeries): string {
+  return 'title' in m ? m.title : m.name;
+}
+
+function itemDate(m: TMDBMovie | TMDBSeries): string {
+  return 'release_date' in m ? m.release_date : m.first_air_date;
+}
+
+export function CuratedProviderSection({ providerKey, label, brandColor, mediaType, movies }: CuratedProviderSectionProps) {
   const sorted = [...movies]
     .filter((m) => m.poster_path)
     .sort((a, b) => b.popularity - a.popularity);
@@ -48,16 +57,16 @@ export function CuratedProviderSection({ providerKey, label, brandColor, movies 
   if (!hero || carouselMovies.length === 0) return null;
 
   const items: MediaItem[] = carouselMovies.map((m) => ({
-    kind: 'movie',
+    kind: mediaType,
     id: m.id,
-    title: m.title,
+    title: itemTitle(m),
     poster_path: m.poster_path,
     vote_average: m.vote_average,
     popularity: m.popularity,
   }));
 
   const backdropSrc = hero.backdrop_path ? tmdbImage(hero.backdrop_path, 'w1280') : '';
-  const heroYear = formatYear(hero.release_date);
+  const heroYear = formatYear(itemDate(hero));
   const heroRating = hero.vote_average > 0 ? hero.vote_average.toFixed(1) : null;
   const rtScore = hero.vote_average > 0 ? voteToRtPercent(hero.vote_average) : null;
   const rtFresh = rtScore !== null && rtScore >= 60;
@@ -94,7 +103,7 @@ export function CuratedProviderSection({ providerKey, label, brandColor, movies 
                 className="text-base sm:text-3xl font-itc-pioneer leading-tight max-w-[180px] sm:max-w-[340px]"
                 style={{ color: 'black', WebkitTextStroke: `1px ${brandColor}` }}
               >
-                {hero.title}
+                {itemTitle(hero)}
               </p>
 
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -107,7 +116,7 @@ export function CuratedProviderSection({ providerKey, label, brandColor, movies 
                     padding: '2px 10px',
                   }}
                 >
-                  Movie
+                  {mediaType === 'series' ? 'Series' : 'Movie'}
                 </span>
                 <span
                   className="hidden sm:inline text-white/70 font-medium"
@@ -187,7 +196,7 @@ export function CuratedProviderSection({ providerKey, label, brandColor, movies 
 
               <div className="flex gap-2 sm:gap-3">
                 <Link
-                  href={`/movie/${hero.id}`}
+                  href={`/${mediaType === 'series' ? 'series' : 'movie'}/${hero.id}`}
                   className="relative top-0 inline-flex items-center justify-center gap-1 text-nowrap rounded-full border py-0.5 text-[10px] sm:text-xs font-semibold uppercase tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-8 px-2.5 sm:h-10 sm:px-3 md:h-12 md:px-5 min-w-28 sm:min-w-32 md:min-w-36 border-transparent bg-white text-black lg:hover:bg-white/80 active:bg-white/70"
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
