@@ -23,6 +23,7 @@ const FETCH_CATEGORIES = [
   'family',
   'weather',
   'auto',
+  'xxx',
 ];
 
 function parseM3U(content: string, defaultCategory: string): Channel[] {

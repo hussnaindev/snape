@@ -26,6 +26,7 @@ const DISPLAY_CATEGORIES = [
   { id: 'cooking', label: 'Cooking' },
   { id: 'education', label: 'Education' },
   { id: 'weather', label: 'Weather' },
+  { id: 'xxx', label: 'NSFW' },
 ];
 
 export function ChannelsView() {
