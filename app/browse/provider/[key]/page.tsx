@@ -31,7 +31,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { key } = await params;
   const resolved = resolveProvider(key);
   if (!resolved) return { title: 'Provider Not Found' };
-  const suffix = resolved.kind === 'curated' ? 'Movies' : 'Movies & Series';
+  const suffix = resolved.kind === 'curated'
+    ? (resolved.provider.mediaType === 'series' ? 'Series' : 'Movies')
+    : 'Movies & Series';
   return { title: `${resolved.provider.label} — Browse ${suffix}` };
 }
 
@@ -44,7 +46,12 @@ export default async function ProviderBrowsePage({ params }: Props) {
   let series: Awaited<ReturnType<typeof getSeriesByProvider>> = [];
 
   if (resolved.kind === 'curated') {
-    movies = await getCuratedProviderMovies(resolved.provider.key);
+    const items = await getCuratedProviderMovies(resolved.provider.key);
+    if (resolved.provider.mediaType === 'series') {
+      series = items as typeof series;
+    } else {
+      movies = items as typeof movies;
+    }
   } else {
     [movies, series] = await Promise.all([
       getMoviesByProvider(resolved.provider.tmdbId),
@@ -55,7 +62,7 @@ export default async function ProviderBrowsePage({ params }: Props) {
   const { label: providerLabel } = resolved.provider;
 
   const filteredMovies = filterHasImages(movies);
-  const filteredSeries = resolved.kind === 'curated' ? [] : filterHasImages(series);
+  const filteredSeries = filterHasImages(series);
 
   if (filteredMovies.length === 0 && filteredSeries.length === 0) notFound();
 
