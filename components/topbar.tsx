@@ -11,8 +11,14 @@ import { useAuth } from './auth/auth-provider';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { SearchAutocomplete, SearchAutocompleteFallback } from '@/components/search-autocomplete';
 
-const navLinkClass =
-  'inline-flex items-center text-[11px] font-chesna-grotesk tracking-[0.2em] uppercase px-2 py-1 transition-colors';
+const navLabelClass =
+  'text-[11px] font-chesna-grotesk tracking-[0.2em] uppercase';
+
+const navLinkClass = `inline-flex items-center ${navLabelClass} px-2 py-1 transition-colors`;
+
+const mobileNavItemClass = `flex items-center justify-between px-4 py-3 ${navLabelClass} rounded-xl transition-colors`;
+
+const mobileNavItemWithIconClass = `flex items-center gap-3 px-4 py-3 ${navLabelClass} rounded-xl transition-colors`;
 
 const GENRES = [
   { id: 28, name: 'Action' },
@@ -258,7 +264,7 @@ export function Topbar() {
                 <Link
                   href="/browse/streaming"
                   onClick={() => setMobileOpen(false)}
-                  className={`flex items-center justify-between px-4 py-3 text-sm font-medium rounded-xl transition-colors ${
+                  className={`${mobileNavItemClass} ${
                     pathname === '/browse/streaming'
                       ? 'text-white bg-white/5'
                       : 'text-white/70 hover:text-white hover:bg-white/5'
@@ -273,7 +279,7 @@ export function Topbar() {
                 <Link
                   href="/channels"
                   onClick={() => setMobileOpen(false)}
-                  className={`flex items-center justify-between px-4 py-3 text-sm font-medium rounded-xl transition-colors ${
+                  className={`${mobileNavItemClass} ${
                     pathname === '/channels'
                       ? 'text-white bg-white/5'
                       : 'text-white/70 hover:text-white hover:bg-white/5'
@@ -293,7 +299,7 @@ export function Topbar() {
                     key={genre.id}
                     href={`/browse/${genre.id}?name=${encodeURIComponent(genre.name)}`}
                     onClick={() => setMobileOpen(false)}
-                    className="flex items-center justify-between px-4 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
+                    className={`${mobileNavItemClass} text-white/70 hover:text-white hover:bg-white/5`}
                   >
                     <span>{genre.name}</span>
                     <ChevronIcon />
@@ -315,7 +321,7 @@ export function Topbar() {
                         setMobileOpen(false);
                         router.refresh();
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/45 hover:text-white/75 hover:bg-white/5 rounded-xl transition-colors text-left cursor-pointer"
+                      className={`w-full ${mobileNavItemWithIconClass} text-white/45 hover:text-white/75 hover:bg-white/5 text-left cursor-pointer`}
                     >
                   <ClearHistoryIcon />
                   Clear watch history
@@ -335,21 +341,21 @@ export function Topbar() {
                      <Link
                        href="/profile"
                        onClick={() => setMobileOpen(false)}
-                       className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+                       className={`${mobileNavItemWithIconClass} text-white/70 hover:text-white hover:bg-white/5 cursor-pointer`}
                      >
                       <ProfileIcon /> Profile
                     </Link>
                      <Link
                        href="/watchlist"
                        onClick={() => setMobileOpen(false)}
-                       className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+                       className={`${mobileNavItemWithIconClass} text-white/70 hover:text-white hover:bg-white/5 cursor-pointer`}
                      >
                       <BookmarkIcon /> My Watchlist
                     </Link>
                      <Link
                        href="/settings"
                        onClick={() => setMobileOpen(false)}
-                       className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+                       className={`${mobileNavItemWithIconClass} text-white/70 hover:text-white hover:bg-white/5 cursor-pointer`}
                      >
                       <SettingsIcon /> Settings
                     </Link>
@@ -361,7 +367,7 @@ export function Topbar() {
                          router.push('/');
                          router.refresh();
                        }}
-                       className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-400 hover:bg-red-500/10 rounded-xl transition-colors text-left mt-1 cursor-pointer"
+                       className={`w-full ${mobileNavItemWithIconClass} text-red-400 hover:bg-red-500/10 text-left mt-1 cursor-pointer`}
                      >
                       <SignOutIcon /> Sign out
                     </button>
@@ -371,14 +377,14 @@ export function Topbar() {
                      <Link
                        href="/auth/login"
                        onClick={() => setMobileOpen(false)}
-                       className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+                       className={`${mobileNavItemWithIconClass} text-white/70 hover:text-white hover:bg-white/5 cursor-pointer`}
                      >
                       <SignInIcon /> Login
                     </Link>
                      <Link
                        href="/auth/signup"
                        onClick={() => setMobileOpen(false)}
-                       className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+                       className={`${mobileNavItemWithIconClass} text-white/70 hover:text-white hover:bg-white/5 cursor-pointer`}
                      >
                       <PlusUserIcon /> Create account
                     </Link>
