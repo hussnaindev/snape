@@ -3,6 +3,8 @@ export type CuratedProviderKey =
   | 'bollywood'
   | 'punjabi'
   | 'tamil'
+  | 'korean'
+  | 'turkish'
   | 'animation'
   | 'anime';
 
@@ -15,6 +17,8 @@ export const CURATED_PROVIDERS: ReadonlyArray<{
   { key: 'bollywood', label: 'Bollywood', brandColor: '#F97316' },
   { key: 'punjabi', label: 'Punjabi', brandColor: '#EAB308' },
   { key: 'tamil', label: 'Tamil', brandColor: '#0D9488' },
+  { key: 'korean', label: 'Korean', brandColor: '#EC4899' },
+  { key: 'turkish', label: 'Turkish', brandColor: '#F59E0B' },
   { key: 'animation', label: 'Animation', brandColor: '#3B82F6' },
   { key: 'anime', label: 'Anime', brandColor: '#A855F7' },
 ] as const;

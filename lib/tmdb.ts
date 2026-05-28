@@ -221,6 +221,30 @@ export async function getTamilMovies(page = 1): Promise<TMDBMovie[]> {
   return data.results;
 }
 
+export async function getKoreanMovies(page = 1): Promise<TMDBMovie[]> {
+  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(
+    '/discover/movie',
+    releasedMovieDiscoverParams({
+      with_original_language: 'ko',
+      sort_by: 'popularity.desc',
+      page: String(page),
+    }),
+  );
+  return data.results;
+}
+
+export async function getTurkishMovies(page = 1): Promise<TMDBMovie[]> {
+  const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(
+    '/discover/movie',
+    releasedMovieDiscoverParams({
+      with_original_language: 'tr',
+      sort_by: 'popularity.desc',
+      page: String(page),
+    }),
+  );
+  return data.results;
+}
+
 export async function getAnimationMovies(page = 1): Promise<TMDBMovie[]> {
   const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(
     '/discover/movie',
@@ -268,6 +292,8 @@ const CURATED_MOVIE_FETCHERS: Record<
   bollywood: getBollywoodMovies,
   punjabi: getPunjabiMovies,
   tamil: getTamilMovies,
+  korean: getKoreanMovies,
+  turkish: getTurkishMovies,
   animation: getAnimationMovies,
   anime: getAnimeMovies,
 };
