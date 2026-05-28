@@ -42,6 +42,7 @@ export function ChannelsView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchSelectedIdx, setSearchSelectedIdx] = useState(-1);
+  const [playerFullscreen, setPlayerFullscreen] = useState(false);
 
   // 200 ms debounce — smooth typing, no lag
   const debouncedSearch = useDebounce(searchQuery, 200);
@@ -231,18 +232,8 @@ export function ChannelsView() {
                   >
                     <ChannelLogo ch={ch} size="sm" />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-medium">{ch.name}</div>
-                      <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                        {ch.quality && (
-                          <MetaChip>{ch.quality}</MetaChip>
-                        )}
-                        {ch.languages[0] && (
-                          <MetaChip>{ch.languages[0]}</MetaChip>
-                        )}
-                        {ch.categories[0] && (
-                          <span className="text-[10px] text-white/35 capitalize">{ch.categories[0]}</span>
-                        )}
-                      </div>
+                      <ChannelName>{ch.name}</ChannelName>
+                      <ChannelMetaRow ch={ch} />
                     </div>
                   </button>
                 ))}
@@ -292,8 +283,17 @@ export function ChannelsView() {
         )}
 
         {!loadingChannels && !loadError && visibleChannels.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-2 py-16 text-white/35 text-sm">
-            No channels found
+          <div className="flex flex-col items-center justify-center gap-2 py-16 text-white/35 text-sm px-4 text-center">
+            {activeCategory === 'xxx' ? (
+              <>
+                <span>No NSFW channels available</span>
+                <span className="text-[11px] text-white/25 max-w-xs leading-relaxed">
+                  The iptv-org source playlist for this category is empty — there are no adult channels in the public index.
+                </span>
+              </>
+            ) : (
+              <span>No channels found</span>
+            )}
           </div>
         )}
 
@@ -315,15 +315,8 @@ export function ChannelsView() {
                 >
                   <ChannelLogo ch={ch} size="md" />
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium truncate">{ch.name}</div>
-                    {/* Metadata chips */}
-                    <div className="flex items-center gap-1 mt-1 flex-wrap">
-                      {ch.quality && <MetaChip>{ch.quality}</MetaChip>}
-                      {ch.languages[0] && <MetaChip>{ch.languages[0]}</MetaChip>}
-                      {ch.country && (
-                        <MetaChip variant="geo">{ch.country}</MetaChip>
-                      )}
-                    </div>
+                    <ChannelName>{ch.name}</ChannelName>
+                    <ChannelMetaRow ch={ch} className="mt-1" />
                   </div>
                   {isActive && (
                     <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-red-500" />
@@ -357,64 +350,71 @@ export function ChannelsView() {
 
   return (
     <>
-      {/* ── Mobile layout: full viewport height, player fixed, list scrolls ── */}
+      {/* ── Mobile: player under topbar, list below ── */}
       <div
         className="md:hidden flex flex-col bg-black"
         style={{ height: '100dvh' }}
       >
-        {/* Topbar spacer */}
         <div
-          className="shrink-0 h-16"
-          style={{ paddingTop: 'env(safe-area-inset-top)' }}
-        />
-        {/* Player */}
-        <div className="w-full shrink-0 bg-black aspect-video">
+          className={cn(
+            'relative w-full shrink-0 bg-black aspect-video',
+            playerFullscreen && '!fixed inset-0 z-[60] aspect-auto h-full max-h-[100dvh]',
+          )}
+        >
           {selectedChannel ? (
-            <TvPlayer channel={selectedChannel} className="w-full h-full" />
+            <TvPlayer
+              channel={selectedChannel}
+              className="w-full h-full"
+              onFullscreenChange={setPlayerFullscreen}
+            />
           ) : (
-            <div className="w-full h-full bg-[#0a0a0b] flex items-center justify-center">
+            <div
+              className="w-full h-full bg-[#0a0a0b] flex items-center justify-center"
+              style={{ paddingTop: 'calc(4rem + env(safe-area-inset-top))' }}
+            >
               {emptyPlayer}
             </div>
           )}
         </div>
-        {/* List — flex-1 with internal scroll, never pushes player away */}
-        <div className="flex-1 min-h-0 bg-[#0a0a0b] border-t border-white/10 flex flex-col overflow-visible">
+        <div
+          className={cn(
+            'channels-page-chrome flex-1 min-h-0 bg-[#0a0a0b] border-t border-white/10 flex flex-col overflow-visible',
+            playerFullscreen && 'hidden',
+          )}
+        >
           {sidebarContent}
         </div>
       </div>
 
-      {/* ── Desktop layout: sidebar + player, full viewport height ── */}
+      {/* ── Desktop: sidebar + player edge-to-edge under topbar ── */}
       <div
         className="hidden md:flex bg-black"
         style={{ height: '100dvh' }}
       >
-        {/* Topbar spacer column on the sidebar only */}
-        <div className="w-[17rem] xl:w-72 shrink-0 flex flex-col bg-[#0a0a0b] border-r border-white/10">
-          {/* spacer matching topbar */}
-          <div
-            className="shrink-0 h-16"
-            style={{ paddingTop: 'env(safe-area-inset-top)' }}
-          />
-          {/* Sidebar content fills remaining height */}
+        <div
+          className="channels-page-chrome w-[17rem] xl:w-72 shrink-0 flex flex-col bg-[#0a0a0b] border-r border-white/10"
+          style={{ paddingTop: 'calc(4rem + env(safe-area-inset-top))' }}
+        >
           <div className="flex-1 min-h-0 overflow-visible flex flex-col">
             {sidebarContent}
           </div>
         </div>
 
-        {/* Player — full height right side */}
-        <div className="flex-1 flex flex-col bg-black">
-          {/* spacer matching topbar */}
-          <div
-            className="shrink-0 h-16"
-            style={{ paddingTop: 'env(safe-area-inset-top)' }}
-          />
-          <div className="flex-1 min-h-0 flex items-center justify-center">
-            {selectedChannel ? (
-              <TvPlayer channel={selectedChannel} className="w-full h-full" />
-            ) : (
-              emptyPlayer
-            )}
-          </div>
+        <div className="flex-1 relative bg-black min-h-0">
+          {selectedChannel ? (
+            <TvPlayer
+              channel={selectedChannel}
+              className="absolute inset-0 w-full h-full"
+              onFullscreenChange={setPlayerFullscreen}
+            />
+          ) : (
+            <div
+              className="absolute inset-0 flex items-center justify-center"
+              style={{ paddingTop: 'calc(4rem + env(safe-area-inset-top))' }}
+            >
+              {emptyPlayer}
+            </div>
+          )}
         </div>
       </div>
     </>
@@ -422,6 +422,39 @@ export function ChannelsView() {
 }
 
 // ── Small components ──────────────────────────────────────────────────
+
+/** Matches category tab typography. */
+function ChannelName({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        'truncate text-[11px] font-chesna-grotesk tracking-[0.1em] uppercase leading-snug',
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ChannelMetaRow({ ch, className }: { ch: Channel; className?: string }) {
+  return (
+    <div className={cn('flex items-center gap-1 flex-wrap', className)}>
+      {ch.quality && <MetaChip>{ch.quality}</MetaChip>}
+      {(ch.tags ?? []).map((tag) => (
+        <MetaChip key={tag}>{tag}</MetaChip>
+      ))}
+      {ch.languages[0] && <MetaChip>{ch.languages[0]}</MetaChip>}
+      {ch.country && <MetaChip variant="geo">{ch.country}</MetaChip>}
+    </div>
+  );
+}
 
 function MetaChip({
   children,

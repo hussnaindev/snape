@@ -163,6 +163,22 @@ html:fullscreen .player-safe-area {
   }
 }
 
+/* TV Channels: hide page chrome while the player is in native fullscreen */
+html[data-tv-fullscreen] header[class*='fixed'] {
+  display: none;
+}
+
+html[data-tv-fullscreen] .channels-page-chrome {
+  display: none;
+}
+
+html:fullscreen .tv-player-root,
+html:-webkit-full-screen .tv-player-root {
+  width: 100vw;
+  height: 100vh;
+  max-height: 100dvh;
+}
+
 body {
   background-color: #070b08;
   color: white;
