@@ -93,6 +93,15 @@ export function Topbar() {
               Streaming
             </Link>
 
+            <Link
+              href="/channels"
+              className={`${navLinkClass} ${
+                pathname === '/channels' ? 'text-white' : 'text-white/70 hover:text-white'
+              }`}
+            >
+              TV Channels
+            </Link>
+
             <div className="relative" ref={browseRef}>
               <button
                 type="button"
@@ -256,6 +265,21 @@ export function Topbar() {
                   }`}
                 >
                   <span>Streaming Providers</span>
+                  <ChevronIcon />
+                </Link>
+              </nav>
+
+              <nav className="px-3 pb-1 space-y-0.5">
+                <Link
+                  href="/channels"
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center justify-between px-4 py-3 text-sm font-medium rounded-xl transition-colors ${
+                    pathname === '/channels'
+                      ? 'text-white bg-white/5'
+                      : 'text-white/70 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span>TV Channels</span>
                   <ChevronIcon />
                 </Link>
               </nav>
