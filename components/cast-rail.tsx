@@ -15,7 +15,7 @@ export function CastRail({ cast }: CastRailProps) {
   return (
     <section className="px-4 md:px-8">
       <SectionDivider label="Starring" className="mb-4" />
-      <div className="flex gap-4 overflow-x-auto no-scrollbar py-8">
+      <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory overscroll-x-contain py-8">
         {visible.map((member, idx) => {
           const photo = tmdbResponsive(member.profile_path, 'w185', 'w342');
           // First 6 fit on most viewports — load eagerly. Later cards lazy-load
@@ -25,7 +25,7 @@ export function CastRail({ cast }: CastRailProps) {
               key={member.id}
               href={`/person/${member.id}`}
               prefetch={false}
-              className="flex-none w-24 sm:w-28 group"
+              className="flex-none w-24 sm:w-28 group snap-start"
             >
               <div className="aspect-square rounded-full overflow-hidden bg-white/5 mb-2 relative ring-2 ring-white/10 shadow-[0_8px_24px_rgba(255,255,255,0.06)] transition-transform duration-500 ease-out">
                 {photo ? (

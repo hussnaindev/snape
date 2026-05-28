@@ -136,6 +136,10 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 /* Mobile fullscreen fix: when the document is in fullscreen, remove safe-area
    inset padding so the video fills edge-to-edge (the system status bar becomes
    a thin overlay on top of the video, not a gap below it).

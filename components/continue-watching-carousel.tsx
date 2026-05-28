@@ -27,7 +27,7 @@ function ContinueWatchingCard({ entry, prefetch }: { entry: WatchHistoryEntry; p
     <Link
       href={href}
       prefetch={prefetch}
-      className="group relative flex-none w-[130px] sm:w-[300px] md:w-[340px] lg:w-[380px] overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)]"
+      className="group relative flex-none w-[130px] sm:w-[300px] md:w-[340px] lg:w-[380px] overflow-hidden rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)] snap-start"
     >
       {/* Mobile: portrait card with poster */}
       <div className="sm:hidden aspect-[2/3] relative overflow-hidden">
@@ -186,11 +186,11 @@ export function ContinueWatchingCarousel({ hasHistory }: { hasHistory: boolean }
           </h2>
         </div>
         {/* Identical flex + pb-2 + card aspect-ratios as the real carousel row */}
-        <div className="relative flex gap-1.5 overflow-x-hidden pt-3 sm:pt-4 pb-3 sm:pb-4 px-1 sm:px-2">
+        <div className="relative flex gap-1.5 overflow-x-hidden snap-x snap-mandatory overscroll-x-contain scroll-pl-1 sm:scroll-pl-2 pt-3 sm:pt-4 pb-3 sm:pb-4 px-1 sm:px-2">
           {[0, 1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="flex-none w-[130px] sm:w-[300px] md:w-[340px] lg:w-[380px] rounded-2xl sm:rounded-[28px] bg-white/5"
+              className="flex-none w-[130px] sm:w-[300px] md:w-[340px] lg:w-[380px] rounded-2xl sm:rounded-[28px] bg-white/5 snap-start"
             >
               <div className="sm:hidden aspect-[2/3]" />
               <div className="hidden sm:block aspect-video" />
@@ -234,7 +234,7 @@ export function ContinueWatchingCarousel({ hasHistory }: { hasHistory: boolean }
         </button>
       </div>
 
-      <div className="flex gap-1.5 overflow-x-auto no-scrollbar pt-3 sm:pt-4 pb-3 sm:pb-4 px-1 sm:px-2">
+      <div className="flex gap-1.5 overflow-x-auto no-scrollbar snap-x snap-mandatory overscroll-x-contain scroll-pl-1 sm:scroll-pl-2 pt-3 sm:pt-4 pb-3 sm:pb-4 px-1 sm:px-2">
         {items.map((entry, idx) => (
           <ContinueWatchingCard
             key={`${entry.type}-${entry.id}`}
