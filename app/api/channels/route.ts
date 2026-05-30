@@ -106,6 +106,10 @@ function nsfwAuth(email: string): boolean {
   return email === NSFW_EMAIL;
 }
 
+function proxyUrl(raw: string): string {
+  return `/api/proxy?url=${encodeURIComponent(raw)}`;
+}
+
 export async function GET() {
   try {
     const session = await getSession();
@@ -138,9 +142,10 @@ export async function GET() {
 
     if (nsfwEnabled) {
       for (const ch of NSFW_CHANNELS) {
-        if (!seenUrls.has(ch.streamUrl)) {
-          seenUrls.add(ch.streamUrl);
-          channels.push(ch);
+        const url = proxyUrl(ch.streamUrl);
+        if (!seenUrls.has(url)) {
+          seenUrls.add(url);
+          channels.push({ ...ch, streamUrl: url });
         }
       }
     }
