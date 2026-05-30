@@ -1,5 +1,12 @@
 export const runtime = 'edge';
 
+function base64urlEncode(s: string): string {
+  const bytes = new TextEncoder().encode(s);
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 function base64urlDecode(s: string): string {
   const base64 = s.replace(/-/g, '+').replace(/_/g, '/');
   const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
@@ -7,6 +14,50 @@ function base64urlDecode(s: string): string {
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return new TextDecoder().decode(bytes);
+}
+
+function toProxyPath(raw: string): string {
+  const lastSlash = raw.lastIndexOf('/');
+  const base = lastSlash >= 0 ? raw.slice(0, lastSlash + 1) : raw + '/';
+  const file = lastSlash >= 0 ? raw.slice(lastSlash + 1) : '';
+  return `/api/proxy/${base64urlEncode(base)}${file ? `/${file}` : ''}`;
+}
+
+function isM3U8(contentType: string, url: string): boolean {
+  const ct = contentType.toLowerCase();
+  if (ct.includes('mpegurl') || ct.includes('x-mpegurl')) return true;
+  const path = url.split('?')[0]!.toLowerCase();
+  return path.endsWith('.m3u8') || path.endsWith('.m3u');
+}
+
+// Rewrite absolute URLs inside an M3U8 manifest so hls.js always fetches
+// segments and sub-playlists through this proxy, avoiding mixed-content and
+// CORS failures in the browser.
+function rewriteM3U8(content: string): string {
+  return content
+    .split('\n')
+    .map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return line;
+
+      if (trimmed.startsWith('#')) {
+        // Rewrite URI="..." attributes (EXT-X-KEY, EXT-X-MAP, EXT-X-MEDIA…)
+        return line.replace(/URI="([^"]+)"/g, (_m, uri: string) => {
+          if (uri.startsWith('http://') || uri.startsWith('https://')) {
+            return `URI="${toProxyPath(uri)}"`;
+          }
+          return `URI="${uri}"`;
+        });
+      }
+
+      // Plain URL lines — segment or variant-playlist
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+        return toProxyPath(trimmed);
+      }
+
+      return line;
+    })
+    .join('\n');
 }
 
 export async function GET(request: Request) {
@@ -29,7 +80,6 @@ export async function GET(request: Request) {
     }
 
     if (!baseUrl.endsWith('/')) baseUrl += '/';
-
     const targetUrl = relativePath ? `${baseUrl}${relativePath}${search}` : baseUrl.slice(0, -1);
 
     const resp = await fetch(targetUrl, {
@@ -44,8 +94,23 @@ export async function GET(request: Request) {
     }
 
     const contentType = resp.headers.get('content-type') ?? '';
-    const body = await resp.arrayBuffer();
 
+    if (isM3U8(contentType, targetUrl)) {
+      const text = await resp.text();
+      const rewritten = rewriteM3U8(text);
+      return new Response(rewritten, {
+        status: 200,
+        headers: {
+          'Content-Type': contentType || 'application/vnd.apple.mpegurl',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          // Live manifests must not be cached — hls.js polls them every few seconds
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
+
+    const body = await resp.arrayBuffer();
     return new Response(body, {
       status: 200,
       headers: {
