@@ -106,8 +106,15 @@ function nsfwAuth(email: string): boolean {
   return email === NSFW_EMAIL;
 }
 
+function base64urlEncode(s: string): string {
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 function proxyUrl(raw: string): string {
-  return `/api/proxy?url=${encodeURIComponent(raw)}`;
+  const lastSlash = raw.lastIndexOf('/');
+  const base = lastSlash >= 0 ? raw.slice(0, lastSlash + 1) : raw + '/';
+  const file = lastSlash >= 0 ? raw.slice(lastSlash + 1) : '';
+  return `/api/proxy/${base64urlEncode(base)}${file ? `/${file}` : ''}`;
 }
 
 export async function GET() {

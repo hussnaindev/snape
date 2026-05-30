@@ -1,62 +1,49 @@
 export const runtime = 'edge';
 
+function base64urlDecode(s: string): string {
+  const base64 = s.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+  return atob(padded);
+}
+
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const url = searchParams.get('url');
-    if (!url) {
-      return new Response('Missing url parameter', { status: 400 });
+    const { pathname, search } = new URL(request.url);
+    const parts = pathname.split('/').filter(Boolean);
+    // parts[0] = api, parts[1] = proxy, parts[2] = base64url-base, rest = relative path
+    if (parts.length < 3) {
+      return new Response('Invalid path', { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } });
     }
 
-    const decoded = decodeURIComponent(url);
+    const encodedBase = parts[2]!;
+    const relativePath = parts.slice(3).join('/');
 
-    const resp = await fetch(decoded, {
+    let baseUrl: string;
+    try {
+      baseUrl = base64urlDecode(encodedBase);
+    } catch {
+      return new Response('Invalid base64 encoding', { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } });
+    }
+
+    if (!baseUrl.endsWith('/')) baseUrl += '/';
+
+    const targetUrl = relativePath ? `${baseUrl}${relativePath}${search}` : baseUrl.slice(0, -1);
+
+    const resp = await fetch(targetUrl, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
     });
 
     if (!resp.ok) {
       return new Response(await resp.text(), {
         status: resp.status,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        },
+        headers: { 'Access-Control-Allow-Origin': '*' },
       });
     }
 
     const contentType = resp.headers.get('content-type') ?? '';
-    const isM3U = decoded.includes('.m3u') || contentType.includes('mpegurl') || contentType.includes('m3u');
+    const body = await resp.arrayBuffer();
 
-    if (isM3U) {
-      const text = await resp.text();
-      const baseUrl = new URL(decoded);
-      const proxyBase = '/api/proxy?url=';
-
-      const rewritten = text.split('\n').map((line) => {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith('#')) return line;
-        try {
-          const absolute = new URL(trimmed, baseUrl).href;
-          return `${proxyBase}${encodeURIComponent(absolute)}`;
-        } catch {
-          return line;
-        }
-      }).join('\n');
-
-      return new Response(rewritten, {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/vnd.apple.mpegurl',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Cache-Control': 'public, max-age=30',
-        },
-      });
-    }
-
-    const blob = await resp.blob();
-
-    return new Response(blob, {
+    return new Response(body, {
       status: 200,
       headers: {
         'Content-Type': contentType || 'application/octet-stream',
