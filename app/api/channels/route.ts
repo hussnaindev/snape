@@ -3,9 +3,30 @@ import type { Channel } from '@/types/channels';
 
 export const runtime = 'edge';
 
-const PLAYLIST_URL = 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8';
+const FETCH_CATEGORIES = [
+  'general',
+  'news',
+  'entertainment',
+  'sports',
+  'movies',
+  'music',
+  'kids',
+  'documentary',
+  'series',
+  'lifestyle',
+  'science',
+  'nature',
+  'travel',
+  'comedy',
+  'business',
+  'cooking',
+  'education',
+  'family',
+  'weather',
+  'auto',
+];
 
-function parseM3U(content: string): Channel[] {
+function parseM3U(content: string, defaultCategory: string): Channel[] {
   const channels: Channel[] = [];
   const lines = content.split('\n');
 
@@ -18,7 +39,7 @@ function parseM3U(content: string): Channel[] {
 
     const tvgId = line.match(/tvg-id="([^"]*)"/)?.[1] ?? '';
     const tvgLogo = line.match(/tvg-logo="([^"]*)"/)?.[1] ?? '';
-    const groupTitle = line.match(/group-title="([^"]*)"/)?.[1] ?? '';
+    const groupTitle = line.match(/group-title="([^"]*)"/)?.[1] ?? defaultCategory;
     const countryAttr = line.match(/tvg-country="([^"]*)"/)?.[1] ?? '';
     const langAttr = line.match(/tvg-language="([^"]*)"/)?.[1] ?? '';
 
@@ -29,12 +50,12 @@ function parseM3U(content: string): Channel[] {
     const { name, tags } = parseChannelName(rawName);
 
     channels.push({
-      id: tvgId || `ch-${i}`,
+      id: tvgId || `${defaultCategory}-${i}`,
       name,
       logo: tvgLogo,
       country: countryAttr.toUpperCase(),
       languages: langAttr ? [langAttr] : [],
-      categories: [groupTitle || 'general'],
+      categories: [(groupTitle.toLowerCase() || defaultCategory)],
       streamUrl: urlLine,
       tags,
     });
@@ -47,23 +68,28 @@ function parseM3U(content: string): Channel[] {
 
 export async function GET() {
   try {
-    const res = await fetch(PLAYLIST_URL, { next: { revalidate: 86400 } });
-    if (!res.ok) {
-      return Response.json(
-        { ok: false, error: 'Failed to fetch playlist', code: 502 },
-        { status: 502 },
-      );
-    }
-
-    const text = await res.text();
-    const allChannels = parseM3U(text);
+    const results = await Promise.allSettled(
+      FETCH_CATEGORIES.map(async (cat) => {
+        const res = await fetch(
+          `https://iptv-org.github.io/iptv/categories/${cat}.m3u`,
+          { next: { revalidate: 86400 } },
+        );
+        if (!res.ok) return [] as Channel[];
+        const text = await res.text();
+        return parseM3U(text, cat);
+      }),
+    );
 
     const seenUrls = new Set<string>();
     const channels: Channel[] = [];
-    for (const ch of allChannels) {
-      if (!seenUrls.has(ch.streamUrl)) {
-        seenUrls.add(ch.streamUrl);
-        channels.push(ch);
+
+    for (const result of results) {
+      if (result.status !== 'fulfilled') continue;
+      for (const ch of result.value) {
+        if (!seenUrls.has(ch.streamUrl)) {
+          seenUrls.add(ch.streamUrl);
+          channels.push(ch);
+        }
       }
     }
 
