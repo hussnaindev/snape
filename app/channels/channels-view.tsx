@@ -63,6 +63,7 @@ export function ChannelsView() {
   // 200 ms debounce — smooth typing, no lag
   const debouncedSearch = useDebounce(searchQuery, 200);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const categoryScrollRef = useRef<HTMLDivElement>(null);
 
   // ── Fetch channels on mount ──────────────────────────────────────────
   useEffect(() => {
@@ -87,6 +88,26 @@ export function ChannelsView() {
       .catch(() => { if (!cancelled) setLoadError(true); })
       .finally(() => { if (!cancelled) setLoadingChannels(false); });
     return () => { cancelled = true; };
+  }, []);
+
+  // ── Category row: wheel → horizontal scroll ─────────────────────────
+  useEffect(() => {
+    const scrollRoot = categoryScrollRef.current;
+    if (!scrollRoot) return;
+
+    function onWheel(e: WheelEvent) {
+      const el = categoryScrollRef.current;
+      if (!el || el.scrollWidth <= el.clientWidth) return;
+
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (delta === 0) return;
+
+      el.scrollLeft += delta;
+      e.preventDefault();
+    }
+
+    scrollRoot.addEventListener('wheel', onWheel, { passive: false });
+    return () => scrollRoot.removeEventListener('wheel', onWheel);
   }, []);
 
   // ── Close dropdown on outside click ─────────────────────────────────
@@ -262,8 +283,11 @@ export function ChannelsView() {
       </div>
 
       {/* ── Category tabs ── */}
-      <div className="shrink-0 border-b border-white/10">
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar px-3 py-2">
+      <div className="shrink-0 min-w-0 border-b border-white/10">
+        <div
+          ref={categoryScrollRef}
+          className="flex gap-1.5 overflow-x-auto overscroll-x-contain no-scrollbar px-3 py-2"
+        >
           {DISPLAY_CATEGORIES.map((cat) => (
             <button
               key={cat.id}

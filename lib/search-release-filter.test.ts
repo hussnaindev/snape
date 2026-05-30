@@ -10,7 +10,6 @@ const CUTOFF = '2026-05-26';
 
 function movie(overrides: Partial<TMDBMovie> & Pick<TMDBMovie, 'id'>): TMDBMovie {
   return {
-    id: overrides.id,
     title: 'Title',
     overview: '',
     poster_path: '/p.jpg',
@@ -26,7 +25,6 @@ function movie(overrides: Partial<TMDBMovie> & Pick<TMDBMovie, 'id'>): TMDBMovie
 
 function show(overrides: Partial<TMDBSeries> & Pick<TMDBSeries, 'id'>): TMDBSeries {
   return {
-    id: overrides.id,
     name: 'Show',
     overview: '',
     poster_path: '/p.jpg',

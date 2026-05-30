@@ -1,3 +1,15 @@
+// TV Channels API — disabled. Uncomment block below to re-enable.
+
+export const runtime = 'edge';
+
+export async function GET() {
+  return Response.json(
+    { ok: false, error: 'Not found', code: 404 },
+    { status: 404 },
+  );
+}
+
+/*
 import { parseChannelName } from '@/lib/parse-channel-name';
 import type { Channel } from '@/types/channels';
 
@@ -108,3 +120,4 @@ export async function GET() {
     );
   }
 }
+*/

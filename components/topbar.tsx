@@ -99,6 +99,7 @@ export function Topbar() {
               Streaming
             </Link>
 
+            {/* TV Channels — disabled
             <Link
               href="/channels"
               className={`${navLinkClass} ${
@@ -107,6 +108,7 @@ export function Topbar() {
             >
               TV Channels
             </Link>
+            */}
 
             <div className="relative" ref={browseRef}>
               <button
@@ -275,6 +277,7 @@ export function Topbar() {
                 </Link>
               </nav>
 
+              {/* TV Channels — disabled
               <nav className="px-3 pb-1 space-y-0.5">
                 <Link
                   href="/channels"
@@ -289,6 +292,7 @@ export function Topbar() {
                   <ChevronIcon />
                 </Link>
               </nav>
+              */}
 
               <div className="px-4 pt-3 pb-2 border-t border-white/10">
                 <p className="text-white/40 text-[11px] font-semibold tracking-wider uppercase">Browse</p>
