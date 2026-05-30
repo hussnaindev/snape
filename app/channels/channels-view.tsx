@@ -29,6 +29,8 @@ const DISPLAY_CATEGORIES = [
   { id: 'weather', label: 'Weather' },
 ];
 
+const NSFW_CATEGORY = { id: 'nsfw' as const, label: 'NSFW' };
+
 // How many items to render in the list at once
 const LIST_CAP = 400;
 const SEARCH_LIST_CAP = 200;
@@ -64,6 +66,8 @@ export function ChannelsView() {
   const debouncedSearch = useDebounce(searchQuery, 200);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
+  const [nsfwEnabled, setNsfwEnabled] = useState(false);
+
   // ── Fetch channels on mount ──────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
@@ -79,7 +83,9 @@ export function ChannelsView() {
           'channels' in data &&
           Array.isArray((data as { channels: unknown }).channels)
         ) {
-          setChannels((data as { channels: Channel[] }).channels);
+          const d = data as { channels: Channel[]; nsfwEnabled?: boolean };
+          setChannels(d.channels);
+          if (d.nsfwEnabled) setNsfwEnabled(true);
         } else {
           setLoadError(true);
         }
@@ -264,7 +270,7 @@ export function ChannelsView() {
       {/* ── Category tabs ── */}
       <div className="shrink-0 border-b border-white/10">
         <div className="flex gap-1.5 overflow-x-auto no-scrollbar px-3 py-2">
-          {DISPLAY_CATEGORIES.map((cat) => (
+          {[...DISPLAY_CATEGORIES, ...(nsfwEnabled ? [NSFW_CATEGORY] : [])].map((cat) => (
             <button
               key={cat.id}
               type="button"
