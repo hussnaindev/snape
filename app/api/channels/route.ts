@@ -141,18 +141,18 @@ export async function GET() {
       if (result.status !== 'fulfilled') continue;
       for (const ch of result.value) {
         if (!seenUrls.has(ch.streamUrl)) {
+          const proxied = proxyUrl(ch.streamUrl);
           seenUrls.add(ch.streamUrl);
-          channels.push(ch);
+          channels.push({ ...ch, streamUrl: proxied });
         }
       }
     }
 
     if (nsfwEnabled) {
       for (const ch of NSFW_CHANNELS) {
-        const url = proxyUrl(ch.streamUrl);
-        if (!seenUrls.has(url)) {
-          seenUrls.add(url);
-          channels.push({ ...ch, streamUrl: url });
+        if (!seenUrls.has(ch.streamUrl)) {
+          seenUrls.add(ch.streamUrl);
+          channels.push({ ...ch, streamUrl: proxyUrl(ch.streamUrl) });
         }
       }
     }
