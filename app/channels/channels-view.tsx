@@ -7,6 +7,27 @@ import { cn } from '@/lib/utils';
 import type { Channel } from '@/types/channels';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+const DISPLAY_CATEGORIES = [
+  { id: 'all', label: 'All' },
+  { id: 'general', label: 'General' },
+  { id: 'news', label: 'News' },
+  { id: 'sports', label: 'Sports' },
+  { id: 'entertainment', label: 'Entertainment' },
+  { id: 'movies', label: 'Movies' },
+  { id: 'music', label: 'Music' },
+  { id: 'kids', label: 'Kids' },
+  { id: 'documentary', label: 'Documentary' },
+  { id: 'series', label: 'Series' },
+  { id: 'lifestyle', label: 'Lifestyle' },
+  { id: 'science', label: 'Science' },
+  { id: 'nature', label: 'Nature' },
+  { id: 'travel', label: 'Travel' },
+  { id: 'comedy', label: 'Comedy' },
+  { id: 'business', label: 'Business' },
+  { id: 'cooking', label: 'Cooking' },
+  { id: 'education', label: 'Education' },
+  { id: 'weather', label: 'Weather' },
+];
 
 // How many items to render in the list at once
 const LIST_CAP = 400;
@@ -81,21 +102,6 @@ export function ChannelsView() {
     document.addEventListener('mousedown', onMouseDown);
     return () => document.removeEventListener('mousedown', onMouseDown);
   }, []);
-
-  // ── Dynamic categories derived from channel data ─────────────────────
-  const displayCategories = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const ch of channels) {
-      for (const cat of ch.categories) {
-        const key = cat.toLowerCase();
-        counts.set(key, (counts.get(key) ?? 0) + 1);
-      }
-    }
-    const sorted = [...counts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .map(([id]) => ({ id, label: id.charAt(0).toUpperCase() + id.slice(1) }));
-    return [{ id: 'all', label: 'All' }, ...sorted];
-  }, [channels]);
 
   // ── Memoised derived lists ────────────────────────────────────────────
 
@@ -258,7 +264,7 @@ export function ChannelsView() {
       {/* ── Category tabs ── */}
       <div className="shrink-0 border-b border-white/10">
         <div className="flex gap-1.5 overflow-x-auto no-scrollbar px-3 py-2">
-          {displayCategories.map((cat) => (
+          {DISPLAY_CATEGORIES.map((cat) => (
             <button
               key={cat.id}
               type="button"
