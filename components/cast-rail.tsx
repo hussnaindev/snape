@@ -35,7 +35,7 @@ export function CastRail({ cast }: CastRailProps) {
                       src={photo.mobile}
                       alt={member.name}
                       sizes="(max-width: 640px) 96px, 112px"
-                      className="object-cover"
+                      className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
                       fallbackSize="sm"
                       loading={idx < 6 ? 'eager' : 'lazy'}
                     />
@@ -45,7 +45,7 @@ export function CastRail({ cast }: CastRailProps) {
                     src=""
                     alt={member.name}
                     sizes="(max-width: 640px) 96px, 112px"
-                    className="object-cover"
+                    className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
                     fallbackSize="sm"
                     loading={idx < 6 ? 'eager' : 'lazy'}
                   />

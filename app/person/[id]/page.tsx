@@ -267,7 +267,7 @@ export default async function PersonPage({ params }: Props) {
                             alt={credit.title}
                             fill
                             sizes="50vw"
-                            className="object-cover"
+                            className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
                           />
                         </picture>
                       ) : (
@@ -321,7 +321,7 @@ export default async function PersonPage({ params }: Props) {
                                     alt={credit.title}
                                     fill
                                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 240px"
-                                    className="object-cover"
+                                    className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
                                   />
                                 </picture>
                               ) : (

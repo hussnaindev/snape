@@ -28,7 +28,7 @@ export function ProviderCard({ item, rank, prefetch = false }: ProviderCardProps
                 alt={item.title}
                 fill
                 sizes="(max-width: 640px) 130px, 175px"
-                className="object-cover"
+                className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
               />
             </picture>
           ) : (

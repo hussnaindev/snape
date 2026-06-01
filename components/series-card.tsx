@@ -26,7 +26,7 @@ export function SeriesCard({ series, className, prefetch = false }: SeriesCardPr
                 alt={series.name}
                 fill
                 sizes="(max-width: 640px) 130px, (max-width: 1024px) 180px, 240px"
-                className="object-cover"
+                className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
               />
             </picture>
           ) : (

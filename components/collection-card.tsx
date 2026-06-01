@@ -28,18 +28,18 @@ export function CollectionCard({ collection, className }: CollectionCardProps) {
               alt={collection.name}
               fill
               sizes="50vw"
-              className="object-cover"
-            />
-          </picture>
-        ) : backdrop ? (
-          <picture>
-            <source srcSet={backdrop.desktop} media="(min-width: 1024px)" />
-            <Image
-              src={backdrop.mobile}
-              alt={collection.name}
-              fill
-              sizes="50vw"
-              className="object-cover"
+                className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
+              />
+            </picture>
+          ) : backdrop ? (
+            <picture>
+              <source srcSet={backdrop.desktop} media="(min-width: 1024px)" />
+              <Image
+                src={backdrop.mobile}
+                alt={collection.name}
+                fill
+                sizes="50vw"
+                className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
             />
           </picture>
         ) : (

@@ -224,7 +224,7 @@ function EpisodeCard({
                 alt={episode.name}
                 fill
                 sizes="(max-width: 640px) 180px, (max-width: 768px) 240px, (max-width: 1024px) 260px, (max-width: 1280px) 280px, 300px"
-                className="object-cover"
+                className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
               />
             </picture>
           ) : (
@@ -308,7 +308,7 @@ function EpisodeRow({
         {still ? (
           <picture>
             <source srcSet={still.desktop} media="(min-width: 1024px)" />
-            <Image src={still.mobile} alt={episode.name} fill sizes="160px" className="object-cover" />
+            <Image src={still.mobile} alt={episode.name} fill sizes="160px" className="object-cover transition-transform duration-300 ease-out group-hover:scale-110" />
           </picture>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">

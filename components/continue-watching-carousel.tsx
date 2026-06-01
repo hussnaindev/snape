@@ -37,7 +37,7 @@ function ContinueWatchingCard({ entry, prefetch }: { entry: WatchHistoryEntry; p
             alt={entry.title}
             fill
             sizes="130px"
-            className="object-cover"
+            className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
           />
         ) : (
           <div className="absolute inset-0 bg-white/5 flex items-center justify-center text-white/20 text-xs">
@@ -89,7 +89,7 @@ function ContinueWatchingCard({ entry, prefetch }: { entry: WatchHistoryEntry; p
             alt={entry.title}
             fill
             sizes="(max-width: 1024px) 300px, 380px"
-            className="object-cover"
+            className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
           />
         ) : (
           <div className="absolute inset-0 bg-white/5 flex items-center justify-center text-white/20 text-sm">
