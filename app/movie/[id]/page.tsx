@@ -7,6 +7,7 @@ import {
   getEmbeddableTrailerKey,
   getMovieCredits,
   getMovieDetail,
+  getMovieImages,
   getMovieRecommendations,
   getMovieVideos,
   getMovieWatchProviders,
@@ -49,11 +50,12 @@ export default async function MoviePage({ params }: Props) {
   if (!movie) notFound();
 
   const genreIds = movie.genres.map((g) => g.id);
-  const [credits, recommendations, videos, providers] = await Promise.all([
+  const [credits, recommendations, videos, providers, images] = await Promise.all([
     getMovieCredits(movieId).catch(() => ({ cast: [], crew: [] })),
     getMovieRecommendations(movieId, genreIds).catch(() => []),
     getMovieVideos(movieId).catch(() => ({ results: [] })),
     getMovieWatchProviders(movieId).catch(() => null),
+    getMovieImages(movieId).catch(() => ({ id: 0, backdrops: [], logos: [], posters: [] })),
   ]);
 
   const backdrop = tmdbImage(movie.backdrop_path, 'original');
@@ -66,6 +68,11 @@ export default async function MoviePage({ params }: Props) {
 
   const preferredProviders = pickPreferredProvidersWithFallback(providers?.results, country);
   const embedUrl = getMovieEmbedUrl(movieId);
+
+  const logoPath = images.logos.find((l) => l.iso_639_1 === 'en')?.file_path
+    ?? images.logos[0]?.file_path
+    ?? null;
+  const logoUrl = logoPath ? tmdbImage(logoPath, 'w500') : null;
 
   return (
     <>
@@ -80,6 +87,7 @@ export default async function MoviePage({ params }: Props) {
           posterPath={movie.poster_path}
           backdropPath={movie.backdrop_path}
           title={movie.title}
+          logoUrl={logoUrl}
           tagline={movie.tagline}
           year={year}
           runtime={runtime}

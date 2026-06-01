@@ -258,3 +258,22 @@ export interface TMDBCollectionSearchHit {
   poster_path: string | null;
   backdrop_path: string | null;
 }
+
+// ── Images ─────────────────────────────────────────────────────────────────
+
+export interface TMDBImage {
+  aspect_ratio: number;
+  height: number;
+  iso_639_1: string | null;
+  file_path: string;
+  vote_average: number;
+  vote_count: number;
+  width: number;
+}
+
+export interface TMDBImagesResult {
+  id: number;
+  backdrops: TMDBImage[];
+  logos: TMDBImage[];
+  posters: TMDBImage[];
+}

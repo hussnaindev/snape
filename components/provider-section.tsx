@@ -124,9 +124,13 @@ interface ProviderSectionProps {
   brandColor: string;
   movies: TMDBMovie[];
   series: TMDBSeries[];
+  logoUrl?: string | null | undefined;
 }
 
-export function ProviderSection({ providerKey, label, assetPath, brandColor, movies, series }: ProviderSectionProps) {
+export const PROVIDER_HERO_ID: Record<PreferredProviderKey, number> = HERO_ID;
+export const PROVIDER_HERO_TYPE: Record<PreferredProviderKey, 'Series' | 'Movie'> = HERO_TYPE;
+
+export function ProviderSection({ providerKey, label, assetPath, brandColor, movies, series, logoUrl }: ProviderSectionProps) {
   const items: MediaItem[] = [
     ...movies
       .filter((m) => m.poster_path)
@@ -198,9 +202,21 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
             />
           </div>
 
-          <p className="text-base sm:text-3xl font-itc-pioneer leading-tight max-w-[180px] sm:max-w-[340px]" style={{ color: 'black', WebkitTextStroke: `1px ${brandColor}` }}>
-            {HERO_TITLE[providerKey]}
-          </p>
+          {logoUrl ? (
+            <div className="relative w-40 sm:w-56 md:w-72 h-14 sm:h-20 md:h-24">
+              <Image
+                src={logoUrl}
+                alt={HERO_TITLE[providerKey]}
+                fill
+                sizes="(max-width: 640px) 160px, (max-width: 768px) 224px, 288px"
+                className="object-contain object-left"
+              />
+            </div>
+          ) : (
+            <p className="text-base sm:text-3xl font-itc-pioneer leading-tight max-w-[180px] sm:max-w-[340px]" style={{ color: 'black', WebkitTextStroke: `1px ${brandColor}` }}>
+              {HERO_TITLE[providerKey]}
+            </p>
+          )}
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <span

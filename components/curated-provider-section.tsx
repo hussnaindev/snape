@@ -26,6 +26,7 @@ interface CuratedProviderSectionProps {
   brandColor: string;
   mediaType: 'movie' | 'series';
   movies: TMDBMovie[] | TMDBSeries[];
+  logoUrl?: string | null | undefined;
 }
 
 function itemTitle(m: TMDBMovie | TMDBSeries): string {
@@ -36,7 +37,7 @@ function itemDate(m: TMDBMovie | TMDBSeries): string {
   return 'release_date' in m ? m.release_date : m.first_air_date;
 }
 
-export function CuratedProviderSection({ providerKey, label, brandColor, mediaType, movies }: CuratedProviderSectionProps) {
+export function CuratedProviderSection({ providerKey, label, brandColor, mediaType, movies, logoUrl }: CuratedProviderSectionProps) {
   const sorted = [...movies]
     .filter((m) => m.poster_path)
     .sort((a, b) => b.popularity - a.popularity);
@@ -99,12 +100,24 @@ export function CuratedProviderSection({ providerKey, label, brandColor, mediaTy
                 {label}
               </p>
 
-              <p
-                className="text-base sm:text-3xl font-itc-pioneer leading-tight max-w-[180px] sm:max-w-[340px]"
-                style={{ color: 'black', WebkitTextStroke: `1px ${brandColor}` }}
-              >
-                {itemTitle(hero)}
-              </p>
+              {logoUrl ? (
+                <div className="relative w-40 sm:w-56 md:w-72 h-14 sm:h-20 md:h-24">
+                  <Image
+                    src={logoUrl}
+                    alt={itemTitle(hero)}
+                    fill
+                    sizes="(max-width: 640px) 160px, (max-width: 768px) 224px, 288px"
+                    className="object-contain object-left"
+                  />
+                </div>
+              ) : (
+                <p
+                  className="text-base sm:text-3xl font-itc-pioneer leading-tight max-w-[180px] sm:max-w-[340px]"
+                  style={{ color: 'black', WebkitTextStroke: `1px ${brandColor}` }}
+                >
+                  {itemTitle(hero)}
+                </p>
+              )}
 
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <span

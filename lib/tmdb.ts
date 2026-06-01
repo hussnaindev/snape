@@ -6,6 +6,7 @@ import type {
   TMDBCollection,
   TMDBCollectionSearchHit,
   TMDBCredits,
+  TMDBImagesResult,
   TMDBListResult,
   TMDBMovie,
   TMDBMovieDetail,
@@ -109,6 +110,14 @@ export async function getMovieDetail(id: number): Promise<TMDBMovieDetail> {
 
 export async function getMovieCredits(id: number): Promise<TMDBCredits> {
   return tmdbFetch<TMDBCredits>(`/movie/${id}/credits`);
+}
+
+export async function getMovieImages(id: number): Promise<TMDBImagesResult> {
+  return tmdbFetch<TMDBImagesResult>(`/movie/${id}/images`, { include_image_language: 'en,null' });
+}
+
+export async function getSeriesImages(id: number): Promise<TMDBImagesResult> {
+  return tmdbFetch<TMDBImagesResult>(`/tv/${id}/images`, { include_image_language: 'en,null' });
 }
 
 export async function getMovieVideos(id: number): Promise<TMDBVideosResult> {
