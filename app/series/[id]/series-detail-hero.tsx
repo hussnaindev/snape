@@ -31,6 +31,7 @@ interface Props {
   posterPath: string | null;
   backdropPath: string | null;
   name: string;
+  logoUrl?: string | null;
   tagline?: string | null;
   yearRange: string;
   numberOfSeasons: number;
@@ -58,6 +59,7 @@ export function SeriesDetailHero({
   posterPath,
   backdropPath,
   name,
+  logoUrl,
   tagline,
   yearRange,
   numberOfSeasons,
@@ -526,9 +528,21 @@ export function SeriesDetailHero({
           {/* DETAILS */}
           <div className="flex-1 min-w-0 flex flex-col justify-between">
             <div className="min-w-0">
-              <h1 className="font-chesna-grotesk text-xl md:text-4xl lg:text-5xl xl:text-6xl font-light text-white opacity-90 leading-tight line-clamp-2 uppercase tracking-[0.2em] [text-shadow:0_0_8px_rgba(255,255,255,0.15)]">
-                {name}
-              </h1>
+              {logoUrl ? (
+                <div className="relative w-48 md:w-64 lg:w-80 xl:w-96 h-16 md:h-20 lg:h-24 xl:h-28">
+                  <Image
+                    src={logoUrl}
+                    alt={name}
+                    fill
+                    sizes="(max-width: 768px) 192px, (max-width: 1024px) 256px, (max-width: 1280px) 320px, 384px"
+                    className="object-contain object-left"
+                  />
+                </div>
+              ) : (
+                <h1 className="font-chesna-grotesk text-xl md:text-4xl lg:text-5xl xl:text-6xl font-light text-white opacity-90 leading-tight line-clamp-2 uppercase tracking-[0.2em] [text-shadow:0_0_8px_rgba(255,255,255,0.15)]">
+                  {name}
+                </h1>
+              )}
 
               {tagline && (
                 <p className="hidden md:block mt-1 text-white/50 italic text-xs truncate">

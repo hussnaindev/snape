@@ -7,6 +7,7 @@ import {
   getEmbeddableTrailerKey,
   getSeriesCredits,
   getSeriesDetail,
+  getSeriesImages,
   getSeriesRecommendations,
   getSeriesSeason,
   getSeriesVideos,
@@ -58,12 +59,18 @@ export default async function SeriesPage({ params }: Props) {
   if (!series) notFound();
 
   const genreIds = series.genres.map((g) => g.id);
-  const [credits, recommendations, videos, providers] = await Promise.all([
+  const [credits, recommendations, videos, providers, images] = await Promise.all([
     getSeriesCredits(seriesId).catch(() => ({ cast: [], crew: [] })),
     getSeriesRecommendations(seriesId, genreIds).catch(() => []),
     getSeriesVideos(seriesId).catch(() => ({ results: [] })),
     getSeriesWatchProviders(seriesId).catch(() => null),
+    getSeriesImages(seriesId).catch(() => ({ id: 0, backdrops: [], logos: [], posters: [] })),
   ]);
+
+  const logoPath = images.logos.find((l) => l.iso_639_1 === 'en')?.file_path
+    ?? images.logos[0]?.file_path
+    ?? null;
+  const logoUrl = logoPath ? tmdbImage(logoPath, 'w500') : null;
 
   const trailerKey = await getEmbeddableTrailerKey(videos);
   const backdrop = tmdbImage(series.backdrop_path, 'original');
@@ -118,6 +125,7 @@ export default async function SeriesPage({ params }: Props) {
           posterPath={series.poster_path}
           backdropPath={series.backdrop_path}
           name={series.name}
+          logoUrl={logoUrl}
           tagline={series.tagline}
           yearRange={yearRange}
           numberOfSeasons={series.number_of_seasons}
