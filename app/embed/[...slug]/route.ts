@@ -140,9 +140,17 @@ export async function GET(
 
   let html = await upstream.text();
 
+  // Strip Rocket Loader and Turbopack type tokens from Peachify's scripts.
   html = html
     .replace(/\s+type="[0-9a-f]{20,}-text\/javascript"/gi, '')
     .replace(/<script\b[^>]*src="[^"]*\/cdn-cgi\/[^"]*rocket-loader[^"]*"[^>]*>\s*<\/script>/gi, '');
+
+  // CRITICAL: Peachify is a Next.js app that includes RSC scaffolding
+  // (self.__next_f.push calls). When served from our route, Next.js on the
+  // client side tries to hydrate with RSC protocol, but gets plain HTML,
+  // triggering React error #418. Strip all RSC data to prevent hydration.
+  // Be aggressive: remove the entire __next_f script block.
+  html = html.replace(/<script[^>]*>\s*self\.__next_f[^<]*<\/script>/gi, '');
 
   const origin = new URL(req.url).origin;
   const inject = buildInject(origin);
