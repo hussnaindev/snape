@@ -348,6 +348,7 @@ export function SeriesDetailHero({
           <iframe
             key={currentEmbedUrl}
             src={currentEmbedUrl}
+            referrerPolicy="no-referrer"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             allowFullScreen
             title={`${alt} — watch`}
