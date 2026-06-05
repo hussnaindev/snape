@@ -5,17 +5,18 @@ export const runtime = 'edge';
 const UPSTREAM = 'https://peachify.top';
 const ALLOWED_PATH_PREFIX = '/embed/';
 
-// Injected immediately after <head> — runs before any player script.
-// Covers all known ad-popup mechanisms:
-//   • window.open / parent.open / top.open — direct popup calls
-//   • HTMLAnchorElement.prototype.click override — catches detached <a>.click()
-//     tricks where the element is never appended to the DOM, so document-level
-//     capture listeners never see the event
-//   • document capture listener for attached anchor clicks
-//   • relative fetch/XHR paths rewritten to peachify.top so the player API works
-const HEAD_INJECT = `<base href="${UPSTREAM}/">
+// Build the injection dynamically so we can include the correct embed path.
+// history.replaceState is the critical fix: Peachify's Next.js client router
+// reads window.location on boot to know what movie/episode to load. Without
+// it the router sees our proxy path (/api/embed) and renders 404 for everything.
+function buildHeadInject(embedPath: string, embedSearch: string): string {
+  const pathAndQuery = JSON.stringify(`${embedPath}${embedSearch}`);
+  return `<base href="${UPSTREAM}/">
 <script>
 (function(){
+  // Restore the correct embed URL so Peachify's Next.js router initialises
+  // with the right route segments instead of our proxy path.
+  history.replaceState(null,'',${pathAndQuery});
   var NOOP=function(){return null;};
   window.open=NOOP;
   try{window.parent.open=NOOP;}catch(e){}
@@ -63,6 +64,7 @@ const HEAD_INJECT = `<base href="${UPSTREAM}/">
   };
 })();
 </script>`;
+}
 
 export async function GET(req: NextRequest) {
   const rawUrl = req.nextUrl.searchParams.get('url') ?? '';
@@ -100,18 +102,18 @@ export async function GET(req: NextRequest) {
 
   // Peachify is Cloudflare-hosted with Rocket Loader enabled, which rewrites
   // all <script src> type attributes to a custom token and injects a loader
-  // script. In our proxy context that loader may conflict or double-fire.
-  // Strip it: restore script types so the browser runs them directly.
+  // script. Strip it so scripts run directly without the loader.
   html = html
     .replace(/\s+type="[0-9a-f]{20,}-text\/javascript"/gi, '')
     .replace(/<script\b[^>]*src="[^"]*\/cdn-cgi\/[^"]*rocket-loader[^"]*"[^>]*>\s*<\/script>/gi, '');
 
+  const headInject = buildHeadInject(parsed.pathname, parsed.search);
   const headMatch = /<head[^>]*>/i.exec(html);
   if (headMatch !== null) {
     const pos = headMatch.index + headMatch[0].length;
-    html = `${html.slice(0, pos)}${HEAD_INJECT}${html.slice(pos)}`;
+    html = `${html.slice(0, pos)}${headInject}${html.slice(pos)}`;
   } else {
-    html = HEAD_INJECT + html;
+    html = headInject + html;
   }
 
   return new NextResponse(html, {
