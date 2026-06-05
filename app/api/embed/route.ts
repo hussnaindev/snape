@@ -5,24 +5,42 @@ export const runtime = 'edge';
 const UPSTREAM = 'https://peachify.top';
 const ALLOWED_PATH_PREFIX = '/embed/';
 
-// Injected immediately after <head> — runs before any player script:
-//   1. <base href> makes relative HTML asset URLs (img, link) resolve to peachify.top
-//   2. window.open override kills ad popups
-//   3. fetch / XHR patches rewrite relative API paths to peachify.top
-//      (absolute URLs are already correct; they just need CORS to pass)
+// Injected immediately after <head> — runs before any player script.
+// Covers all known ad-popup mechanisms:
+//   • window.open (and parent/top variants since the proxied iframe is same-origin)
+//   • <a target="_blank"> clicks, including programmatic el.click() tricks
+//   • relative fetch/XHR paths rewritten to peachify.top so the player API works
 const HEAD_INJECT = `<base href="${UPSTREAM}/">
 <script>
 (function(){
-  window.open=function(){return null;};
+  var NOOP=function(){return null;};
+  // Kill window.open on this frame and any accessible ancestor
+  window.open=NOOP;
+  try{window.parent.open=NOOP;}catch(e){}
+  try{window.top.open=NOOP;}catch(e){}
+  // Block target!=_self anchor navigations in capture phase so we run
+  // before ad listeners and before the browser acts on the link
+  document.addEventListener('click',function(e){
+    var el=e.target;
+    for(var i=0;i<10&&el&&el!==document;i++,el=el.parentElement){
+      if(el.nodeName==='A'){
+        var t=el.getAttribute('target')||'';
+        if(t&&t!=='_self'){e.preventDefault();e.stopImmediatePropagation();}
+        break;
+      }
+    }
+  },true);
+  // Rewrite relative fetch/XHR paths so the player API resolves correctly
+  var B='${UPSTREAM}';
   var _f=window.fetch;
   window.fetch=function(u,o){
-    if(typeof u==='string'&&u.startsWith('/'))u='${UPSTREAM}'+u;
+    if(typeof u==='string'&&u[0]==='/')u=B+u;
     return _f.call(this,u,o);
   };
-  var _x=XMLHttpRequest.prototype.open;
+  var _xo=XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open=function(m,u){
-    if(typeof u==='string'&&u.startsWith('/'))u='${UPSTREAM}'+u;
-    return _x.apply(this,arguments);
+    if(typeof u==='string'&&u[0]==='/')u=B+u;
+    return _xo.apply(this,arguments);
   };
 })();
 </script>`;
