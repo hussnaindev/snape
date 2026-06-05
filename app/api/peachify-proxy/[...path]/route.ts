@@ -4,6 +4,13 @@ export const runtime = 'edge';
 
 const UPSTREAM = 'https://peachify.top';
 
+// External proxy hosts allowed in addition to peachify.top.
+// Peachify's video-source APIs (eat-peach.sbs) lock CORS to peachify.top;
+// the browser is served from our domain and gets 403 when fetching directly.
+// rw() in the embed injection encodes these as /~eph/{hostname}/path so we
+// can proxy them server-side with Origin: https://peachify.top.
+const EPH_SUFFIXES = ['.eat-peach.sbs', '.peachify.top'];
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -17,7 +24,21 @@ export async function OPTIONS() {
 
 async function proxy(req: NextRequest, path: string[]): Promise<NextResponse> {
   const { searchParams } = req.nextUrl;
-  const upstreamUrl = new URL(`${UPSTREAM}/${path.join('/')}`);
+
+  // ~eph prefix signals an external proxy host encoded by rw() in the embed injection.
+  // Path shape: ["~eph", "{hostname}.eat-peach.sbs", ...rest]
+  let upstreamBase = UPSTREAM;
+  let upstreamPath = path;
+  if (path[0] === '~eph') {
+    const hostname = path[1] ?? '';
+    if (!EPH_SUFFIXES.some((s) => hostname.endsWith(s))) {
+      return new NextResponse('Forbidden', { status: 403 });
+    }
+    upstreamBase = `https://${hostname}`;
+    upstreamPath = path.slice(2);
+  }
+
+  const upstreamUrl = new URL(`${upstreamBase}/${upstreamPath.join('/')}`);
   for (const [k, v] of searchParams.entries()) {
     upstreamUrl.searchParams.set(k, v);
   }
@@ -29,8 +50,17 @@ async function proxy(req: NextRequest, path: string[]): Promise<NextResponse> {
     Referer: `${UPSTREAM}/`,
   };
 
-  const contentType = req.headers.get('content-type');
-  if (contentType) forwardHeaders['Content-Type'] = contentType;
+  // Forward Next.js RSC protocol headers so RSC refetch requests work correctly
+  // when Next.js router makes them during hydration or client-side navigation.
+  const FORWARD = [
+    'content-type', 'accept', 'accept-language', 'accept-encoding',
+    'rsc', 'next-router-state-tree', 'next-router-prefetch', 'next-url',
+    'range', 'authorization',
+  ];
+  for (const h of FORWARD) {
+    const v = req.headers.get(h);
+    if (v !== null) forwardHeaders[h] = v;
+  }
 
   const body = req.method !== 'GET' && req.method !== 'HEAD' ? await req.arrayBuffer() : undefined;
 
