@@ -43,16 +43,23 @@ const HEAD_INJECT = `<base href="${UPSTREAM}/">
       }
     }
   },true);
+  // Route ALL peachify.top fetch/XHR calls through our same-origin proxy so
+  // the browser never sees a cross-origin request (Peachify's CORS blocks them).
+  // Static assets (script src, link href) resolve via <base href> to peachify.top
+  // directly — CDN-served files are CORS-open so those don't need proxying.
   var B='${UPSTREAM}';
+  var P='/api/peachify-proxy';
+  function rw(u){
+    if(typeof u!=='string')return u;
+    if(u.startsWith(B))return P+u.slice(B.length);
+    if(u[0]==='/')return P+u;
+    return u;
+  }
   var _f=window.fetch;
-  window.fetch=function(u,o){
-    if(typeof u==='string'&&u[0]==='/')u=B+u;
-    return _f.call(this,u,o);
-  };
+  window.fetch=function(u,o){return _f.call(this,rw(u),o);};
   var _xo=XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open=function(m,u){
-    if(typeof u==='string'&&u[0]==='/')u=B+u;
-    return _xo.apply(this,arguments);
+    return _xo.apply(this,[m,rw(u)].concat(Array.prototype.slice.call(arguments,2)));
   };
 })();
 </script>`;
