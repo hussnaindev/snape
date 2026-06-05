@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
+export const runtime = 'edge';
+
 const UPSTREAM = 'https://peachify.top';
 const ALLOWED_PATH_PREFIX = '/embed/';
 
