@@ -295,7 +295,7 @@ export function MovieDetailHero({
         {playerActive && (
           <iframe
             src={embedUrl}
-            referrerPolicy="no-referrer"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-pointer-lock allow-orientation-lock"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             allowFullScreen
             title={`${alt} — watch`}
