@@ -7,30 +7,42 @@ const ALLOWED_PATH_PREFIX = '/embed/';
 
 // Injected immediately after <head> — runs before any player script.
 // Covers all known ad-popup mechanisms:
-//   • window.open (and parent/top variants since the proxied iframe is same-origin)
-//   • <a target="_blank"> clicks, including programmatic el.click() tricks
+//   • window.open / parent.open / top.open — direct popup calls
+//   • HTMLAnchorElement.prototype.click override — catches detached <a>.click()
+//     tricks where the element is never appended to the DOM, so document-level
+//     capture listeners never see the event
+//   • document capture listener for attached anchor clicks
 //   • relative fetch/XHR paths rewritten to peachify.top so the player API works
 const HEAD_INJECT = `<base href="${UPSTREAM}/">
 <script>
 (function(){
   var NOOP=function(){return null;};
-  // Kill window.open on this frame and any accessible ancestor
   window.open=NOOP;
   try{window.parent.open=NOOP;}catch(e){}
   try{window.top.open=NOOP;}catch(e){}
-  // Block target!=_self anchor navigations in capture phase so we run
-  // before ad listeners and before the browser acts on the link
+  // Patch HTMLAnchorElement.prototype.click — the most common ad bypass:
+  // create a detached <a target="_blank">, never append it, call .click().
+  // Document-level listeners never fire for detached elements.
+  var _ac=HTMLAnchorElement.prototype.click;
+  HTMLAnchorElement.prototype.click=function(){
+    var t=this.getAttribute('target')||'';
+    if(t&&t!=='_self'&&t!=='_top'&&t!=='_parent')return;
+    return _ac.call(this);
+  };
+  // Capture-phase block for attached anchor navigations
   document.addEventListener('click',function(e){
     var el=e.target;
     for(var i=0;i<10&&el&&el!==document;i++,el=el.parentElement){
       if(el.nodeName==='A'){
         var t=el.getAttribute('target')||'';
-        if(t&&t!=='_self'){e.preventDefault();e.stopImmediatePropagation();}
+        if(t&&t!=='_self'&&t!=='_top'&&t!=='_parent'){
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        }
         break;
       }
     }
   },true);
-  // Rewrite relative fetch/XHR paths so the player API resolves correctly
   var B='${UPSTREAM}';
   var _f=window.fetch;
   window.fetch=function(u,o){
@@ -79,6 +91,14 @@ export async function GET(req: NextRequest) {
 
   let html = await upstream.text();
 
+  // Peachify is Cloudflare-hosted with Rocket Loader enabled, which rewrites
+  // all <script src> type attributes to a custom token and injects a loader
+  // script. In our proxy context that loader may conflict or double-fire.
+  // Strip it: restore script types so the browser runs them directly.
+  html = html
+    .replace(/\s+type="[0-9a-f]{20,}-text\/javascript"/gi, '')
+    .replace(/<script\b[^>]*src="[^"]*\/cdn-cgi\/[^"]*rocket-loader[^"]*"[^>]*>\s*<\/script>/gi, '');
+
   const headMatch = /<head[^>]*>/i.exec(html);
   if (headMatch !== null) {
     const pos = headMatch.index + headMatch[0].length;
@@ -90,7 +110,9 @@ export async function GET(req: NextRequest) {
   return new NextResponse(html, {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'no-store',
+      // no-transform: prevent Cloudflare Pages from applying its own Rocket
+      // Loader on top of the already-stripped upstream HTML
+      'Cache-Control': 'no-store, no-transform',
     },
   });
 }
