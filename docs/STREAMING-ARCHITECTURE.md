@@ -218,18 +218,57 @@ Symptoms → likely cause → fix:
 - **Media 502 / stalls** → the unwrapped CDN token (`?t=`/`?sign=`) expired, or
   that CDN rate-limited the egress IP. The player auto-advances to the next
   source; mp4 (hakunaymatata) is generally more reliable than HLS (goodstream).
-- **Refreshing Peachify internals**: the values to update all live at the top of
-  `netlify/functions/extract.mjs` — `AES_KEY_HEX`, `PROVIDERS`, `REFERER`. A
-  future "refresh script" should scrape Peachify's player bundle for the new
-  values and patch that file.
+### Refreshing Peachify internals (key / providers rotated) — RUNBOOK
 
-### How the Peachify values were originally extracted
+The values that go stale all live at the **top of `netlify/functions/extract.mjs`**:
+`AES_KEY_HEX`, `PROVIDERS`, `REFERER`. There's a script that detects and verifies
+the current ones automatically:
+
+```bash
+# 1. Detect + verify (prints the live key & providers, confirms by decrypting
+#    a real payload). The verify step calls the IP-blocked source API, so either
+#    run from a residential connection OR pass the proxy list:
+PROXY_LIST="host:port:user:pass,host:port:user:pass" node scripts/refresh-peachify.mjs
+
+# 2. If it prints "✅ Confirmed", patch extract.mjs automatically:
+PROXY_LIST="…" node scripts/refresh-peachify.mjs --write
+
+# 3. Commit, push, and redeploy the Netlify function.
+git add netlify/functions/extract.mjs && git commit -m "Refresh Peachify key/providers" && git push
+```
+
+What the script does: fetches the embed page (`/embed/movie/1022789`), pulls all
+`/_next/static/chunks/*.js` (CDN-served, never IP-blocked), extracts the
+`{label,path,apis:[…]}` provider array and every 64-hex string literal (key
+candidates), then **fetches a real source payload and tries each candidate key**
+— the one that decrypts to valid `{sources}` is the confirmed key. `--write`
+rewrites the `AES_KEY_HEX` line and the `PROVIDERS` array in `extract.mjs`.
+
+**If the script fails** (e.g. "None of the candidate keys decrypted" or "Could
+not locate providers"), Peachify changed more than the key — the decrypt *scheme*
+itself moved. Do it manually (see below), then update both `extract.mjs` and the
+mirrored decrypt in `scripts/refresh-peachify.mjs`.
+
+### Manual extraction (when the script can't auto-detect)
 From the player JS bundle (`peachify.top/_next/static/chunks/*.js`):
-- AES key: literal passed to the decrypt call (`dD(o.data, "<hex>")`).
-- Providers: the `ee=[{label,path,apis:[…]}]` array.
-- Decrypt routine: functions `dD` (AES-GCM), `dC` (base64url), `dP` (import key).
-- Source/CDN shape: function `dF` builds `{api}/{path}/{type}/{id}` and the
-  `mp4-proxy`/`m3u8-proxy` wrappers embed `url` + `headers`.
+- **AES key**: the 64-hex literal passed to the decrypt call (`dD(o.data, "<hex>")`).
+- **Providers**: the `ee=[{label,path,apis:[…]}]` array.
+- **Decrypt routine**: functions `dD` (AES-GCM), `dC` (base64url), `dP` (importKey).
+  If these change shape, update `decrypt()`/`b64urlToBytes()` in `extract.mjs`
+  (and the mirror in `refresh-peachify.mjs`).
+- **Source/CDN shape**: function `dF` builds `{api}/{path}/{type}/{id}` and the
+  `mp4-proxy`/`m3u8-proxy` wrappers embed `url` + `headers` (handled by
+  `unwrap()` in `extract.mjs`).
+
+### When the proxy IPs get blocked (not the key)
+Symptom: Netlify function returns `{ ok:false, debug:{ "Iron":403,… } }`. The
+source API is up but rejecting the proxy's IPs. Fix: get fresh residential
+proxies and update the **`PROXY_LIST`** env var on Netlify (and redeploy). No
+code change needed. Verify a single proxy quickly:
+```bash
+curl -s -x "http://user:pass@host:port" "https://usa.eat-peach.sbs/multi/movie/1022789" \
+  -H "Referer: https://peachify.top/" -o /dev/null -w "%{http_code}\n"   # want 200
+```
 
 ---
 
