@@ -59,6 +59,14 @@ types/
 middleware.ts           Edge middleware (auth, redirects)
 ```
 
+## Streaming / Player
+
+Playback uses a custom ad-free player that extracts stream URLs from Peachify's
+backend (no iframe). The pipeline is split across Cloudflare (app + media proxy)
+and a Netlify function (extraction via a residential proxy, because the source
+API blocks datacenter IPs). **Before changing anything player-related, read
+[docs/STREAMING-ARCHITECTURE.md](./docs/STREAMING-ARCHITECTURE.md).**
+
 ## API Conventions
 
 All route handlers return a consistent envelope:

@@ -1,3 +1,8 @@
+> ⚠️ **LEGACY.** This documents the old `peachify.top` iframe embed, which we no
+> longer use (it injected unremovable ads). The app now extracts stream URLs and
+> plays them in its own player — see **[STREAMING-ARCHITECTURE.md](./STREAMING-ARCHITECTURE.md)**.
+> Kept only as a reference for Peachify's iframe params / postMessage API.
+
 # Peachify Player Integration
 
 ## 1. Base URL
