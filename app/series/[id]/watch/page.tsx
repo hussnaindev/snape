@@ -55,6 +55,7 @@ export default async function SeriesWatchPage({ params, searchParams }: Props) {
           tmdbId={seriesId}
           season={resolvedSeasonNum}
           episode={resolvedEpisodeNum}
+          title={series.name}
           className="w-full h-full"
         />
       </div>

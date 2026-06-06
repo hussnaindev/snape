@@ -29,7 +29,12 @@ export default async function WatchPage({ params }: Props) {
   return (
     <div className="fixed inset-0 bg-black">
       <div className="absolute inset-0 player-safe-area">
-        <PeachifyPlayer type="movie" tmdbId={movieId} className="w-full h-full" />
+        <PeachifyPlayer
+          type="movie"
+          tmdbId={movieId}
+          {...(movie?.title ? { title: movie.title } : {})}
+          className="w-full h-full"
+        />
       </div>
 
       {/* Back button (top-left) + fullscreen toggle (top-right, mobile only).

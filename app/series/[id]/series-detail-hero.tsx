@@ -327,7 +327,7 @@ export function SeriesDetailHero({
           )}
         </div>
 
-        {embedYtUrl && showVideo && (
+        {embedYtUrl && showVideo && !playerActive && (
           <iframe
             ref={iframeRef}
             src={embedYtUrl}
@@ -347,6 +347,7 @@ export function SeriesDetailHero({
             tmdbId={seriesId}
             season={currentSeason}
             episode={currentEpisode}
+            title={name}
             className={cn(
               'absolute inset-0 w-full h-full transition-opacity duration-700',
               playerVisible ? 'opacity-100' : 'opacity-0',

@@ -276,8 +276,9 @@ export function MovieDetailHero({
           )}
         </div>
 
-        {/* YouTube trailer — hidden (not unmounted) when player is active */}
-        {embedYtUrl && showVideo && (
+        {/* YouTube trailer — UNMOUNTED when the player is active so it can't
+            keep playing audio in the background. */}
+        {embedYtUrl && showVideo && !playerActive && (
           <iframe
             ref={iframeRef}
             src={embedYtUrl}
@@ -295,6 +296,7 @@ export function MovieDetailHero({
           <PeachifyPlayer
             type="movie"
             tmdbId={movieId}
+            title={title}
             className={cn(
               'absolute inset-0 w-full h-full transition-opacity duration-700',
               playerVisible ? 'opacity-100' : 'opacity-0',
