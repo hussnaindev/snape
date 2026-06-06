@@ -6,5 +6,11 @@
   publish = "netlify/public"
   functions = "netlify/functions"
 
+[build.environment]
+  # This repo contains a Next.js app (deployed on Cloudflare), but on Netlify
+  # we only want the extraction function. Skip Netlify's auto-injected Next.js
+  # plugin so it doesn't look for Next build output and fail.
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
+
 [functions]
   node_bundler = "esbuild"
