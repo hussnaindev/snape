@@ -1,0 +1,10 @@
+# Netlify config — deploys ONLY the extraction function (not the Next.js app,
+# which lives on Cloudflare Pages). The function runs on AWS Lambda egress IPs
+# to reach eat-peach.sbs, which blocks Cloudflare's IPs.
+[build]
+  command = "echo 'functions-only deploy'"
+  publish = "netlify/public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
