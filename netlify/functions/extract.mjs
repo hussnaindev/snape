@@ -138,21 +138,44 @@ async function signedMediaUrl(absoluteUrl, headers) {
 }
 
 // ---- provider fetch -----------------------------------------------------
+// Per-attempt timeout and attempt count are tuned so the worst case
+// (ATTEMPTS × TIMEOUT) stays under Netlify's 10s function limit, even with a
+// cold start. Providers run in parallel, so total time ≈ the slowest provider.
+const ATTEMPTS = 2;
+const ATTEMPT_TIMEOUT_MS = 3500;
+
 async function fetchProvider(p, type, id, season, episode) {
   let url = `${p.api}/${p.path}/${type}/${id}`;
   if (type === 'tv') url += `/${season}/${episode}`;
-  try {
-    const res = await uFetch(url, {
-      headers: { Referer: REFERER, 'User-Agent': UA },
-      dispatcher: pickProxyAgent(),
-    });
-    if (!res.ok) return { status: res.status, raw: null };
-    let json = await res.json();
-    if (json.isEncrypted) json = await decrypt(json.data);
-    return { status: 200, raw: json };
-  } catch (e) {
-    return { status: e instanceof Error ? e.message : String(e), raw: null };
+
+  let lastStatus = 'fail';
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    // A fresh (random) proxy each attempt so a single bad/slow/blocked proxy
+    // can't make a provider that HAS the title look empty.
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), ATTEMPT_TIMEOUT_MS);
+    try {
+      const res = await uFetch(url, {
+        headers: { Referer: REFERER, 'User-Agent': UA },
+        dispatcher: pickProxyAgent(),
+        signal: ac.signal,
+      });
+      clearTimeout(timer);
+      if (!res.ok) {
+        // 403/429/5xx are typically proxy-side (blocked/rate-limited) → retry
+        // with a different proxy. A genuine "no sources" is 200 + empty list.
+        lastStatus = res.status;
+        continue;
+      }
+      let json = await res.json();
+      if (json.isEncrypted) json = await decrypt(json.data);
+      return { status: 200, raw: json };
+    } catch (e) {
+      clearTimeout(timer);
+      lastStatus = e?.name === 'AbortError' ? 'timeout' : e instanceof Error ? e.message : String(e);
+    }
   }
+  return { status: lastStatus, raw: null };
 }
 
 export default async (req) => {
