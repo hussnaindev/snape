@@ -15,7 +15,7 @@
 # 1. Install dependencies
 bun install
 
-# 2. Set up environment
+# 2. Set up env
 cp .env.example .env.local
 # Edit .env.local and fill in your values
 
