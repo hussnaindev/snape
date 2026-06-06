@@ -205,8 +205,10 @@ export default async (req) => {
   const sources = await Promise.all(
     rawSources.map(async ({ headers, ...s }) => ({ ...s, url: await signedMediaUrl(s.url, headers) })),
   );
+  // `&sub=1` tells the media proxy to normalize the body to WebVTT (browsers
+  // ignore SRT in <track>). It's outside the signed payload — just a render hint.
   const subtitles = await Promise.all(
-    rawSubs.map(async (s) => ({ ...s, url: await signedMediaUrl(s.url) })),
+    rawSubs.map(async (s) => ({ ...s, url: `${await signedMediaUrl(s.url)}&sub=1` })),
   );
 
   return new Response(JSON.stringify({ ok: true, data: { sources, subtitles } }), {

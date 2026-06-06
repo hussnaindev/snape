@@ -30,6 +30,16 @@ function looksLikeManifest(url: string, contentType: string | null): boolean {
   return /\.m3u8(\?|$)/i.test(url);
 }
 
+// Convert SubRip (SRT) to WebVTT — browsers only render VTT in <track>.
+function srtToVtt(input: string): string {
+  const body = input
+    .replace(/^﻿/, '')
+    .replace(/\r\n/g, '\n')
+    // SRT cue timestamps use a comma for millis; VTT uses a dot.
+    .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+  return `WEBVTT\n\n${body}`;
+}
+
 /**
  * Rewrite every URI in an HLS manifest so segments, keys, sub-playlists and
  * maps are fetched back through this proxy (resolved to absolute against the
@@ -113,6 +123,16 @@ export async function GET(req: NextRequest) {
   }
 
   const contentType = res.headers.get('content-type');
+
+  // Subtitle: normalize to WebVTT so <track> renders it.
+  if (req.nextUrl.searchParams.get('sub') === '1') {
+    const text = await res.text();
+    const vtt = /-->/.test(text) && !/^\s*WEBVTT/.test(text) ? srtToVtt(text) : text;
+    return new NextResponse(vtt, {
+      status: res.status === 206 ? 200 : res.status,
+      headers: { ...CORS, 'Content-Type': 'text/vtt; charset=utf-8', 'Cache-Control': 'no-store' },
+    });
+  }
 
   // HLS manifest: buffer + rewrite (and sign) child URIs through the proxy.
   if (looksLikeManifest(target.toString(), contentType)) {
