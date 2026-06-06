@@ -13,7 +13,6 @@ import {
   getMovieWatchProviders,
 } from '@/lib/tmdb';
 import { tmdbImage } from '@/lib/tmdb-image';
-import { getMovieEmbedUrl } from '@/lib/vsembed';
 import { pickPreferredProvidersWithFallback } from '@/lib/watch-providers';
 
 import { ParallaxContent } from '@/components/parallax-content';
@@ -67,7 +66,6 @@ export default async function MoviePage({ params }: Props) {
     : null;
 
   const preferredProviders = pickPreferredProvidersWithFallback(providers?.results, country);
-  const embedUrl = getMovieEmbedUrl(movieId);
 
   const logoPath = images.logos.find((l) => l.iso_639_1 === 'en')?.file_path
     ?? images.logos[0]?.file_path
@@ -81,7 +79,6 @@ export default async function MoviePage({ params }: Props) {
           backdropUrl={backdrop}
           trailerKey={trailerKey}
           alt={movie.title}
-          embedUrl={embedUrl}
           movieId={movieId}
           poster={poster}
           posterPath={movie.poster_path}

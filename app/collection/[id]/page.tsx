@@ -2,7 +2,6 @@ import { MovieCard } from '@/components/movie-card';
 import { APP_NAME } from '@/lib/config';
 import { getCollection } from '@/lib/tmdb';
 import { tmdbImage } from '@/lib/tmdb-image';
-import { getMovieEmbedUrl } from '@/lib/vsembed';
 import type { Metadata } from 'next';
 
 import { ParallaxContent } from '@/components/parallax-content';
@@ -82,7 +81,6 @@ export default async function CollectionPage({ params }: Props) {
     .map((id) => GENRE_MAP[id] ?? 'Unknown');
 
   const firstMovie = collection.parts[0] ?? null;
-  const embedUrl = firstMovie ? getMovieEmbedUrl(firstMovie.id) : null;
 
   return (
     <>
@@ -93,7 +91,6 @@ export default async function CollectionPage({ params }: Props) {
           poster={poster}
           yearRange={yearRange}
           genres={genres}
-          embedUrl={embedUrl}
           firstMovieId={firstMovie?.id ?? null}
           firstMoviePosterPath={firstMovie?.poster_path ?? null}
           firstMovieBackdropPath={firstMovie?.backdrop_path ?? null}

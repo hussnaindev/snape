@@ -1,9 +1,9 @@
 import type { Viewport } from 'next';
 import { notFound } from 'next/navigation';
 
+import { PeachifyPlayer } from '@/components/peachify-player';
 import { WatchHistoryRecorder } from '@/components/watch-history-recorder';
 import { getSeriesDetail, getSeriesSeason } from '@/lib/tmdb';
-import { getSeriesEmbedUrl } from '@/lib/vsembed';
 
 import { EpisodePanel } from './episode-panel';
 import { WatchControls } from './watch-controls';
@@ -46,19 +46,16 @@ export default async function SeriesWatchPage({ params, searchParams }: Props) {
   const maxEpisode = resolvedSeason?.episodes.length ?? episodeNum;
   const resolvedEpisodeNum = Math.min(Math.max(1, episodeNum), maxEpisode);
 
-  const embedUrl = getSeriesEmbedUrl(seriesId, resolvedSeasonNum, resolvedEpisodeNum);
-
   return (
     <div className="fixed inset-0 bg-black">
       <div className="absolute inset-0 player-safe-area">
-        <iframe
-          key={embedUrl}
-          src={embedUrl}
+        <PeachifyPlayer
+          key={`${resolvedSeasonNum}-${resolvedEpisodeNum}`}
+          type="tv"
+          tmdbId={seriesId}
+          season={resolvedSeasonNum}
+          episode={resolvedEpisodeNum}
           className="w-full h-full"
-          allowFullScreen
-          allow="autoplay; fullscreen; accelerometer; gyroscope; picture-in-picture"
-          sandbox="allow-scripts allow-same-origin allow-presentation allow-fullscreen"
-          title="Video player"
         />
       </div>
 

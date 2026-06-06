@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { usePlayerControls } from '@/lib/player-controls-context';
 
+import { PeachifyPlayer } from '@/components/peachify-player';
 import { ExpandableText } from '@/components/ui/expandable-text';
 import { RatingBadge } from '@/components/ui/rating-badge';
 import { TagChip } from '@/components/ui/tag-chip';
@@ -21,7 +22,6 @@ interface Props {
   backdropUrl: string;
   trailerKey: string | null;
   alt: string;
-  embedUrl: string;
   movieId: number;
   poster: string;
   posterPath: string | null;
@@ -41,7 +41,6 @@ export function MovieDetailHero({
   backdropUrl,
   trailerKey,
   alt,
-  embedUrl,
   movieId,
   poster,
   posterPath,
@@ -291,13 +290,11 @@ export function MovieDetailHero({
           />
         )}
 
-        {/* peachify inline player */}
+        {/* extracted-source player */}
         {playerActive && (
-          <iframe
-            src={embedUrl}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-            allowFullScreen
-            title={`${alt} — watch`}
+          <PeachifyPlayer
+            type="movie"
+            tmdbId={movieId}
             className={cn(
               'absolute inset-0 w-full h-full transition-opacity duration-700',
               playerVisible ? 'opacity-100' : 'opacity-0',

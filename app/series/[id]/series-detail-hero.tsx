@@ -6,7 +6,6 @@ import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { usePlayerControls } from '@/lib/player-controls-context';
-import { getSeriesEmbedUrl } from '@/lib/vsembed';
 
 import { ExpandableText } from '@/components/ui/expandable-text';
 import { RatingBadge } from '@/components/ui/rating-badge';
@@ -19,13 +18,14 @@ import { cn } from '@/lib/utils';
 import type { PreferredProviderKey } from '@/lib/watch-providers';
 import type { TMDBSeason, TMDBSeasonSummary } from '@/types/tmdb';
 
+import { PeachifyPlayer } from '@/components/peachify-player';
+
 import { EpisodeGuide } from './episode-guide';
 
 interface Props {
   backdropUrl: string;
   trailerKey: string | null;
   alt: string;
-  embedUrl: string;
   seriesId: number;
   poster: string;
   posterPath: string | null;
@@ -53,7 +53,6 @@ export function SeriesDetailHero({
   backdropUrl,
   trailerKey,
   alt,
-  embedUrl,
   seriesId,
   poster,
   posterPath,
@@ -80,7 +79,6 @@ export function SeriesDetailHero({
   const [playerVisible, setPlayerVisible] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [episodePanelOpen, setEpisodePanelOpen] = useState(false);
-  const [currentEmbedUrl, setCurrentEmbedUrl] = useState(embedUrl);
   const [currentSeason, setCurrentSeason] = useState(firstEpisodeSeason);
   const [currentEpisode, setCurrentEpisode] = useState(firstEpisodeNumber);
   const { setControls } = usePlayerControls();
@@ -102,7 +100,6 @@ export function SeriesDetailHero({
       if (s > 0 && e > 0) {
         setCurrentSeason(s);
         setCurrentEpisode(e);
-        setCurrentEmbedUrl(getSeriesEmbedUrl(seriesId, s, e));
       }
       setPlayerActive(true);
       setTimeout(() => {
@@ -245,13 +242,12 @@ export function SeriesDetailHero({
 
   const handleEpisodeSelect = useCallback(
     (season: number, episode: number) => {
-      setCurrentEmbedUrl(getSeriesEmbedUrl(seriesId, season, episode));
       setCurrentSeason(season);
       setCurrentEpisode(episode);
       setPlayerActive(true);
       setEpisodePanelOpen(false);
     },
-    [seriesId],
+    [],
   );
 
   useEffect(() => {
@@ -345,12 +341,12 @@ export function SeriesDetailHero({
         )}
 
         {playerActive && (
-          <iframe
-            key={currentEmbedUrl}
-            src={currentEmbedUrl}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-            allowFullScreen
-            title={`${alt} — watch`}
+          <PeachifyPlayer
+            key={`${currentSeason}-${currentEpisode}`}
+            type="tv"
+            tmdbId={seriesId}
+            season={currentSeason}
+            episode={currentEpisode}
             className={cn(
               'absolute inset-0 w-full h-full transition-opacity duration-700',
               playerVisible ? 'opacity-100' : 'opacity-0',

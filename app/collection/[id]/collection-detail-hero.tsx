@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePlayerControls } from '@/lib/player-controls-context';
 
 import { AddCollectionToWatchlistButton } from '@/components/add-collection-to-watchlist-button';
+import { PeachifyPlayer } from '@/components/peachify-player';
 import { ExpandableText } from '@/components/ui/expandable-text';
 import { TagChip } from '@/components/ui/tag-chip';
 import { WatchHistoryRecorder } from '@/components/watch-history-recorder';
@@ -20,7 +21,6 @@ interface Props {
   poster: string;
   yearRange: string;
   genres: string[];
-  embedUrl: string | null;
   firstMovieId: number | null;
   firstMoviePosterPath: string | null;
   firstMovieBackdropPath: string | null;
@@ -35,7 +35,6 @@ export function CollectionDetailHero({
   poster,
   yearRange,
   genres,
-  embedUrl,
   firstMovieId,
   firstMoviePosterPath,
   firstMovieBackdropPath,
@@ -158,12 +157,10 @@ export function CollectionDetailHero({
           )}
         </div>
 
-        {playerActive && embedUrl && (
-          <iframe
-            src={embedUrl}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-            allowFullScreen
-            title={`${collection.name} — watch`}
+        {playerActive && firstMovieId && (
+          <PeachifyPlayer
+            type="movie"
+            tmdbId={firstMovieId}
             className={cn(
               'absolute inset-0 w-full h-full transition-opacity duration-700',
               playerVisible ? 'opacity-100' : 'opacity-0',
@@ -280,7 +277,7 @@ export function CollectionDetailHero({
             </div>
 
             <div className="pt-2 flex items-center gap-2 shrink-0">
-              {collection.parts.length > 0 && embedUrl && (
+              {collection.parts.length > 0 && firstMovieId && (
                 <>
                   <button
                     type="button"

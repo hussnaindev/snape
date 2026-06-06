@@ -14,7 +14,6 @@ import {
   getSeriesWatchProviders,
 } from '@/lib/tmdb';
 import { tmdbImage } from '@/lib/tmdb-image';
-import { getSeriesEmbedUrl } from '@/lib/vsembed';
 import { pickPreferredProvidersWithFallback } from '@/lib/watch-providers';
 
 import { ParallaxContent } from '@/components/parallax-content';
@@ -99,7 +98,6 @@ export default async function SeriesPage({ params }: Props) {
 
   const firstEpisodeSeason = firstEpisode?.season_number ?? 1;
   const firstEpisodeNumber = firstEpisode?.episode_number ?? 1;
-  const embedUrl = getSeriesEmbedUrl(seriesId, firstEpisodeSeason, firstEpisodeNumber);
 
   const statusColor = STATUS_COLORS[series.status] ?? 'text-white/40 border-white/20 bg-white/5';
 
@@ -119,7 +117,6 @@ export default async function SeriesPage({ params }: Props) {
           backdropUrl={backdrop}
           trailerKey={trailerKey}
           alt={series.name}
-          embedUrl={embedUrl}
           seriesId={seriesId}
           poster={poster}
           posterPath={series.poster_path}
