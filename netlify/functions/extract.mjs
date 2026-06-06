@@ -1,16 +1,19 @@
-// Standalone Peachify extraction function for Netlify (AWS Lambda egress).
+// Peachify extraction on Netlify (AWS Lambda) — routes the source-API calls
+// through a residential/Webshare HTTP proxy because eat-peach.sbs blocks
+// datacenter IPs (Cloudflare AND AWS). Cloudflare Workers can't use HTTP
+// proxies in fetch, so extraction lives here; media streaming stays on CF.
 //
-// Purpose: eat-peach.sbs blocks Cloudflare's egress IPs, so the source-API
-// fetch can't run on Cloudflare Pages. Netlify runs on AWS, a different ASN —
-// this function tests whether that IP range is allowed and, if so, performs the
-// extraction (fetch all providers + AES-GCM decrypt) and returns clean sources.
+// Returns sources/subtitles whose URLs are pre-signed for the Cloudflare
+// /api/media-proxy endpoint (HMAC must match lib/media-sign.ts, so the same
+// MEDIA_PROXY_SECRET must be set on both Netlify and Cloudflare).
 //
-// Deploy: connect this repo to Netlify (no build needed; it auto-detects
-// netlify/functions), or run `npx netlify deploy`. Then hit:
-//   https://<site>.netlify.app/.netlify/functions/extract?type=movie&id=1022789
+// Env vars (set in Netlify UI):
+//   PROXY_LIST          comma/newline-separated  host:port:user:pass  entries
+//   MEDIA_PROXY_SECRET  same value as on Cloudflare
 //
-// On success → { ok:true, sources:[...], subtitles:[...] }
-// On block   → { ok:false, debug:{ "<provider>": <httpStatus> } }  (403 = IP blocked)
+// GET ?type=movie&id=1022789   |   ?type=tv&id=1399&season=1&episode=1
+
+import { fetch as uFetch, ProxyAgent } from 'undici';
 
 const AES_KEY_HEX = 'a8f2a1b5e9c470814f6b2c3a5d8e7f9c1a2b3c4d5e3f7a8b8cad1e2d0a4d5c5b';
 const REFERER = 'https://peachify.top/';
@@ -25,6 +28,29 @@ const PROVIDERS = [
   { label: 'Dark', path: 'net', api: 'https://uwu.eat-peach.sbs' },
 ];
 
+// ---- proxy pool ---------------------------------------------------------
+function parseProxies() {
+  const raw = process.env.PROXY_LIST ?? '';
+  return raw
+    .split(/[\n,]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const [host, port, user, pass] = entry.split(':');
+      if (!host || !port) return null;
+      const auth = user && pass ? `${encodeURIComponent(user)}:${encodeURIComponent(pass)}@` : '';
+      return `http://${auth}${host}:${port}`;
+    })
+    .filter(Boolean);
+}
+const PROXIES = parseProxies();
+function pickProxyAgent() {
+  if (PROXIES.length === 0) return undefined;
+  const url = PROXIES[Math.floor(Math.random() * PROXIES.length)];
+  return new ProxyAgent(url);
+}
+
+// ---- crypto: decrypt source payloads ------------------------------------
 function b64urlToBytes(input) {
   const norm = input.replace(/-/g, '+').replace(/_/g, '/');
   const pad = norm.length % 4 === 0 ? '' : '='.repeat(4 - (norm.length % 4));
@@ -48,6 +74,7 @@ async function decrypt(data) {
   return JSON.parse(new TextDecoder().decode(plain));
 }
 
+// ---- unwrap proxy layers to the real CDN URL + required headers ----------
 function unwrap(rawUrl) {
   let url = rawUrl;
   const headers = {};
@@ -74,6 +101,60 @@ function unwrap(rawUrl) {
   return { url, headers };
 }
 
+// ---- media-proxy signing (MUST match lib/media-sign.ts) -----------------
+const SECRET = process.env.MEDIA_PROXY_SECRET ?? 'snape-media-proxy-dev-secret';
+let signKey;
+async function getSignKey() {
+  if (!signKey) {
+    signKey = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(SECRET),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign'],
+    );
+  }
+  return signKey;
+}
+function pickHeaders(h) {
+  const out = {};
+  for (const k of ['referer', 'origin', 'user-agent']) {
+    const v = h?.[k] ?? h?.[k.toLowerCase()];
+    if (typeof v === 'string' && v) out[k] = v;
+  }
+  return out;
+}
+function encodeHeaders(h) {
+  const picked = pickHeaders(h);
+  return Object.keys(picked).length ? btoa(JSON.stringify(picked)) : '';
+}
+async function signedMediaUrl(absoluteUrl, headers) {
+  const h = encodeHeaders(headers);
+  const key = await getSignKey();
+  const sigBuf = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${absoluteUrl}\n${h}`));
+  const sig = [...new Uint8Array(sigBuf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const hParam = h ? `&h=${encodeURIComponent(h)}` : '';
+  return `/api/media-proxy?u=${encodeURIComponent(absoluteUrl)}${hParam}&s=${sig}`;
+}
+
+// ---- provider fetch -----------------------------------------------------
+async function fetchProvider(p, type, id, season, episode) {
+  let url = `${p.api}/${p.path}/${type}/${id}`;
+  if (type === 'tv') url += `/${season}/${episode}`;
+  try {
+    const res = await uFetch(url, {
+      headers: { Referer: REFERER, 'User-Agent': UA },
+      dispatcher: pickProxyAgent(),
+    });
+    if (!res.ok) return { status: res.status, raw: null };
+    let json = await res.json();
+    if (json.isEncrypted) json = await decrypt(json.data);
+    return { status: 200, raw: json };
+  } catch (e) {
+    return { status: e instanceof Error ? e.message : String(e), raw: null };
+  }
+}
+
 export default async (req) => {
   const sp = new URL(req.url).searchParams;
   const type = sp.get('type') === 'tv' ? 'tv' : 'movie';
@@ -81,51 +162,59 @@ export default async (req) => {
   const season = sp.get('season');
   const episode = sp.get('episode');
 
+  if (!id) {
+    return Response.json({ ok: false, error: 'missing id' }, { status: 400 });
+  }
+
+  const results = await Promise.all(PROVIDERS.map((p) => fetchProvider(p, type, id, season, episode)));
+
   const debug = {};
-  const sources = [];
-  let subtitles = [];
+  const rawSources = [];
+  let rawSubs = [];
+  results.forEach((r, i) => {
+    debug[PROVIDERS[i].label] = r.status;
+    if (!r.raw) return;
+    for (const s of r.raw.sources ?? []) {
+      if (typeof s.url !== 'string') continue;
+      const { url, headers } = unwrap(s.url);
+      rawSources.push({
+        type: s.type === 'hls' ? 'hls' : 'mp4',
+        url,
+        headers,
+        quality: typeof s.quality === 'number' ? s.quality : null,
+        dub: typeof s.dub === 'string' ? s.dub : null,
+        provider: PROVIDERS[i].label,
+      });
+    }
+    if (rawSubs.length === 0 && Array.isArray(r.raw.subtitles)) {
+      rawSubs = r.raw.subtitles
+        .filter((s) => typeof s.url === 'string')
+        .map((s) => ({ url: s.url, label: s.label ?? s.language ?? null, lang: s.language ?? s.lang ?? null }));
+    }
+  });
 
-  await Promise.all(
-    PROVIDERS.map(async (p) => {
-      let url = `${p.api}/${p.path}/${type}/${id}`;
-      if (type === 'tv') url += `/${season}/${episode}`;
-      try {
-        const res = await fetch(url, { headers: { Referer: REFERER, 'User-Agent': UA } });
-        debug[p.label] = res.status;
-        if (!res.ok) return;
-        let json = await res.json();
-        if (json.isEncrypted) json = await decrypt(json.data);
-        for (const s of json.sources ?? []) {
-          if (typeof s.url !== 'string') continue;
-          const { url: real, headers } = unwrap(s.url);
-          sources.push({
-            type: s.type === 'hls' ? 'hls' : 'mp4',
-            url: real,
-            headers,
-            quality: typeof s.quality === 'number' ? s.quality : null,
-            dub: typeof s.dub === 'string' ? s.dub : null,
-            provider: p.label,
-          });
-        }
-        if (subtitles.length === 0 && Array.isArray(json.subtitles)) {
-          subtitles = json.subtitles
-            .filter((s) => typeof s.url === 'string')
-            .map((s) => ({ url: s.url, label: s.label ?? s.language ?? null, lang: s.language ?? s.lang ?? null }));
-        }
-      } catch (e) {
-        debug[p.label] = e instanceof Error ? e.message : String(e);
-      }
-    }),
-  );
+  if (rawSources.length === 0) {
+    return Response.json({ ok: false, error: 'No sources found', debug }, { status: 502 });
+  }
 
-  sources.sort((a, b) => {
+  rawSources.sort((a, b) => {
     if (a.type !== b.type) return a.type === 'mp4' ? -1 : 1;
     return (b.quality ?? 0) - (a.quality ?? 0);
   });
 
-  const body = sources.length ? { ok: true, sources, subtitles } : { ok: false, debug };
-  return new Response(JSON.stringify(body), {
-    status: sources.length ? 200 : 502,
-    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+  const sources = await Promise.all(
+    rawSources.map(async ({ headers, ...s }) => ({ ...s, url: await signedMediaUrl(s.url, headers) })),
+  );
+  const subtitles = await Promise.all(
+    rawSubs.map(async (s) => ({ ...s, url: await signedMediaUrl(s.url) })),
+  );
+
+  return new Response(JSON.stringify({ ok: true, data: { sources, subtitles } }), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 's-maxage=300',
+    },
   });
 };

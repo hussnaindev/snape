@@ -6,9 +6,13 @@ import {
   type UpstreamHeaders,
   verifyMediaUrl,
 } from '@/lib/media-sign';
-import { PEACHIFY_REFERER, PEACHIFY_UA } from '@/lib/peachify-config';
 
 export const runtime = 'edge';
+
+// Default upstream headers when a signed URL carries none of its own.
+const PEACHIFY_REFERER = 'https://peachify.top/';
+const PEACHIFY_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',

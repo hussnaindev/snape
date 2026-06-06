@@ -1,9 +1,13 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
-import { signedMediaUrl } from '@/lib/media-sign';
-import { extractStreams } from '@/lib/peachify-extract';
-
 export const runtime = 'edge';
+
+// Extraction can't run on Cloudflare: eat-peach.sbs blocks datacenter IPs and
+// CF Workers can't route fetch through an HTTP proxy. So we delegate extraction
+// to the Netlify function (which routes eat-peach through a residential proxy)
+// and pass its already-signed media-proxy URLs straight back to the client.
+// The media itself still streams through our own /api/media-proxy (free CF egress).
+const EXTRACT_URL = process.env.NETLIFY_EXTRACT_URL;
 
 export async function GET(
   req: NextRequest,
@@ -14,48 +18,35 @@ export async function GET(
   if (type !== 'movie' && type !== 'tv') {
     return NextResponse.json({ ok: false, error: 'Invalid type', code: 400 }, { status: 400 });
   }
-  const tmdbId = Number.parseInt(id, 10);
-  if (!Number.isFinite(tmdbId)) {
-    return NextResponse.json({ ok: false, error: 'Invalid id', code: 400 }, { status: 400 });
-  }
-
-  const sp = req.nextUrl.searchParams;
-  const season = type === 'tv' ? Number.parseInt(sp.get('season') ?? '', 10) : undefined;
-  const episode = type === 'tv' ? Number.parseInt(sp.get('episode') ?? '', 10) : undefined;
-  if (type === 'tv' && (!Number.isFinite(season) || !Number.isFinite(episode))) {
+  if (!EXTRACT_URL) {
     return NextResponse.json(
-      { ok: false, error: 'season and episode required for tv', code: 400 },
-      { status: 400 },
+      { ok: false, error: 'NETLIFY_EXTRACT_URL not configured', code: 500 },
+      { status: 500 },
     );
   }
 
-  let result: Awaited<ReturnType<typeof extractStreams>>;
+  const sp = req.nextUrl.searchParams;
+  const upstream = new URL(EXTRACT_URL);
+  upstream.searchParams.set('type', type);
+  upstream.searchParams.set('id', id);
+  if (type === 'tv') {
+    upstream.searchParams.set('season', sp.get('season') ?? '');
+    upstream.searchParams.set('episode', sp.get('episode') ?? '');
+  }
+
+  let res: Response;
   try {
-    result = await extractStreams(type, tmdbId, season, episode);
+    res = await fetch(upstream.toString(), { headers: { Accept: 'application/json' } });
   } catch {
-    return NextResponse.json({ ok: false, error: 'Extraction failed', code: 502 }, { status: 502 });
+    return NextResponse.json({ ok: false, error: 'Extractor unreachable', code: 502 }, { status: 502 });
   }
 
-  if (result.sources.length === 0) {
-    return NextResponse.json({ ok: false, error: 'No sources found', code: 404 }, { status: 404 });
-  }
-
-  // Route every playable/subtitle URL through our media proxy (signed) so the
-  // browser makes only same-origin, CORS-clean, referer-stripped requests.
-  const data = {
-    sources: await Promise.all(
-      result.sources.map(async ({ headers, ...s }) => ({
-        ...s,
-        url: await signedMediaUrl(s.url, headers),
-      })),
-    ),
-    subtitles: await Promise.all(
-      result.subtitles.map(async (s) => ({ ...s, url: await signedMediaUrl(s.url) })),
-    ),
-  };
-
-  return NextResponse.json(
-    { ok: true, data },
-    { headers: { 'Cache-Control': 's-maxage=300, stale-while-revalidate=600' } },
-  );
+  const body = await res.text();
+  return new NextResponse(body, {
+    status: res.status,
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 's-maxage=300, stale-while-revalidate=600',
+    },
+  });
 }

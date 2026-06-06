@@ -1,4 +1,7 @@
-import { MEDIA_PROXY_SECRET } from '@/lib/peachify-config';
+// Secret for HMAC-signing media-proxy URLs (prevents open-proxy abuse).
+// MUST match the value set on the Netlify extraction function, which mints the
+// signed URLs this endpoint verifies. Override via MEDIA_PROXY_SECRET in prod.
+const MEDIA_PROXY_SECRET = process.env.MEDIA_PROXY_SECRET ?? 'snape-media-proxy-dev-secret';
 
 // HMAC-SHA256 signing for media-proxy URLs. The proxy forwards to arbitrary
 // upstream CDN hosts (after unwrapping Peachify's proxy layers), so instead of
