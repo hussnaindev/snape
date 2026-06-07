@@ -80,6 +80,8 @@ export function PeachifyPlayer({
   const hlsApiRef = useRef<{ destroy: () => void; levels: { height: number }[]; currentLevel: number } | null>(null);
   const failedRef = useRef<Set<string>>(new Set());
   const startedRef = useRef(false);
+  const attachGenRef = useRef(0);
+  const fetchGenRef = useRef(0);
   const resumeRef = useRef<{ time: number; playing: boolean } | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTapRef = useRef<{ t: number; x: number }>({ t: 0, x: 0 });
@@ -162,19 +164,21 @@ export function PeachifyPlayer({
   );
 
   useEffect(() => {
-    let cancelled = false;
+    const ac = new AbortController();
+    const gen = ++fetchGenRef.current;
     setStatus('loading');
     setSources([]);
     setActive(null);
+    setBuffering(false);
     failedRef.current = new Set();
     startedRef.current = false;
     resumeRef.current = null;
 
     const qs = type === 'tv' ? `?season=${season}&episode=${episode}` : '';
-    fetch(`/api/stream/${type}/${tmdbId}${qs}`)
+    fetch(`/api/stream/${type}/${tmdbId}${qs}`, { signal: ac.signal })
       .then((r) => r.json() as Promise<StreamResponse>)
       .then((json) => {
-        if (cancelled) return;
+        if (ac.signal.aborted || fetchGenRef.current !== gen) return;
         if (!json.ok || !json.data || json.data.sources.length === 0) {
           setStatus('error');
           setErrorMsg(json.error ?? 'No playable sources found');
@@ -183,14 +187,14 @@ export function PeachifyPlayer({
         setSources(json.data.sources);
         setSubs(json.data.subtitles);
       })
-      .catch(() => {
-        if (!cancelled) {
-          setStatus('error');
-          setErrorMsg('Failed to load sources');
-        }
+      .catch((err: unknown) => {
+        if (ac.signal.aborted || fetchGenRef.current !== gen) return;
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        setStatus('error');
+        setErrorMsg('Failed to load sources');
       });
     return () => {
-      cancelled = true;
+      ac.abort();
     };
   }, [type, tmdbId, season, episode]);
 
@@ -220,12 +224,30 @@ export function PeachifyPlayer({
     const video = videoRef.current;
     const s = active;
     if (!video || !s) return;
+    const gen = ++attachGenRef.current;
     let destroyed = false;
     let hls: import('hls.js').default | null = null;
     setHlsLevels([]);
     setHlsLevel(-1);
+    setBuffering(true);
 
-    const applyResume = () => {
+    const stopMedia = () => {
+      if (hlsApiRef.current) {
+        try {
+          hlsApiRef.current.destroy();
+        } catch {}
+        hlsApiRef.current = null;
+      }
+      try {
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+      } catch {}
+    };
+    stopMedia();
+
+    const markReady = () => {
+      if (destroyed || attachGenRef.current !== gen || startedRef.current) return;
       const r = resumeRef.current;
       if (r) {
         try {
@@ -235,11 +257,13 @@ export function PeachifyPlayer({
         resumeRef.current = null;
       }
       setStatus('ready');
+      setBuffering(false);
       startedRef.current = true;
       onReady?.();
     };
     const fallback = () => {
-      if (startedRef.current || destroyed) return;
+      if (startedRef.current || destroyed || attachGenRef.current !== gen) return;
+      stopMedia();
       failedRef.current.add(s.url);
       const next = sources.find((c) => !failedRef.current.has(c.url));
       if (next) {
@@ -253,7 +277,9 @@ export function PeachifyPlayer({
       }
     };
 
-    video.addEventListener('loadedmetadata', applyResume);
+    video.addEventListener('loadedmetadata', markReady);
+    video.addEventListener('canplay', markReady);
+    video.addEventListener('playing', markReady);
 
     const useHls = s.type === 'hls' && !video.canPlayType('application/vnd.apple.mpegurl');
     let onError: (() => void) | null = null;
@@ -261,7 +287,7 @@ export function PeachifyPlayer({
     if (useHls) {
       import('hls.js')
         .then(({ default: Hls }) => {
-          if (destroyed) return;
+          if (destroyed || attachGenRef.current !== gen) return;
           if (!Hls.isSupported()) {
             video.src = s.url;
             return;
@@ -272,13 +298,15 @@ export function PeachifyPlayer({
           instance.loadSource(s.url);
           instance.attachMedia(video);
           instance.on(Hls.Events.MANIFEST_PARSED, () => {
-            if (destroyed) return;
+            if (destroyed || attachGenRef.current !== gen) return;
             setHlsLevels(instance.levels.map((l) => l.height || 0));
             const top = instance.levels.length - 1;
             instance.currentLevel = top;
             setHlsLevel(top);
+            markReady();
           });
           instance.on(Hls.Events.ERROR, (_e, data) => {
+            if (destroyed || attachGenRef.current !== gen) return;
             if (!data.fatal) return;
             if (data.type === 'networkError') instance.startLoad();
             else if (data.type === 'mediaError') instance.recoverMediaError();
@@ -289,7 +317,7 @@ export function PeachifyPlayer({
     } else {
       video.src = s.url;
       onError = () => {
-        if (destroyed) return;
+        if (destroyed || attachGenRef.current !== gen) return;
         if (!startedRef.current) fallback();
       };
       video.addEventListener('error', onError);
@@ -301,7 +329,10 @@ export function PeachifyPlayer({
         hls.destroy();
         if (hlsApiRef.current === hls) hlsApiRef.current = null;
       }
-      video.removeEventListener('loadedmetadata', applyResume);
+      stopMedia();
+      video.removeEventListener('loadedmetadata', markReady);
+      video.removeEventListener('canplay', markReady);
+      video.removeEventListener('playing', markReady);
       if (onError) video.removeEventListener('error', onError);
     };
     // biome-ignore lint/correctness/useExhaustiveDependencies: attach only on URL change
@@ -558,8 +589,8 @@ export function PeachifyPlayer({
         <div className="absolute inset-0 z-10" onClick={onSurfaceTap} aria-hidden="true" />
       )}
 
-      {/* loading / buffering spinner */}
-      {(status === 'loading' || buffering) && status !== 'error' && (
+      {/* loading / buffering spinner — hide once playback has started */}
+      {((status === 'loading' && !playing) || buffering) && status !== 'error' && (
         <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
           <span className="relative flex h-16 w-16 items-center justify-center">
             <span className="absolute inset-0 rounded-full border-4 border-white/10" />

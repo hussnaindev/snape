@@ -20,12 +20,13 @@ const REFERER = 'https://peachify.top/';
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
 
+// Tried in order; stop at the first provider that returns playable sources.
 const PROVIDERS = [
-  { label: 'Iron', path: 'moviebox', api: 'https://uwu.eat-peach.sbs' },
-  { label: 'Spider', path: 'holly', api: 'https://usa.eat-peach.sbs' },
-  { label: 'Wolf', path: 'air', api: 'https://usa.eat-peach.sbs' },
-  { label: 'Multi', path: 'multi', api: 'https://usa.eat-peach.sbs' },
-  { label: 'Dark', path: 'net', api: 'https://uwu.eat-peach.sbs' },
+  { label: 'Iron', path: 'moviebox', api: 'https://uwu.eat-peach.sbs', attempts: 5 },
+  { label: 'Spider', path: 'holly', api: 'https://usa.eat-peach.sbs', attempts: 5 },
+  { label: 'Wolf', path: 'air', api: 'https://usa.eat-peach.sbs', attempts: 3 },
+  { label: 'Multi', path: 'multi', api: 'https://usa.eat-peach.sbs', attempts: 3 },
+  { label: 'Dark', path: 'net', api: 'https://uwu.eat-peach.sbs', attempts: 3 },
 ];
 
 // ---- proxy pool ---------------------------------------------------------
@@ -138,18 +139,21 @@ async function signedMediaUrl(absoluteUrl, headers) {
 }
 
 // ---- provider fetch -----------------------------------------------------
-// Per-attempt timeout and attempt count are tuned so the worst case
-// (ATTEMPTS × TIMEOUT) stays under Netlify's 10s function limit, even with a
-// cold start. Providers run in parallel, so total time ≈ the slowest provider.
-const ATTEMPTS = 2;
-const ATTEMPT_TIMEOUT_MS = 3500;
+// Providers are queried sequentially (Iron → Spider → Wolf → Multi → Dark).
+// Per-attempt timeout is kept short so several providers can be tried within
+// Netlify's 10s function limit when earlier ones fail quickly.
+const ATTEMPT_TIMEOUT_MS = 1800;
+
+function hasPlayableSources(raw) {
+  return (raw?.sources ?? []).some((s) => typeof s.url === 'string');
+}
 
 async function fetchProvider(p, type, id, season, episode) {
   let url = `${p.api}/${p.path}/${type}/${id}`;
   if (type === 'tv') url += `/${season}/${episode}`;
 
   let lastStatus = 'fail';
-  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+  for (let attempt = 0; attempt < p.attempts; attempt++) {
     // A fresh (random) proxy each attempt so a single bad/slow/blocked proxy
     // can't make a provider that HAS the title look empty.
     const ac = new AbortController();
@@ -189,14 +193,15 @@ export default async (req) => {
     return Response.json({ ok: false, error: 'missing id' }, { status: 400 });
   }
 
-  const results = await Promise.all(PROVIDERS.map((p) => fetchProvider(p, type, id, season, episode)));
-
   const debug = {};
   const rawSources = [];
   let rawSubs = [];
-  results.forEach((r, i) => {
-    debug[PROVIDERS[i].label] = r.status;
-    if (!r.raw) return;
+
+  for (const p of PROVIDERS) {
+    const r = await fetchProvider(p, type, id, season, episode);
+    debug[p.label] = r.status;
+    if (!r.raw || !hasPlayableSources(r.raw)) continue;
+
     for (const s of r.raw.sources ?? []) {
       if (typeof s.url !== 'string') continue;
       const { url, headers } = unwrap(s.url);
@@ -206,35 +211,25 @@ export default async (req) => {
         headers,
         quality: typeof s.quality === 'number' ? s.quality : null,
         dub: typeof s.dub === 'string' ? s.dub : null,
-        provider: PROVIDERS[i].label,
+        provider: p.label,
       });
     }
-    if (rawSubs.length === 0 && Array.isArray(r.raw.subtitles)) {
+    if (Array.isArray(r.raw.subtitles)) {
       rawSubs = r.raw.subtitles
         .filter((s) => typeof s.url === 'string')
         .map((s) => ({ url: s.url, label: s.label ?? s.language ?? null, lang: s.language ?? s.lang ?? null }));
     }
-  });
+    break;
+  }
 
   if (rawSources.length === 0) {
     return Response.json({ ok: false, error: 'No sources found', debug }, { status: 502 });
   }
 
-  // Provider playback preference: Iron → Spider → Wolf → Multi → Dark (the
-  // PROVIDERS array order). All providers are fetched in parallel, but sources
-  // are ordered so the most-preferred provider plays first and on-failure
-  // fallback walks down the list. Within a provider: mp4 first, then quality.
-  // Default preference: mp4 first, then provider order Iron → Spider → Wolf →
-  // Multi → Dark, then quality. mp4 (hakunaymatata) is reliable from Cloudflare
-  // and now seekable via the media proxy's bounded chunks; HLS (goodstream)
-  // rate-limits Cloudflare's egress IPs (429), so it's kept as a fallback only.
-  // All providers are still fetched in parallel; this only orders the list.
-  const rank = Object.fromEntries(PROVIDERS.map((p, i) => [p.label, i]));
+  // Sources come from the first successful provider only. Within that provider:
+  // mp4 first, then quality (desc). HLS is kept as a fallback when mp4 fails.
   rawSources.sort((a, b) => {
     if (a.type !== b.type) return a.type === 'mp4' ? -1 : 1;
-    const ra = rank[a.provider] ?? 99;
-    const rb = rank[b.provider] ?? 99;
-    if (ra !== rb) return ra - rb;
     return (b.quality ?? 0) - (a.quality ?? 0);
   });
 
