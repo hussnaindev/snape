@@ -297,6 +297,7 @@ export function MovieDetailHero({
             type="movie"
             tmdbId={movieId}
             title={title}
+            {...(logoUrl ? { logoUrl } : {})}
             className={cn(
               'absolute inset-0 w-full h-full transition-opacity duration-700',
               playerVisible ? 'opacity-100' : 'opacity-0',

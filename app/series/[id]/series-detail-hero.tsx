@@ -348,6 +348,7 @@ export function SeriesDetailHero({
             season={currentSeason}
             episode={currentEpisode}
             title={name}
+            {...(logoUrl ? { logoUrl } : {})}
             className={cn(
               'absolute inset-0 w-full h-full transition-opacity duration-700',
               playerVisible ? 'opacity-100' : 'opacity-0',

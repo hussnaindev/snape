@@ -224,12 +224,15 @@ export default async (req) => {
   // PROVIDERS array order). All providers are fetched in parallel, but sources
   // are ordered so the most-preferred provider plays first and on-failure
   // fallback walks down the list. Within a provider: mp4 first, then quality.
+  // Default preference: HLS first (segment-based → reliable seeking), then
+  // provider order Iron → Spider → Wolf → Multi → Dark, then quality. All
+  // providers are still fetched in parallel; this only orders the merged list.
   const rank = Object.fromEntries(PROVIDERS.map((p, i) => [p.label, i]));
   rawSources.sort((a, b) => {
+    if (a.type !== b.type) return a.type === 'hls' ? -1 : 1;
     const ra = rank[a.provider] ?? 99;
     const rb = rank[b.provider] ?? 99;
     if (ra !== rb) return ra - rb;
-    if (a.type !== b.type) return a.type === 'mp4' ? -1 : 1;
     return (b.quality ?? 0) - (a.quality ?? 0);
   });
 

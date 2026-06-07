@@ -30,10 +30,12 @@ interface Props {
   className?: string;
   autoPlay?: boolean;
   title?: string;
+  logoUrl?: string;
   onReady?: () => void;
 }
 
 const DEFAULT_LABEL = 'Default';
+const PROVIDER_ORDER = ['Iron', 'Spider', 'Wolf', 'Multi', 'Dark'];
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const qLabel = (s: StreamSource) => (s.type === 'hls' ? 'Auto' : s.quality ? `${s.quality}p` : 'Auto');
 const dubLabel = (s: StreamSource) => s.dub ?? DEFAULT_LABEL;
@@ -55,6 +57,7 @@ export function PeachifyPlayer({
   className,
   autoPlay = true,
   title,
+  logoUrl,
   onReady,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -70,6 +73,7 @@ export function PeachifyPlayer({
   const [subs, setSubs] = useState<StreamSubtitle[]>([]);
   const [lang, setLang] = useState('');
   const [quality, setQuality] = useState('');
+  const [server, setServer] = useState('');
   const [active, setActive] = useState<StreamSource | null>(null);
   const [subIndex, setSubIndex] = useState(-1);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -86,7 +90,9 @@ export function PeachifyPlayer({
   const [fit, setFit] = useState<'contain' | 'cover'>('contain');
   const [fullscreen, setFullscreen] = useState(false);
   const [controlsShown, setControlsShown] = useState(true);
-  const [menu, setMenu] = useState<null | 'main' | 'audio' | 'quality' | 'speed' | 'subs'>(null);
+  const [menu, setMenu] = useState<
+    null | 'main' | 'server' | 'audio' | 'quality' | 'speed' | 'subs'
+  >(null);
 
   // ---------- data ----------
   const languages = useMemo(() => {
@@ -119,10 +125,22 @@ export function PeachifyPlayer({
   );
   const qualities = useMemo(() => qualitiesFor(lang), [qualitiesFor, lang]);
 
+  const servers = useMemo(() => {
+    const present = new Set(sources.map((s) => s.provider));
+    return PROVIDER_ORDER.filter((p) => present.has(p));
+  }, [sources]);
+
   const pickSource = useCallback(
-    (l: string, q: string): StreamSource | null => {
+    (l: string, q: string, srv: string): StreamSource | null => {
       const inLang = sources.filter((s) => dubLabel(s) === l);
-      return inLang.find((s) => qLabel(s) === q) ?? inLang[0] ?? sources[0] ?? null;
+      return (
+        inLang.find((s) => qLabel(s) === q && s.provider === srv) ??
+        inLang.find((s) => s.provider === srv) ??
+        inLang.find((s) => qLabel(s) === q) ??
+        inLang[0] ??
+        sources[0] ??
+        null
+      );
     },
     [sources],
   );
@@ -160,13 +178,14 @@ export function PeachifyPlayer({
     };
   }, [type, tmdbId, season, episode]);
 
-  // defaults: Original audio, provider-preferred quality, English subs
+  // defaults: take the top of the (HLS-first, provider-ordered) list so the
+  // default stream is the preferred server/type; English subtitles on.
   useEffect(() => {
     if (sources.length === 0) return;
-    const defLang = languages.find((l) => /(original|orig)/i.test(l)) ?? languages[0] ?? '';
-    const first = sources.find((s) => dubLabel(s) === defLang);
-    setLang(defLang);
-    setQuality(first ? qLabel(first) : (qualitiesFor(defLang)[0] ?? ''));
+    const first = sources[0]!;
+    setLang(dubLabel(first));
+    setQuality(qLabel(first));
+    setServer(first.provider);
     const en = subs.findIndex((s) => /^en|english/i.test(s.lang ?? '') || /english/i.test(s.label ?? ''));
     setSubIndex(en);
     // biome-ignore lint/correctness/useExhaustiveDependencies: run once per source set
@@ -174,13 +193,13 @@ export function PeachifyPlayer({
 
   useEffect(() => {
     if (sources.length === 0 || !lang) return;
-    const s = pickSource(lang, quality);
+    const s = pickSource(lang, quality, server);
     if (s && s.url !== active?.url) {
       const v = videoRef.current;
       if (v && startedRef.current) resumeRef.current = { time: v.currentTime, playing: !v.paused };
       setActive(s);
     }
-  }, [sources, lang, quality, pickSource, active?.url]);
+  }, [sources, lang, quality, server, pickSource, active?.url]);
 
   // attach source
   useEffect(() => {
@@ -209,6 +228,7 @@ export function PeachifyPlayer({
       if (next) {
         setLang(dubLabel(next));
         setQuality(qLabel(next));
+        setServer(next.provider);
         setActive(next);
       } else {
         setStatus('error');
@@ -492,9 +512,19 @@ export function PeachifyPlayer({
             controlsShown || !playing ? 'opacity-100' : 'opacity-0 pointer-events-none',
           )}
         >
-          {/* top: title */}
+          {/* top: title logo (falls back to text) */}
           <div className="bg-gradient-to-b from-black/70 to-transparent px-4 pt-4 pb-10">
-            {title && <h2 className="text-white text-base md:text-xl font-semibold drop-shadow">{title}</h2>}
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoUrl}
+                alt={title ?? ''}
+                loading="lazy"
+                className="max-h-10 md:max-h-16 w-auto max-w-[55%] object-contain object-left drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
+              />
+            ) : title ? (
+              <h2 className="text-white text-base md:text-xl font-semibold drop-shadow">{title}</h2>
+            ) : null}
           </div>
 
           {/* bottom controls */}
@@ -569,12 +599,14 @@ export function PeachifyPlayer({
                 <Ctrl onClick={() => setMenu(menu ? null : 'main')} label="Settings">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" /></svg>
                 </Ctrl>
+                {/* Fill-to-screen: a screen frame with an inner content rect.
+                    Filled inner = currently cropped-to-fill; outline = letterboxed.
+                    Visually distinct from the fullscreen corner-arrows icon. */}
                 <Ctrl onClick={() => setFit((f) => (f === 'cover' ? 'contain' : 'cover'))} label="Fill to screen" active={fit === 'cover'}>
-                  {fit === 'cover' ? (
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M8 3v3a2 2 0 01-2 2H3M16 3v3a2 2 0 002 2h3M8 21v-3a2 2 0 00-2-2H3M16 21v-3a2 2 0 012-2h3" /></svg>
-                  ) : (
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M3 8V5a2 2 0 012-2h3M21 8V5a2 2 0 00-2-2h-3M3 16v3a2 2 0 002 2h3M21 16v3a2 2 0 01-2 2h-3" /></svg>
-                  )}
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <rect x="2.5" y="6" width="19" height="12" rx="1.5" />
+                    <rect x="7.5" y="9.5" width="9" height="5" rx="1" fill={fit === 'cover' ? 'currentColor' : 'none'} stroke="none" />
+                  </svg>
                 </Ctrl>
                 <Ctrl onClick={toggleFullscreen} label="Fullscreen">
                   {fullscreen ? (
@@ -592,6 +624,7 @@ export function PeachifyPlayer({
             <div className="absolute bottom-20 right-4 min-w-44 max-h-[55vh] overflow-y-auto rounded-lg bg-black/95 border border-white/15 py-1 text-sm text-white shadow-2xl">
               {menu === 'main' && (
                 <>
+                  {servers.length > 1 && <Row label="Server" value={server} onClick={() => setMenu('server')} />}
                   <Row label="Audio" value={lang} onClick={() => setMenu('audio')} />
                   <Row label="Quality" value={quality} onClick={() => setMenu('quality')} />
                   <Row label="Speed" value={`${rate}x`} onClick={() => setMenu('speed')} />
@@ -604,6 +637,27 @@ export function PeachifyPlayer({
                   )}
                 </>
               )}
+              {menu === 'server' &&
+                servers.map((srv) => (
+                  <Opt
+                    key={srv}
+                    label={srv}
+                    active={srv === server}
+                    onClick={() => {
+                      setServer(srv);
+                      // Move to a language/quality this server actually provides.
+                      const has = sources.filter((s) => s.provider === srv);
+                      if (!has.some((s) => dubLabel(s) === lang)) {
+                        const first = has[0];
+                        if (first) {
+                          setLang(dubLabel(first));
+                          setQuality(qLabel(first));
+                        }
+                      }
+                      setMenu(null);
+                    }}
+                  />
+                ))}
               {menu === 'audio' &&
                 languages.map((l) => (
                   <Opt
