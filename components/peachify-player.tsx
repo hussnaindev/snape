@@ -62,11 +62,13 @@ export function PeachifyPlayer({
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const hlsRef = useRef<{ destroy: () => void } | null>(null);
+  // Current hls.js instance, used by the quality menu to switch levels. Each
+  // attach effect destroys its OWN local instance (not this ref) to avoid the
+  // cross-run overwrite that leaked instances and caused overlapping audio.
+  const hlsApiRef = useRef<{ destroy: () => void; levels: { height: number }[]; currentLevel: number } | null>(null);
   const failedRef = useRef<Set<string>>(new Set());
   const startedRef = useRef(false);
   const resumeRef = useRef<{ time: number; playing: boolean } | null>(null);
-  const retryRef = useRef(0);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [sources, setSources] = useState<StreamSource[]>([]);
@@ -75,6 +77,8 @@ export function PeachifyPlayer({
   const [quality, setQuality] = useState('');
   const [server, setServer] = useState('');
   const [active, setActive] = useState<StreamSource | null>(null);
+  const [hlsLevels, setHlsLevels] = useState<number[]>([]); // heights, index === level index
+  const [hlsLevel, setHlsLevel] = useState(-1); // -1 = Auto
   const [subIndex, setSubIndex] = useState(-1);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
@@ -207,7 +211,12 @@ export function PeachifyPlayer({
     const s = active;
     if (!video || !s) return;
     let destroyed = false;
-    retryRef.current = 0;
+    // hls instance LOCAL to this effect run, so cleanup destroys exactly this
+    // one (a shared ref got overwritten across runs → leaked, overlapping audio).
+    let hls: import('hls.js').default | null = null;
+    let mp4Retry = 0;
+    setHlsLevels([]);
+    setHlsLevel(-1);
 
     const applyResume = () => {
       const r = resumeRef.current;
@@ -222,7 +231,12 @@ export function PeachifyPlayer({
       startedRef.current = true;
       onReady?.();
     };
+
+    // Switch to another source ONLY on initial-load failure — never after
+    // playback has started (that was the "server/language jumps and restarts
+    // from 0 out of nowhere" bug).
     const fallback = () => {
+      if (startedRef.current || destroyed) return;
       failedRef.current.add(s.url);
       const next = sources.find((c) => !failedRef.current.has(c.url));
       if (next) {
@@ -235,21 +249,15 @@ export function PeachifyPlayer({
         setErrorMsg('All sources failed to play');
       }
     };
-    const onError = () => {
-      if (destroyed) return;
-      if (!startedRef.current) return fallback();
-      if (retryRef.current < 1) {
-        retryRef.current += 1;
-        resumeRef.current = { time: video.currentTime, playing: !video.paused };
-        video.load();
-      } else fallback();
-    };
 
     video.addEventListener('loadedmetadata', applyResume);
-    video.addEventListener('error', onError);
 
     const useHls = s.type === 'hls' && !video.canPlayType('application/vnd.apple.mpegurl');
+    let onError: (() => void) | null = null;
+
     if (useHls) {
+      // HLS recovery is handled by hls.js — do NOT attach a native error
+      // handler that calls video.load() (it corrupts the MSE buffer).
       import('hls.js')
         .then(({ default: Hls }) => {
           if (destroyed) return;
@@ -257,32 +265,53 @@ export function PeachifyPlayer({
             video.src = s.url;
             return;
           }
-          const hls = new Hls({ enableWorker: true });
-          hlsRef.current = hls;
-          hls.loadSource(s.url);
-          hls.attachMedia(video);
-          hls.on(Hls.Events.ERROR, (_e, data) => {
+          const instance = new Hls({ enableWorker: true, abrEwmaDefaultEstimate: 8_000_000 });
+          hls = instance;
+          hlsApiRef.current = instance;
+          instance.loadSource(s.url);
+          instance.attachMedia(video);
+          instance.on(Hls.Events.MANIFEST_PARSED, () => {
+            if (destroyed) return;
+            setHlsLevels(instance.levels.map((l) => l.height || 0));
+            // Start at the highest level so it doesn't default to 480p.
+            const top = instance.levels.length - 1;
+            instance.currentLevel = top;
+            setHlsLevel(top);
+          });
+          instance.on(Hls.Events.ERROR, (_e, data) => {
             if (!data.fatal) return;
-            if (data.type === 'networkError') hls.startLoad();
-            else if (data.type === 'mediaError') hls.recoverMediaError();
-            else {
-              hls.destroy();
-              if (!startedRef.current) fallback();
-            }
+            if (data.type === 'networkError') instance.startLoad();
+            else if (data.type === 'mediaError') instance.recoverMediaError();
+            else fallback(); // only acts if playback never started
           });
         })
         .catch(fallback);
     } else {
       video.src = s.url;
+      onError = () => {
+        if (destroyed) return;
+        if (!startedRef.current) {
+          fallback();
+          return;
+        }
+        // Mid-playback: one in-place reload at the same spot, never switch source.
+        if (mp4Retry < 1) {
+          mp4Retry += 1;
+          resumeRef.current = { time: video.currentTime, playing: !video.paused };
+          video.load();
+        }
+      };
+      video.addEventListener('error', onError);
     }
+
     return () => {
       destroyed = true;
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
+      if (hls) {
+        hls.destroy();
+        if (hlsApiRef.current === hls) hlsApiRef.current = null;
       }
       video.removeEventListener('loadedmetadata', applyResume);
-      video.removeEventListener('error', onError);
+      if (onError) video.removeEventListener('error', onError);
     };
     // biome-ignore lint/correctness/useExhaustiveDependencies: attach only on URL change
   }, [active?.url]);
@@ -626,7 +655,17 @@ export function PeachifyPlayer({
                 <>
                   {servers.length > 1 && <Row label="Server" value={server} onClick={() => setMenu('server')} />}
                   <Row label="Audio" value={lang} onClick={() => setMenu('audio')} />
-                  <Row label="Quality" value={quality} onClick={() => setMenu('quality')} />
+                  <Row
+                    label="Quality"
+                    value={
+                      active?.type === 'hls'
+                        ? hlsLevel >= 0 && hlsLevels[hlsLevel]
+                          ? `${hlsLevels[hlsLevel]}p`
+                          : 'Auto'
+                        : quality
+                    }
+                    onClick={() => setMenu('quality')}
+                  />
                   <Row label="Speed" value={`${rate}x`} onClick={() => setMenu('speed')} />
                   {subs.length > 0 && (
                     <Row
@@ -673,8 +712,39 @@ export function PeachifyPlayer({
                   />
                 ))}
               {menu === 'quality' &&
-                qualities.map((q) => (
-                  <Opt key={q} label={q} active={q === quality} onClick={() => { setQuality(q); setMenu(null); }} />
+                (active?.type === 'hls' && hlsLevels.length > 0 ? (
+                  // HLS: switch level in place (no source reload / restart).
+                  <>
+                    <Opt
+                      label="Auto"
+                      active={hlsLevel === -1}
+                      onClick={() => {
+                        setHlsLevel(-1);
+                        if (hlsApiRef.current) hlsApiRef.current.currentLevel = -1;
+                        setMenu(null);
+                      }}
+                    />
+                    {hlsLevels
+                      .map((h, i) => ({ h, i }))
+                      .sort((a, b) => b.h - a.h)
+                      .map(({ h, i }) => (
+                        <Opt
+                          key={i}
+                          label={`${h}p`}
+                          active={hlsLevel === i}
+                          onClick={() => {
+                            setHlsLevel(i);
+                            if (hlsApiRef.current) hlsApiRef.current.currentLevel = i;
+                            setMenu(null);
+                          }}
+                        />
+                      ))}
+                  </>
+                ) : (
+                  // mp4: each quality is a separate file → switch source.
+                  qualities.map((q) => (
+                    <Opt key={q} label={q} active={q === quality} onClick={() => { setQuality(q); setMenu(null); }} />
+                  ))
                 ))}
               {menu === 'speed' &&
                 SPEEDS.map((sp) => (
