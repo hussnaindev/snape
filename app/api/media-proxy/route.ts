@@ -34,6 +34,20 @@ function looksLikeManifest(url: string, contentType: string | null): boolean {
 // send an explicit Content-Length so Chrome treats the mp4 as seekable.
 const MP4_CHUNK = 4 * 1024 * 1024;
 
+// Fetch with a short backoff on 429 / 5xx. CDNs (esp. goodstream for HLS) can
+// rate-limit Cloudflare's egress under load; a couple of quick retries smooths
+// transient limits.
+async function fetchRetry(url: string, init: RequestInit, attempts = 3): Promise<Response> {
+  let last: Response | null = null;
+  for (let i = 0; i < attempts; i++) {
+    const res = await fetch(url, init);
+    if (res.status !== 429 && res.status < 500) return res;
+    last = res;
+    if (i < attempts - 1) await new Promise((r) => setTimeout(r, 250 * (i + 1)));
+  }
+  return last as Response;
+}
+
 // Serve a progressive mp4 as a fixed-length, range-correct partial response.
 // The browser sends `Range: bytes=N-`; we fetch a bounded window from the CDN,
 // buffer it, and return 206 with an exact Content-Length + Content-Range +
@@ -56,7 +70,7 @@ async function serveRangedMp4(
 
   let res: Response;
   try {
-    res = await fetch(target, { headers: { ...baseHeaders, Range: `bytes=${start}-${end}` }, redirect: 'follow' });
+    res = await fetchRetry(target, { headers: { ...baseHeaders, Range: `bytes=${start}-${end}` }, redirect: 'follow' });
   } catch {
     return new NextResponse('Bad gateway', { status: 502, headers: CORS });
   }
@@ -177,7 +191,7 @@ export async function GET(req: NextRequest) {
 
   let res: Response;
   try {
-    res = await fetch(target.toString(), { headers: upstreamHeaders, redirect: 'follow' });
+    res = await fetchRetry(target.toString(), { headers: upstreamHeaders, redirect: 'follow' });
   } catch {
     return new NextResponse('Bad gateway', { status: 502, headers: CORS });
   }
