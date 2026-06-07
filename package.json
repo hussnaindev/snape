@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "predev": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\"",
-    "dev": "next dev",
+    "dev": "node scripts/dev.mjs",
+    "dev:next": "next dev",
+    "dev:extract": "node scripts/dev-extract-server.mjs",
     "build": "next build",
     "start": "next start",
     "pages:build": "npx @cloudflare/next-on-pages",
