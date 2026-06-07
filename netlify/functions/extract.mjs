@@ -20,7 +20,7 @@ const REFERER = 'https://peachify.top/';
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
 
-// Tried in order; stop at the first provider that returns playable sources.
+// Queried sequentially; mp4 from any provider beats hls-only from an earlier one.
 const PROVIDERS = [
   { label: 'Iron', path: 'moviebox', api: 'https://uwu.eat-peach.sbs', attempts: 5 },
   { label: 'Spider', path: 'holly', api: 'https://usa.eat-peach.sbs', attempts: 5 },
@@ -148,6 +148,44 @@ function hasPlayableSources(raw) {
   return (raw?.sources ?? []).some((s) => typeof s.url === 'string');
 }
 
+function inferSourceType(url, apiType) {
+  if (/\.m3u8(\?|$)/i.test(url)) return 'hls';
+  if (/goodstream\.cc/i.test(url)) return 'hls';
+  if (apiType === 'hls') return 'hls';
+  return 'mp4';
+}
+
+function hlsHostScore(sources) {
+  for (const s of sources) {
+    try {
+      if (/goodstream\.cc/i.test(new URL(s.url).hostname)) return 0;
+    } catch {}
+  }
+  return 1;
+}
+
+function collectProviderSources(raw, providerLabel) {
+  const sources = [];
+  for (const s of raw.sources ?? []) {
+    if (typeof s.url !== 'string') continue;
+    const { url, headers } = unwrap(s.url);
+    sources.push({
+      type: inferSourceType(url, s.type),
+      url,
+      headers,
+      quality: typeof s.quality === 'number' ? s.quality : null,
+      dub: typeof s.dub === 'string' ? s.dub : null,
+      provider: providerLabel,
+    });
+  }
+  const subtitles = Array.isArray(raw.subtitles)
+    ? raw.subtitles
+        .filter((s) => typeof s.url === 'string')
+        .map((s) => ({ url: s.url, label: s.label ?? s.language ?? null, lang: s.language ?? s.lang ?? null }))
+    : [];
+  return { sources, subtitles };
+}
+
 async function fetchProvider(p, type, id, season, episode) {
   let url = `${p.api}/${p.path}/${type}/${id}`;
   if (type === 'tv') url += `/${season}/${episode}`;
@@ -196,40 +234,60 @@ export default async (req) => {
   const debug = {};
   const rawSources = [];
   let rawSubs = [];
+  const mp4Sources = [];
+  /** @type {{ provider: string, sources: typeof rawSources, subtitles: typeof rawSubs } | null} */
+  let hlsFallback = null;
+  let hlsFallbackScore = -1;
 
+  // Walk Iron → Spider → Wolf → Multi → Dark. Collect mp4 from every provider;
+  // only fall back to hls (goodstream) when none of them offer mp4.
   for (const p of PROVIDERS) {
     const r = await fetchProvider(p, type, id, season, episode);
-    debug[p.label] = r.status;
-    if (!r.raw || !hasPlayableSources(r.raw)) continue;
+    if (!r.raw || !hasPlayableSources(r.raw)) {
+      debug[p.label] = r.status;
+      continue;
+    }
 
-    for (const s of r.raw.sources ?? []) {
-      if (typeof s.url !== 'string') continue;
-      const { url, headers } = unwrap(s.url);
-      rawSources.push({
-        type: s.type === 'hls' ? 'hls' : 'mp4',
-        url,
-        headers,
-        quality: typeof s.quality === 'number' ? s.quality : null,
-        dub: typeof s.dub === 'string' ? s.dub : null,
-        provider: p.label,
-      });
+    const { sources, subtitles } = collectProviderSources(r.raw, p.label);
+    const mp4Only = sources.filter((s) => s.type === 'mp4');
+    const hlsOnly = sources.filter((s) => s.type === 'hls');
+    debug[p.label] = { status: r.status, mp4: mp4Only.length, hls: hlsOnly.length };
+
+    if (mp4Only.length > 0) {
+      mp4Sources.push(...mp4Only);
+      if (rawSubs.length === 0) rawSubs = subtitles;
     }
-    if (Array.isArray(r.raw.subtitles)) {
-      rawSubs = r.raw.subtitles
-        .filter((s) => typeof s.url === 'string')
-        .map((s) => ({ url: s.url, label: s.label ?? s.language ?? null, lang: s.language ?? s.lang ?? null }));
+
+    if (hlsOnly.length > 0) {
+      const score = hlsHostScore(hlsOnly);
+      if (score > hlsFallbackScore) {
+        hlsFallback = { provider: p.label, sources: hlsOnly, subtitles };
+        hlsFallbackScore = score;
+      }
     }
-    break;
+  }
+
+  if (mp4Sources.length > 0) {
+    rawSources.push(...mp4Sources);
+    debug.winner = mp4Sources[0].provider;
+    debug.reason = 'mp4';
+    debug.providersWithMp4 = [...new Set(mp4Sources.map((s) => s.provider))];
+  } else if (hlsFallback) {
+    rawSources.push(...hlsFallback.sources);
+    rawSubs = hlsFallback.subtitles;
+    debug.winner = hlsFallback.provider;
+    debug.reason = 'hls-fallback';
   }
 
   if (rawSources.length === 0) {
     return Response.json({ ok: false, error: 'No sources found', debug }, { status: 502 });
   }
 
-  // Sources come from the first successful provider only. Within that provider:
-  // mp4 first, then quality (desc). HLS is kept as a fallback when mp4 fails.
+  const providerRank = Object.fromEntries(PROVIDERS.map((p, i) => [p.label, i]));
   rawSources.sort((a, b) => {
-    if (a.type !== b.type) return a.type === 'mp4' ? -1 : 1;
+    const ra = providerRank[a.provider] ?? 99;
+    const rb = providerRank[b.provider] ?? 99;
+    if (ra !== rb) return ra - rb;
     return (b.quality ?? 0) - (a.quality ?? 0);
   });
 
@@ -248,7 +306,7 @@ export default async (req) => {
     rawSubs.map(async (s) => ({ ...s, url: `${await signedMediaUrl(s.url)}&sub=1` })),
   );
 
-  return new Response(JSON.stringify({ ok: true, data: { sources, subtitles } }), {
+  return new Response(JSON.stringify({ ok: true, data: { sources, subtitles }, debug }), {
     status: 200,
     headers: {
       'Content-Type': 'application/json',

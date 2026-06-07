@@ -13,6 +13,7 @@ import { TagChip } from '@/components/ui/tag-chip';
 import { WatchHistoryRecorder } from '@/components/watch-history-recorder';
 import { WatchProvidersRow } from '@/components/watch-providers-row';
 import { WatchlistButton } from '@/components/watchlist-button';
+import { exitFullscreenIfRoot, isFullscreenRoot } from '@/lib/active-media';
 import { registerParallax } from '@/lib/parallax-controller';
 import { cn } from '@/lib/utils';
 import type { PreferredProviderKey } from '@/lib/watch-providers';
@@ -194,7 +195,7 @@ export function SeriesDetailHero({
     if (!playerActive) return;
 
     function onFsChange() {
-      const inFs = !!document.fullscreenElement;
+      const inFs = isFullscreenRoot(playerContainerRef.current);
       setIsFullscreen(inFs);
       if (!inFs) screen.orientation.unlock();
     }
@@ -202,7 +203,7 @@ export function SeriesDetailHero({
 
     return () => {
       document.removeEventListener('fullscreenchange', onFsChange);
-      document.exitFullscreen().catch(() => {});
+      exitFullscreenIfRoot(playerContainerRef.current);
       screen.orientation.unlock();
     };
   }, [playerActive]);
@@ -336,7 +337,7 @@ export function SeriesDetailHero({
 
         {playerActive && (
           <PeachifyPlayer
-            key={`${currentSeason}-${currentEpisode}`}
+            key={`player-${currentSeason}-${currentEpisode}`}
             type="tv"
             tmdbId={seriesId}
             season={currentSeason}
@@ -352,6 +353,7 @@ export function SeriesDetailHero({
               })) ?? []
             }
             onSelectEpisode={handleEpisodeSelect}
+            fullscreenRootRef={playerContainerRef}
             className={cn(
               'absolute inset-0 w-full h-full transition-opacity duration-700',
               playerVisible ? 'opacity-100' : 'opacity-0',
@@ -451,7 +453,6 @@ export function SeriesDetailHero({
 
         {playerActive && (
           <WatchHistoryRecorder
-            key={`${currentSeason}-${currentEpisode}`}
             id={seriesId}
             type="series"
             title={name}

@@ -2,12 +2,14 @@
 
 import { useAuth } from '@/components/auth/auth-provider';
 import { UserAvatar } from '@/components/user-avatar';
+import { useHasMounted } from '@/lib/use-has-mounted';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 export function UserMenu() {
   const { user, isLoading, logout } = useAuth();
+  const mounted = useHasMounted();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -21,7 +23,7 @@ export function UserMenu() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  if (isLoading) {
+  if (!mounted || isLoading) {
     return <div className="hidden md:block w-7 h-7 rounded-full bg-white/10 animate-pulse shrink-0" />;
   }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { handleLogout as clearLocalHistory, syncOnLogin } from '@/lib/watch-history';
+import { useHasMounted } from '@/lib/use-has-mounted';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 const SESSION_COOKIE = 'session_token';
@@ -35,6 +36,7 @@ const Ctx = createContext<AuthContext | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: 'loading' });
+  const mounted = useHasMounted();
 
   const refresh = useCallback(async () => {
     if (!hasSessionCookie()) {
@@ -64,11 +66,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!mounted) return;
     refresh();
-  }, [refresh]);
+  }, [mounted, refresh]);
 
   const user = state.status === 'authenticated' ? state.user : null;
-  const isLoading = state.status === 'loading';
+  const isLoading = !mounted || state.status === 'loading';
 
   return (
     <Ctx.Provider value={{ state, user, isLoading, refresh, logout }}>{children}</Ctx.Provider>

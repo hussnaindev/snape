@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 
+import { claimActiveMedia, isFullscreenRoot, releaseActiveMedia, silenceOtherVideos } from '@/lib/active-media';
 import { cn } from '@/lib/utils';
 
 interface StreamSource {
@@ -40,11 +41,62 @@ interface Props {
   episodes?: PlayerEpisode[];
   onSelectEpisode?: (season: number, episode: number) => void;
   onReady?: () => void;
+  /** When set, fullscreen targets this element instead of the player root. */
+  fullscreenRootRef?: RefObject<HTMLElement | null>;
 }
 
 const DEFAULT_LABEL = 'Default';
 const PROVIDER_ORDER = ['Iron', 'Spider', 'Wolf', 'Multi', 'Dark'];
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+const streamCache = new Map<string, StreamResponse>();
+const streamInflight = new Map<string, Promise<StreamResponse>>();
+const IS_DEV = process.env.NODE_ENV === 'development';
+
+function streamKey(type: string, tmdbId: number, season?: number, episode?: number) {
+  return type === 'tv' ? `tv:${tmdbId}:${season}:${episode}` : `movie:${tmdbId}`;
+}
+
+function upstreamHost(sourceUrl: string): string {
+  try {
+    const u = new URL(sourceUrl, 'http://localhost');
+    const raw = u.searchParams.get('u');
+    if (raw) return new URL(decodeURIComponent(raw)).hostname.toLowerCase();
+  } catch {}
+  return '';
+}
+
+/** mp4 first, then non-goodstream HLS, then goodstream last. */
+function sourceRank(s: StreamSource): number {
+  if (s.type === 'mp4') return 0;
+  if (/goodstream\.cc/i.test(upstreamHost(s.url))) return 2;
+  return 1;
+}
+
+function bestSource(list: StreamSource[]): StreamSource | null {
+  if (list.length === 0) return null;
+  return [...list].sort((a, b) => sourceRank(a) - sourceRank(b))[0] ?? null;
+}
+
+function loadStreamData(key: string, url: string): Promise<StreamResponse> {
+  if (!IS_DEV) {
+    const cached = streamCache.get(key);
+    if (cached) return Promise.resolve(cached);
+  }
+  let inflight = streamInflight.get(key);
+  if (!inflight) {
+    const fetchUrl = IS_DEV ? `${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}` : url;
+    inflight = fetch(fetchUrl, IS_DEV ? { cache: 'no-store' } : undefined)
+      .then((r) => r.json() as Promise<StreamResponse>)
+      .then((json) => {
+        if (!IS_DEV && json.ok && json.data && json.data.sources.length > 0) streamCache.set(key, json);
+        return json;
+      })
+      .finally(() => streamInflight.delete(key));
+    streamInflight.set(key, inflight);
+  }
+  return inflight;
+}
+
 const qLabel = (s: StreamSource) => (s.type === 'hls' ? 'Auto' : s.quality ? `${s.quality}p` : 'Auto');
 const dubLabel = (s: StreamSource) => s.dub ?? DEFAULT_LABEL;
 
@@ -74,14 +126,16 @@ export function PeachifyPlayer({
   episodes,
   onSelectEpisode,
   onReady,
+  fullscreenRootRef,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const hlsApiRef = useRef<{ destroy: () => void; levels: { height: number }[]; currentLevel: number } | null>(null);
+  const hlsApiRef = useRef<import('hls.js').default | null>(null);
   const failedRef = useRef<Set<string>>(new Set());
   const startedRef = useRef(false);
   const attachGenRef = useRef(0);
   const fetchGenRef = useRef(0);
+  const sourcesInitKeyRef = useRef('');
   const resumeRef = useRef<{ time: number; playing: boolean } | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTapRef = useRef<{ t: number; x: number }>({ t: 0, x: 0 });
@@ -152,11 +206,11 @@ export function PeachifyPlayer({
     (l: string, q: string, srv: string): StreamSource | null => {
       const inLang = sources.filter((s) => dubLabel(s) === l);
       return (
-        inLang.find((s) => qLabel(s) === q && s.provider === srv) ??
-        inLang.find((s) => s.provider === srv) ??
-        inLang.find((s) => qLabel(s) === q) ??
-        inLang[0] ??
-        sources[0] ??
+        bestSource(inLang.filter((s) => qLabel(s) === q && s.provider === srv)) ??
+        bestSource(inLang.filter((s) => s.provider === srv)) ??
+        bestSource(inLang.filter((s) => qLabel(s) === q)) ??
+        bestSource(inLang) ??
+        bestSource(sources) ??
         null
       );
     },
@@ -164,8 +218,8 @@ export function PeachifyPlayer({
   );
 
   useEffect(() => {
-    const ac = new AbortController();
     const gen = ++fetchGenRef.current;
+    sourcesInitKeyRef.current = '';
     setStatus('loading');
     setSources([]);
     setActive(null);
@@ -175,10 +229,10 @@ export function PeachifyPlayer({
     resumeRef.current = null;
 
     const qs = type === 'tv' ? `?season=${season}&episode=${episode}` : '';
-    fetch(`/api/stream/${type}/${tmdbId}${qs}`, { signal: ac.signal })
-      .then((r) => r.json() as Promise<StreamResponse>)
+    const key = streamKey(type, tmdbId, season, episode);
+    loadStreamData(key, `/api/stream/${type}/${tmdbId}${qs}`)
       .then((json) => {
-        if (ac.signal.aborted || fetchGenRef.current !== gen) return;
+        if (fetchGenRef.current !== gen) return;
         if (!json.ok || !json.data || json.data.sources.length === 0) {
           setStatus('error');
           setErrorMsg(json.error ?? 'No playable sources found');
@@ -187,27 +241,25 @@ export function PeachifyPlayer({
         setSources(json.data.sources);
         setSubs(json.data.subtitles);
       })
-      .catch((err: unknown) => {
-        if (ac.signal.aborted || fetchGenRef.current !== gen) return;
-        if (err instanceof DOMException && err.name === 'AbortError') return;
+      .catch(() => {
+        if (fetchGenRef.current !== gen) return;
         setStatus('error');
         setErrorMsg('Failed to load sources');
       });
-    return () => {
-      ac.abort();
-    };
   }, [type, tmdbId, season, episode]);
 
   useEffect(() => {
     if (sources.length === 0) return;
-    const first = sources[0]!;
+    const initKey = streamKey(type, tmdbId, season, episode);
+    if (sourcesInitKeyRef.current === initKey) return;
+    sourcesInitKeyRef.current = initKey;
+    const first = bestSource(sources)!;
     setLang(dubLabel(first));
     setQuality(qLabel(first));
     setServer(first.provider);
     const en = subs.findIndex((s) => /^en|english/i.test(s.lang ?? '') || /english/i.test(s.label ?? ''));
     setSubIndex(en);
-    // biome-ignore lint/correctness/useExhaustiveDependencies: run once per source set
-  }, [sources]);
+  }, [sources, subs, type, tmdbId, season, episode]);
 
   useEffect(() => {
     if (sources.length === 0 || !lang) return;
@@ -227,16 +279,21 @@ export function PeachifyPlayer({
     const gen = ++attachGenRef.current;
     let destroyed = false;
     let hls: import('hls.js').default | null = null;
+    let fallbackUsed = false;
     setHlsLevels([]);
     setHlsLevel(-1);
     setBuffering(true);
 
     const stopMedia = () => {
-      if (hlsApiRef.current) {
+      const instance = hls ?? hlsApiRef.current;
+      if (instance) {
         try {
-          hlsApiRef.current.destroy();
+          instance.stopLoad();
+          instance.detachMedia();
+          instance.destroy();
         } catch {}
-        hlsApiRef.current = null;
+        if (hlsApiRef.current === instance) hlsApiRef.current = null;
+        hls = null;
       }
       try {
         video.pause();
@@ -244,7 +301,8 @@ export function PeachifyPlayer({
         video.load();
       } catch {}
     };
-    stopMedia();
+    const releaseClaim = () => releaseActiveMedia(stopMedia);
+    claimActiveMedia(stopMedia, video);
 
     const markReady = () => {
       if (destroyed || attachGenRef.current !== gen || startedRef.current) return;
@@ -256,16 +314,22 @@ export function PeachifyPlayer({
         if (r.playing) video.play().catch(() => {});
         resumeRef.current = null;
       }
+      if (onError) {
+        video.removeEventListener('error', onError);
+        onError = null;
+      }
       setStatus('ready');
       setBuffering(false);
       startedRef.current = true;
       onReady?.();
     };
     const fallback = () => {
-      if (startedRef.current || destroyed || attachGenRef.current !== gen) return;
+      if (fallbackUsed || startedRef.current || destroyed || attachGenRef.current !== gen) return;
+      fallbackUsed = true;
       stopMedia();
       failedRef.current.add(s.url);
-      const next = sources.find((c) => !failedRef.current.has(c.url));
+      const remaining = sources.filter((c) => !failedRef.current.has(c.url));
+      const next = bestSource(remaining);
       if (next) {
         setLang(dubLabel(next));
         setQuality(qLabel(next));
@@ -325,10 +389,7 @@ export function PeachifyPlayer({
 
     return () => {
       destroyed = true;
-      if (hls) {
-        hls.destroy();
-        if (hlsApiRef.current === hls) hlsApiRef.current = null;
-      }
+      releaseClaim();
       stopMedia();
       video.removeEventListener('loadedmetadata', markReady);
       video.removeEventListener('canplay', markReady);
@@ -347,7 +408,10 @@ export function PeachifyPlayer({
     const onProg = () => {
       if (v.buffered.length) setBuffered(v.buffered.end(v.buffered.length - 1));
     };
-    const onPlay = () => setPlaying(true);
+    const onPlay = () => {
+      silenceOtherVideos(v);
+      setPlaying(true);
+    };
     const onPause = () => setPlaying(false);
     const onWaiting = () => setBuffering(true);
     const onPlaying = () => setBuffering(false);
@@ -381,6 +445,22 @@ export function PeachifyPlayer({
     };
   }, []);
 
+  // Imperatively attach subtitle tracks so React never adds/removes <track>
+  // children during playback (which can restart the media element in some browsers).
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    for (const track of [...v.querySelectorAll('track')]) track.remove();
+    for (const [i, s] of subs.entries()) {
+      const track = document.createElement('track');
+      track.kind = 'subtitles';
+      track.src = s.url;
+      track.label = s.label ?? s.lang ?? `Subtitle ${i + 1}`;
+      track.srclang = s.lang ?? 'en';
+      v.appendChild(track);
+    }
+  }, [subs, active?.url]);
+
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -389,31 +469,42 @@ export function PeachifyPlayer({
   }, [subIndex, subs, active?.url, status]);
 
   useEffect(() => {
-    const onFs = () => setFullscreen(!!document.fullscreenElement);
+    const onFs = () => {
+      const root = fullscreenRootRef?.current ?? containerRef.current;
+      // Defer until after the browser finishes reparenting fullscreen nodes.
+      requestAnimationFrame(() => {
+        setFullscreen(isFullscreenRoot(root));
+      });
+    };
     document.addEventListener('fullscreenchange', onFs);
     return () => document.removeEventListener('fullscreenchange', onFs);
-  }, []);
+  }, [fullscreenRootRef]);
 
   // Hard stop on unmount: tear down hls + pause and detach the media element so
   // no audio keeps playing when the player is removed — e.g. navigating between
   // detail pages, or switching episodes (which remounts the player via its key).
-  // Without this the old element can linger and overlap the newly-mounted one.
   useEffect(() => {
-    const v = videoRef.current;
-    return () => {
+    const video = videoRef.current;
+    const stopAll = () => {
       if (hlsApiRef.current) {
         try {
+          hlsApiRef.current.stopLoad();
+          hlsApiRef.current.detachMedia();
           hlsApiRef.current.destroy();
         } catch {}
         hlsApiRef.current = null;
       }
-      if (v) {
+      if (video) {
         try {
-          v.pause();
-          v.removeAttribute('src');
-          v.load();
+          video.pause();
+          video.removeAttribute('src');
+          video.load();
         } catch {}
       }
+    };
+    return () => {
+      releaseActiveMedia(stopAll);
+      stopAll();
     };
   }, []);
 
@@ -458,9 +549,9 @@ export function PeachifyPlayer({
   }, []);
 
   const toggleFullscreen = useCallback(() => {
-    const el = containerRef.current;
+    const el = fullscreenRootRef?.current ?? containerRef.current;
     if (!el) return;
-    if (document.fullscreenElement) {
+    if (isFullscreenRoot(el)) {
       document.exitFullscreen().catch(() => {});
       (screen.orientation as OrientationLock)?.unlock?.();
     } else {
@@ -468,7 +559,7 @@ export function PeachifyPlayer({
         .then(() => (screen.orientation as OrientationLock)?.lock?.('landscape')?.catch(() => {}))
         .catch(() => {});
     }
-  }, []);
+  }, [fullscreenRootRef]);
 
   // tap / double-tap gestures on the video surface
   const onSurfaceTap = useCallback(
@@ -552,6 +643,9 @@ export function PeachifyPlayer({
         ? `${hlsLevels[hlsLevel]}p`
         : 'Auto'
       : quality;
+  const streamFormat =
+    active?.type === 'hls' ? 'HLS' : active?.type === 'mp4' ? 'MP4' : status === 'loading' ? '…' : '—';
+  const activeServer = active?.provider ?? (server || '—');
   const hasEpisodes = type === 'tv' && !!episodes && episodes.length > 0;
 
   return (
@@ -571,17 +665,7 @@ export function PeachifyPlayer({
         playsInline
         preload="auto"
         crossOrigin="anonymous"
-      >
-        {subs.map((s, i) => (
-          <track
-            key={s.url}
-            kind="subtitles"
-            src={s.url}
-            label={s.label ?? s.lang ?? `Subtitle ${i + 1}`}
-            srcLang={s.lang ?? 'en'}
-          />
-        ))}
-      </video>
+      />
 
       {/* gesture surface (tap = controls, double-tap sides = ±10s) */}
       {status === 'ready' && (
@@ -626,7 +710,7 @@ export function PeachifyPlayer({
               type="button"
               onClick={togglePlay}
               aria-label={playing ? 'Pause' : 'Play'}
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto flex h-14 w-14 md:h-20 md:w-20 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm hover:bg-black/60 transition-colors"
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto flex h-14 w-14 md:h-20 md:w-20 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white hover:bg-white/20 hover:border-white/30 transition-colors"
             >
               {playing ? (
                 <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg>
@@ -801,7 +885,9 @@ export function PeachifyPlayer({
             <div className="absolute bottom-[68px] md:bottom-[76px] right-3 md:right-5 min-w-44 max-h-[55vh] overflow-y-auto rounded-lg bg-black/95 border border-white/15 py-1 text-sm text-white shadow-2xl pointer-events-auto">
               {menu === 'settings' && (
                 <>
-                  {servers.length > 1 && <Row label="Server" value={server} onClick={() => setMenu('server')} />}
+                  <InfoRow label="Server" value={activeServer} />
+                  <InfoRow label="Stream" value={streamFormat} />
+                  {servers.length > 1 && <Row label="Switch server" value={server} onClick={() => setMenu('server')} />}
                   <Row label="Quality" value={qualityValue} onClick={() => setMenu('quality')} />
                   <Row label="Speed" value={`${rate}x`} onClick={() => setMenu('speed')} />
                 </>
@@ -941,6 +1027,15 @@ function Ctrl({
     >
       {children}
     </button>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex w-full items-center justify-between gap-6 px-3 py-2 text-sm">
+      <span className="text-white/50">{label}</span>
+      <span className="text-white/80 text-xs font-medium tabular-nums">{value}</span>
+    </div>
   );
 }
 

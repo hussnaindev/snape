@@ -46,7 +46,8 @@ export async function GET(
     status: res.status,
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 's-maxage=300, stale-while-revalidate=600',
+      'Cache-Control':
+        process.env.NODE_ENV === 'development' ? 'no-store' : 's-maxage=300, stale-while-revalidate=600',
     },
   });
 }

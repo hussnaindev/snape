@@ -14,6 +14,7 @@ import { TagChip } from '@/components/ui/tag-chip';
 import { WatchHistoryRecorder } from '@/components/watch-history-recorder';
 import { WatchProvidersRow } from '@/components/watch-providers-row';
 import { WatchlistButton } from '@/components/watchlist-button';
+import { exitFullscreenIfRoot, isFullscreenRoot } from '@/lib/active-media';
 import { registerParallax } from '@/lib/parallax-controller';
 import { cn } from '@/lib/utils';
 import type { PreferredProviderKey } from '@/lib/watch-providers';
@@ -168,7 +169,7 @@ export function MovieDetailHero({
     if (!playerActive) return;
 
     function onFsChange() {
-      const inFs = !!document.fullscreenElement;
+      const inFs = isFullscreenRoot(playerContainerRef.current);
       setIsFullscreen(inFs);
       if (!inFs) screen.orientation.unlock();
     }
@@ -176,7 +177,7 @@ export function MovieDetailHero({
 
     return () => {
       document.removeEventListener('fullscreenchange', onFsChange);
-      document.exitFullscreen().catch(() => {});
+      exitFullscreenIfRoot(playerContainerRef.current);
       screen.orientation.unlock();
     };
   }, [playerActive]);
@@ -294,6 +295,7 @@ export function MovieDetailHero({
             tmdbId={movieId}
             title={title}
             {...(logoUrl ? { logoUrl } : {})}
+            fullscreenRootRef={playerContainerRef}
             className={cn(
               'absolute inset-0 w-full h-full transition-opacity duration-700',
               playerVisible ? 'opacity-100' : 'opacity-0',

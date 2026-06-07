@@ -11,6 +11,7 @@ import { PeachifyPlayer } from '@/components/peachify-player';
 import { ExpandableText } from '@/components/ui/expandable-text';
 import { TagChip } from '@/components/ui/tag-chip';
 import { WatchHistoryRecorder } from '@/components/watch-history-recorder';
+import { exitFullscreenIfRoot, isFullscreenRoot } from '@/lib/active-media';
 import { registerParallax } from '@/lib/parallax-controller';
 import { cn } from '@/lib/utils';
 import type { TMDBCollection } from '@/types/tmdb';
@@ -65,7 +66,7 @@ export function CollectionDetailHero({
     if (!playerActive) return;
 
     function onFsChange() {
-      const inFs = !!document.fullscreenElement;
+      const inFs = isFullscreenRoot(playerContainerRef.current);
       setIsFullscreen(inFs);
       if (!inFs) screen.orientation.unlock();
     }
@@ -73,7 +74,7 @@ export function CollectionDetailHero({
 
     return () => {
       document.removeEventListener('fullscreenchange', onFsChange);
-      document.exitFullscreen().catch(() => {});
+      exitFullscreenIfRoot(playerContainerRef.current);
       screen.orientation.unlock();
     };
   }, [playerActive]);
@@ -162,6 +163,7 @@ export function CollectionDetailHero({
             type="movie"
             tmdbId={firstMovieId}
             title={collection.name}
+            fullscreenRootRef={playerContainerRef}
             className={cn(
               'absolute inset-0 w-full h-full transition-opacity duration-700',
               playerVisible ? 'opacity-100' : 'opacity-0',
