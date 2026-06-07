@@ -20,7 +20,7 @@ export function SeriesCarousel({ title, series }: SeriesCarouselProps) {
               key={s.id}
               className="flex-none w-[130px] sm:w-[170px] md:w-[180px] lg:w-[190px] xl:w-[210px] 2xl:w-[240px] 3xl:w-[260px] snap-start"
             >
-              <SeriesCard series={s} prefetch={idx < 3} />
+              <SeriesCard series={s} prefetch={false} />
             </div>
           ))}
         </div>

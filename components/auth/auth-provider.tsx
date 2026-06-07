@@ -3,6 +3,13 @@
 import { handleLogout as clearLocalHistory, syncOnLogin } from '@/lib/watch-history';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
+const SESSION_COOKIE = 'session_token';
+
+function hasSessionCookie(): boolean {
+  if (typeof document === 'undefined') return false;
+  return document.cookie.split(';').some((part) => part.trim().startsWith(`${SESSION_COOKIE}=`));
+}
+
 export type AuthUser = {
   id: string;
   email: string;
@@ -30,6 +37,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: 'loading' });
 
   const refresh = useCallback(async () => {
+    if (!hasSessionCookie()) {
+      setState({ status: 'unauthenticated' });
+      return;
+    }
+
     try {
       const res = await fetch('/api/auth/me');
       const json = await res.json();

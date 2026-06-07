@@ -1,21 +1,29 @@
-/** Fetch TMDB pages 1..maxPage in parallel and merge with stable dedupe by id. */
+/** Max TMDB pages fetched in parallel per batch — keeps Worker fan-out bounded. */
+export const MAX_MERGE_PAGES = 5;
+
+/** Fetch TMDB pages 1..maxPage in batches and merge with stable dedupe by id. */
 export async function mergePaginatedResults<T extends { id: number }>(
   maxPage: number,
   fetchPage: (page: number) => Promise<{ results: T[] }>,
 ): Promise<T[]> {
-  const capped = Math.max(1, maxPage);
-  const pages = await Promise.all(
-    Array.from({ length: capped }, (_, i) => fetchPage(i + 1)),
-  );
+  const total = Math.max(1, maxPage);
   const seen = new Set<number>();
   const merged: T[] = [];
-  for (const page of pages) {
-    for (const item of page.results) {
-      if (seen.has(item.id)) continue;
-      seen.add(item.id);
-      merged.push(item);
+
+  for (let start = 1; start <= total; start += MAX_MERGE_PAGES) {
+    const end = Math.min(start + MAX_MERGE_PAGES - 1, total);
+    const pages = await Promise.all(
+      Array.from({ length: end - start + 1 }, (_, i) => fetchPage(start + i)),
+    );
+    for (const page of pages) {
+      for (const item of page.results) {
+        if (seen.has(item.id)) continue;
+        seen.add(item.id);
+        merged.push(item);
+      }
     }
   }
+
   return merged;
 }
 

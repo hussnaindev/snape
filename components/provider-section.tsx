@@ -338,7 +338,7 @@ export function ProviderSection({ providerKey, label, assetPath, brandColor, mov
             key={`${item.kind}-${item.id}`}
             item={item}
             rank={i + 1}
-            prefetch={i < 3}
+            prefetch={false}
           />
         ))}
       </ParallaxCarousel>

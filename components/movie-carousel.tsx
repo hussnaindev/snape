@@ -15,12 +15,12 @@ export function MovieCarousel({ title, movies }: MovieCarouselProps) {
       </div>
       <div className="overflow-x-auto no-scrollbar">
         <div className="flex gap-2 px-4 md:px-8 py-8">
-          {movies.map((movie, idx) => (
+          {movies.map((movie) => (
             <div
               key={movie.id}
               className="flex-none w-[130px] sm:w-[170px] md:w-[180px] lg:w-[190px] xl:w-[210px] 2xl:w-[240px] 3xl:w-[260px]"
             >
-              <MovieCard movie={movie} prefetch={idx < 3} />
+              <MovieCard movie={movie} prefetch={false} />
             </div>
           ))}
         </div>

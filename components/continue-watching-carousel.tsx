@@ -239,7 +239,7 @@ export function ContinueWatchingCarousel({ hasHistory }: { hasHistory: boolean }
           <ContinueWatchingCard
             key={`${entry.type}-${entry.id}`}
             entry={entry}
-            prefetch={idx < 3}
+            prefetch={false}
           />
         ))}
       </div>

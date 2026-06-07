@@ -231,7 +231,7 @@ export function CuratedProviderSection({ providerKey, label, brandColor, mediaTy
 
       <ParallaxCarousel className="-mt-16 sm:-mt-20 relative z-30 flex gap-1.5 px-5 sm:px-10 2xl:px-16 3xl:px-24 overflow-x-auto no-scrollbar pb-4 sm:pb-6 pt-8 sm:pt-10">
         {items.map((item, i) => (
-          <ProviderCard key={`${item.kind}-${item.id}`} item={item} rank={i + 1} prefetch={i < 3} />
+          <ProviderCard key={`${item.kind}-${item.id}`} item={item} rank={i + 1} prefetch={false} />
         ))}
       </ParallaxCarousel>
     </section>
