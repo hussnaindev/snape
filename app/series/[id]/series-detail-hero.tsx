@@ -223,21 +223,6 @@ export function SeriesDetailHero({
     setMuted((m) => !m);
   }
 
-  const handleFullscreen = useCallback(() => {
-    if (isFullscreen) {
-      document.exitFullscreen().catch(() => {});
-    } else {
-      playerContainerRef.current
-        ?.requestFullscreen()
-        .then(() =>
-          (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock?.(
-            'landscape',
-          )?.catch(() => {}),
-        )
-        .catch(() => {});
-    }
-  }, [isFullscreen]);
-
   const handleEpisodes = useCallback(() => {
     setEpisodePanelOpen((v) => !v);
   }, []);
@@ -419,43 +404,6 @@ export function SeriesDetailHero({
           </button>
         )}
 
-        {/* Exit-fullscreen + episodes overlay — only when fullscreen (topbar hidden) */}
-        {playerActive && isFullscreen && (
-          <div
-            className={cn(
-              'absolute z-20 flex items-center gap-2 transition-all duration-300',
-              playerVisible ? 'opacity-100' : 'opacity-0',
-            )}
-            style={{
-              top: 'max(12px, env(safe-area-inset-top))',
-              right: 'max(12px, env(safe-area-inset-right))',
-            }}
-          >
-            {seasons.length > 0 && initialSeason && (
-              <button
-                type="button"
-                onClick={() => setEpisodePanelOpen((v) => !v)}
-                className="flex items-center gap-1.5 bg-black/70 text-white text-xs font-medium px-3 py-2 rounded-full border border-white/20 hover:border-white/50 transition-all cursor-pointer"
-                aria-label="Toggle episodes panel"
-              >
-                Episodes
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={handleFullscreen}
-              className="flex items-center justify-center bg-black/70 text-white p-2 rounded-full border border-white/20 hover:border-white/50 transition-all duration-300 cursor-pointer"
-              aria-label="Exit fullscreen"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M8 3v3a2 2 0 0 1-2 2H3" />
-                <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
-                <path d="M3 16h3a2 2 0 0 1 2 2v3" />
-                <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
-              </svg>
-            </button>
-          </div>
-        )}
 
         {playerActive && (
           <WatchHistoryRecorder

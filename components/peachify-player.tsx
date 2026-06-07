@@ -153,7 +153,12 @@ export function PeachifyPlayer({
   const sourcesInitKeyRef = useRef('');
   const resumeRef = useRef<{ time: number; playing: boolean } | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTapRef = useRef<{ t: number; x: number }>({ t: 0, x: 0 });
+  const controlsShownRef = useRef(true);
+  // Controls-shown state captured at pointerdown — before any synthetic mousemove
+  // from the tap can flip it — so the deferred single-tap toggles the right way.
+  const tapShownRef = useRef(true);
 
   const [sources, setSources] = useState<StreamSource[]>([]);
   const [subs, setSubs] = useState<StreamSubtitle[]>([]);
@@ -533,6 +538,25 @@ export function PeachifyPlayer({
     }, 3200);
   }, []);
 
+  const hideControls = useCallback(() => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    setControlsShown(false);
+  }, []);
+
+  // Mirror controlsShown into a ref so the deferred tap handler reads the latest.
+  useEffect(() => {
+    controlsShownRef.current = controlsShown;
+  }, [controlsShown]);
+
+  // Clear pending timers on unmount.
+  useEffect(
+    () => () => {
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+      if (tapTimer.current) clearTimeout(tapTimer.current);
+    },
+    [],
+  );
+
   const togglePlay = useCallback(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -587,15 +611,31 @@ export function PeachifyPlayer({
       const now = Date.now();
       const isDouble = now - lastTapRef.current.t < 300;
       lastTapRef.current = { t: now, x };
-      showControls();
+
       if (isDouble) {
+        // Second tap of a double-tap: cancel the pending single-tap toggle and seek.
+        if (tapTimer.current) {
+          clearTimeout(tapTimer.current);
+          tapTimer.current = null;
+        }
         const third = rect.width / 3;
         if (x < third) skip(-10);
         else if (x > third * 2) skip(10);
         else togglePlay();
+        showControls();
+        return;
       }
+
+      // Single tap: defer briefly so a follow-up tap can register as a double-tap,
+      // then toggle the controls based on their state at tap start (tapShownRef).
+      if (tapTimer.current) clearTimeout(tapTimer.current);
+      tapTimer.current = setTimeout(() => {
+        tapTimer.current = null;
+        if (tapShownRef.current) hideControls();
+        else showControls();
+      }, 300);
     },
-    [showControls, skip, togglePlay],
+    [showControls, hideControls, skip, togglePlay],
   );
 
   const onKeyDown = useCallback(
@@ -693,7 +733,14 @@ export function PeachifyPlayer({
       {/* gesture surface (tap = controls, double-tap sides = ±10s) */}
       {status === 'ready' && (
         // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard handled on container
-        <div className="absolute inset-0 z-10" onClick={onSurfaceTap} aria-hidden="true" />
+        <div
+          className="absolute inset-0 z-10"
+          onPointerDown={() => {
+            tapShownRef.current = controlsShownRef.current;
+          }}
+          onClick={onSurfaceTap}
+          aria-hidden="true"
+        />
       )}
 
       {/* loading / buffering spinner — hide once playback has started */}
@@ -715,7 +762,12 @@ export function PeachifyPlayer({
           )}
         >
           {/* top: title logo — only in fullscreen */}
-          <div className="bg-gradient-to-b from-black/70 to-transparent px-4 pt-4 pb-10 pointer-events-auto">
+          <div
+            className={cn(
+              'bg-gradient-to-b from-black/70 to-transparent px-4 pt-4 pb-10',
+              controlsShown || !playing ? 'pointer-events-auto' : 'pointer-events-none',
+            )}
+          >
             {fullscreen && logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -782,7 +834,12 @@ export function PeachifyPlayer({
           )}
 
           {/* bottom bar */}
-          <div className="bg-gradient-to-t from-black/85 to-transparent px-3 md:px-5 pb-3 pt-12 pointer-events-auto">
+          <div
+            className={cn(
+              'bg-gradient-to-t from-black/85 to-transparent px-3 md:px-5 pb-3 pt-12',
+              controlsShown || !playing ? 'pointer-events-auto' : 'pointer-events-none',
+            )}
+          >
             {/* scrubber */}
             <div
               ref={scrubRef}

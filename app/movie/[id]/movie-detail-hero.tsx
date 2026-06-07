@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { usePlayerControls } from '@/lib/player-controls-context';
 
@@ -197,21 +197,6 @@ export function MovieDetailHero({
     setMuted((m) => !m);
   }
 
-  const handleFullscreen = useCallback(() => {
-    if (isFullscreen) {
-      document.exitFullscreen().catch(() => {});
-    } else {
-      playerContainerRef.current
-        ?.requestFullscreen()
-        .then(() =>
-          (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock?.(
-            'landscape',
-          )?.catch(() => {}),
-        )
-        .catch(() => {});
-    }
-  }, [isFullscreen]);
-
   // Extract sources in the background while the user is on the detail page, so
   // playback starts (near-)instantly when they hit Watch.
   useEffect(() => {
@@ -364,29 +349,6 @@ export function MovieDetailHero({
           </button>
         )}
 
-        {/* Exit-fullscreen overlay — only when fullscreen (topbar hidden) */}
-        {playerActive && isFullscreen && (
-          <button
-            type="button"
-            onClick={handleFullscreen}
-            className={cn(
-              'absolute z-20 flex items-center justify-center bg-black/70 text-white p-2 rounded-full border border-white/20 hover:border-white/50 transition-all duration-300',
-              playerVisible ? 'opacity-100' : 'opacity-0',
-            )}
-            style={{
-              top: 'max(12px, env(safe-area-inset-top))',
-              right: 'max(12px, env(safe-area-inset-right))',
-            }}
-            aria-label="Exit fullscreen"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M8 3v3a2 2 0 0 1-2 2H3" />
-              <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
-              <path d="M3 16h3a2 2 0 0 1 2 2v3" />
-              <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
-            </svg>
-          </button>
-        )}
 
         {/* Watch history */}
         {playerActive && (
