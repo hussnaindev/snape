@@ -129,13 +129,19 @@ function encodeHeaders(h) {
   const picked = pickHeaders(h);
   return Object.keys(picked).length ? btoa(JSON.stringify(picked)) : '';
 }
+// Base origin of the media proxy. Set MEDIA_PROXY_BASE to the standalone
+// Cloudflare Worker (e.g. https://snape-media.<acct>.workers.dev) to serve video
+// off a plain Worker instead of the Next.js Pages route — this is what avoids
+// Error 1102 during playback. Unset → relative path (Pages route, local dev).
+const MEDIA_PROXY_BASE = (process.env.MEDIA_PROXY_BASE ?? '').replace(/\/+$/, '');
+
 async function signedMediaUrl(absoluteUrl, headers) {
   const h = encodeHeaders(headers);
   const key = await getSignKey();
   const sigBuf = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${absoluteUrl}\n${h}`));
   const sig = [...new Uint8Array(sigBuf)].map((b) => b.toString(16).padStart(2, '0')).join('');
   const hParam = h ? `&h=${encodeURIComponent(h)}` : '';
-  return `/api/media-proxy?u=${encodeURIComponent(absoluteUrl)}${hParam}&s=${sig}`;
+  return `${MEDIA_PROXY_BASE}/api/media-proxy?u=${encodeURIComponent(absoluteUrl)}${hParam}&s=${sig}`;
 }
 
 // ---- provider fetch -----------------------------------------------------
