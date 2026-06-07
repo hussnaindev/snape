@@ -21,6 +21,12 @@ interface StreamResponse {
   data?: { sources: StreamSource[]; subtitles: StreamSubtitle[] };
   error?: string;
 }
+export interface PlayerEpisode {
+  season: number;
+  episode: number;
+  name?: string;
+  still?: string;
+}
 
 interface Props {
   type: 'movie' | 'tv';
@@ -31,6 +37,8 @@ interface Props {
   autoPlay?: boolean;
   title?: string;
   logoUrl?: string;
+  episodes?: PlayerEpisode[];
+  onSelectEpisode?: (season: number, episode: number) => void;
   onReady?: () => void;
 }
 
@@ -39,6 +47,11 @@ const PROVIDER_ORDER = ['Iron', 'Spider', 'Wolf', 'Multi', 'Dark'];
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const qLabel = (s: StreamSource) => (s.type === 'hls' ? 'Auto' : s.quality ? `${s.quality}p` : 'Auto');
 const dubLabel = (s: StreamSource) => s.dub ?? DEFAULT_LABEL;
+
+type OrientationLock = ScreenOrientation & {
+  lock?: (o: string) => Promise<void>;
+  unlock?: () => void;
+};
 
 function fmt(t: number): string {
   if (!Number.isFinite(t) || t < 0) return '0:00';
@@ -58,18 +71,18 @@ export function PeachifyPlayer({
   autoPlay = true,
   title,
   logoUrl,
+  episodes,
+  onSelectEpisode,
   onReady,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  // Current hls.js instance, used by the quality menu to switch levels. Each
-  // attach effect destroys its OWN local instance (not this ref) to avoid the
-  // cross-run overwrite that leaked instances and caused overlapping audio.
   const hlsApiRef = useRef<{ destroy: () => void; levels: { height: number }[]; currentLevel: number } | null>(null);
   const failedRef = useRef<Set<string>>(new Set());
   const startedRef = useRef(false);
   const resumeRef = useRef<{ time: number; playing: boolean } | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTapRef = useRef<{ t: number; x: number }>({ t: 0, x: 0 });
 
   const [sources, setSources] = useState<StreamSource[]>([]);
   const [subs, setSubs] = useState<StreamSubtitle[]>([]);
@@ -77,8 +90,8 @@ export function PeachifyPlayer({
   const [quality, setQuality] = useState('');
   const [server, setServer] = useState('');
   const [active, setActive] = useState<StreamSource | null>(null);
-  const [hlsLevels, setHlsLevels] = useState<number[]>([]); // heights, index === level index
-  const [hlsLevel, setHlsLevel] = useState(-1); // -1 = Auto
+  const [hlsLevels, setHlsLevels] = useState<number[]>([]);
+  const [hlsLevel, setHlsLevel] = useState(-1);
   const [subIndex, setSubIndex] = useState(-1);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
@@ -91,12 +104,11 @@ export function PeachifyPlayer({
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
   const [rate, setRate] = useState(1);
-  const [fit, setFit] = useState<'contain' | 'cover'>('contain');
+  const [fit, setFit] = useState<'contain' | 'cover'>('cover'); // fill-to-screen by default
   const [fullscreen, setFullscreen] = useState(false);
   const [controlsShown, setControlsShown] = useState(true);
-  const [menu, setMenu] = useState<
-    null | 'main' | 'server' | 'audio' | 'quality' | 'speed' | 'subs'
-  >(null);
+  const [menu, setMenu] = useState<null | 'settings' | 'quality' | 'speed' | 'server' | 'audio' | 'captions'>(null);
+  const [showEpisodes, setShowEpisodes] = useState(false);
 
   // ---------- data ----------
   const languages = useMemo(() => {
@@ -182,8 +194,6 @@ export function PeachifyPlayer({
     };
   }, [type, tmdbId, season, episode]);
 
-  // defaults: take the top of the (HLS-first, provider-ordered) list so the
-  // default stream is the preferred server/type; English subtitles on.
   useEffect(() => {
     if (sources.length === 0) return;
     const first = sources[0]!;
@@ -211,8 +221,6 @@ export function PeachifyPlayer({
     const s = active;
     if (!video || !s) return;
     let destroyed = false;
-    // hls instance LOCAL to this effect run, so cleanup destroys exactly this
-    // one (a shared ref got overwritten across runs → leaked, overlapping audio).
     let hls: import('hls.js').default | null = null;
     setHlsLevels([]);
     setHlsLevel(-1);
@@ -230,10 +238,6 @@ export function PeachifyPlayer({
       startedRef.current = true;
       onReady?.();
     };
-
-    // Switch to another source ONLY on initial-load failure — never after
-    // playback has started (that was the "server/language jumps and restarts
-    // from 0 out of nowhere" bug).
     const fallback = () => {
       if (startedRef.current || destroyed) return;
       failedRef.current.add(s.url);
@@ -255,8 +259,6 @@ export function PeachifyPlayer({
     let onError: (() => void) | null = null;
 
     if (useHls) {
-      // HLS recovery is handled by hls.js — do NOT attach a native error
-      // handler that calls video.load() (it corrupts the MSE buffer).
       import('hls.js')
         .then(({ default: Hls }) => {
           if (destroyed) return;
@@ -272,7 +274,6 @@ export function PeachifyPlayer({
           instance.on(Hls.Events.MANIFEST_PARSED, () => {
             if (destroyed) return;
             setHlsLevels(instance.levels.map((l) => l.height || 0));
-            // Start at the highest level so it doesn't default to 480p.
             const top = instance.levels.length - 1;
             instance.currentLevel = top;
             setHlsLevel(top);
@@ -281,7 +282,7 @@ export function PeachifyPlayer({
             if (!data.fatal) return;
             if (data.type === 'networkError') instance.startLoad();
             else if (data.type === 'mediaError') instance.recoverMediaError();
-            else fallback(); // only acts if playback never started
+            else fallback();
           });
         })
         .catch(fallback);
@@ -289,10 +290,6 @@ export function PeachifyPlayer({
       video.src = s.url;
       onError = () => {
         if (destroyed) return;
-        // Only act on initial-load failure (try the next source). After
-        // playback has started we do NOT call video.load(): it resets
-        // currentTime to 0, which is what made a failed/again seek "jump back
-        // to the start". A failed seek now simply stays put.
         if (!startedRef.current) fallback();
       };
       video.addEventListener('error', onError);
@@ -353,7 +350,6 @@ export function PeachifyPlayer({
     };
   }, []);
 
-  // subtitle track selection
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -361,7 +357,6 @@ export function PeachifyPlayer({
     for (let i = 0; i < tracks.length; i++) tracks[i]!.mode = i === subIndex ? 'showing' : 'disabled';
   }, [subIndex, subs, active?.url, status]);
 
-  // fullscreen tracking
   useEffect(() => {
     const onFs = () => setFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', onFs);
@@ -373,11 +368,8 @@ export function PeachifyPlayer({
     setControlsShown(true);
     if (hideTimer.current) clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => {
-      if (!videoRef.current?.paused) {
-        setControlsShown(false);
-        setMenu(null);
-      }
-    }, 3000);
+      if (!videoRef.current?.paused) setControlsShown(false);
+    }, 3200);
   }, []);
 
   const togglePlay = useCallback(() => {
@@ -414,11 +406,37 @@ export function PeachifyPlayer({
   const toggleFullscreen = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
-    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    else el.requestFullscreen().catch(() => {});
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+      (screen.orientation as OrientationLock)?.unlock?.();
+    } else {
+      el.requestFullscreen()
+        .then(() => (screen.orientation as OrientationLock)?.lock?.('landscape')?.catch(() => {}))
+        .catch(() => {});
+    }
   }, []);
 
-  // keyboard
+  // tap / double-tap gestures on the video surface
+  const onSurfaceTap = useCallback(
+    (e: React.MouseEvent) => {
+      const el = containerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const now = Date.now();
+      const isDouble = now - lastTapRef.current.t < 300;
+      lastTapRef.current = { t: now, x };
+      showControls();
+      if (isDouble) {
+        const third = rect.width / 3;
+        if (x < third) skip(-10);
+        else if (x > third * 2) skip(10);
+        else togglePlay();
+      }
+    },
+    [showControls, skip, togglePlay],
+  );
+
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       switch (e.key) {
@@ -449,15 +467,12 @@ export function PeachifyPlayer({
         case 'm':
           toggleMute();
           break;
-        case 'c':
-          setSubIndex((i) => (i === -1 ? (subs.length ? 0 : -1) : -1));
-          break;
         default:
           return;
       }
       showControls();
     },
-    [togglePlay, skip, changeVolume, toggleFullscreen, toggleMute, subs.length, showControls],
+    [togglePlay, skip, changeVolume, toggleFullscreen, toggleMute, showControls],
   );
 
   const scrubRef = useRef<HTMLDivElement>(null);
@@ -473,16 +488,26 @@ export function PeachifyPlayer({
   );
 
   const pct = (v: number) => (duration ? `${(v / duration) * 100}%` : '0%');
+  const closePanels = () => {
+    setMenu(null);
+    setShowEpisodes(false);
+  };
+  const qualityValue =
+    active?.type === 'hls'
+      ? hlsLevel >= 0 && hlsLevels[hlsLevel]
+        ? `${hlsLevels[hlsLevel]}p`
+        : 'Auto'
+      : quality;
+  const hasEpisodes = type === 'tv' && !!episodes && episodes.length > 0;
 
   return (
     <div
       ref={containerRef}
-      className={cn('relative bg-black overflow-hidden select-none outline-none group', className)}
+      className={cn('relative bg-black overflow-hidden select-none outline-none', className)}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: needed for keyboard shortcuts
       tabIndex={0}
       onKeyDown={onKeyDown}
       onMouseMove={showControls}
-      onPointerDown={showControls}
     >
       {/* biome-ignore lint/a11y/useMediaCaption: subtitle tracks added dynamically */}
       <video
@@ -492,8 +517,6 @@ export function PeachifyPlayer({
         playsInline
         preload="auto"
         crossOrigin="anonymous"
-        onClick={togglePlay}
-        onDoubleClick={toggleFullscreen}
       >
         {subs.map((s, i) => (
           <track
@@ -506,52 +529,99 @@ export function PeachifyPlayer({
         ))}
       </video>
 
-      {/* buffering / loading spinner */}
+      {/* gesture surface (tap = controls, double-tap sides = ±10s) */}
+      {status === 'ready' && (
+        // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard handled on container
+        <div className="absolute inset-0 z-10" onClick={onSurfaceTap} aria-hidden="true" />
+      )}
+
+      {/* loading / buffering spinner */}
       {(status === 'loading' || buffering) && status !== 'error' && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="h-12 w-12 animate-spin rounded-full border-[3px] border-white/25 border-t-white" />
+        <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+          <span className="relative flex h-16 w-16 items-center justify-center">
+            <span className="absolute inset-0 rounded-full border-4 border-white/10" />
+            <span className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#e50914] animate-spin" />
+          </span>
         </div>
       )}
 
-      {/* center play (when paused & ready) */}
-      {status === 'ready' && !playing && !buffering && (
-        <button
-          type="button"
-          onClick={togglePlay}
-          aria-label="Play"
-          className="absolute inset-0 z-10 flex items-center justify-center"
-        >
-          <span className="flex h-20 w-20 items-center justify-center rounded-full bg-black/50 text-white">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
-          </span>
-        </button>
-      )}
-
-      {/* controls overlay */}
+      {/* controls overlay (pointer-events only on the actual controls) */}
       {status === 'ready' && (
         <div
           className={cn(
-            'absolute inset-0 z-20 flex flex-col justify-between transition-opacity duration-300',
-            controlsShown || !playing ? 'opacity-100' : 'opacity-0 pointer-events-none',
+            'absolute inset-0 z-20 flex flex-col justify-between pointer-events-none transition-opacity duration-300',
+            controlsShown || !playing ? 'opacity-100' : 'opacity-0',
           )}
         >
-          {/* top: title logo (falls back to text) */}
-          <div className="bg-gradient-to-b from-black/70 to-transparent px-4 pt-4 pb-10">
-            {logoUrl ? (
+          {/* top: title logo — only in fullscreen */}
+          <div className="bg-gradient-to-b from-black/70 to-transparent px-4 pt-4 pb-10 pointer-events-auto">
+            {fullscreen && logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={logoUrl}
                 alt={title ?? ''}
                 loading="lazy"
-                className="max-h-10 md:max-h-16 w-auto max-w-[55%] object-contain object-left drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
+                className="max-h-8 md:max-h-14 w-auto max-w-[45%] object-contain object-left drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
               />
-            ) : title ? (
-              <h2 className="text-white text-base md:text-xl font-semibold drop-shadow">{title}</h2>
             ) : null}
           </div>
 
-          {/* bottom controls */}
-          <div className="bg-gradient-to-t from-black/80 to-transparent px-3 md:px-5 pb-3 pt-12">
+          {/* center play/pause */}
+          {(controlsShown || !playing) && (
+            <button
+              type="button"
+              onClick={togglePlay}
+              aria-label={playing ? 'Pause' : 'Play'}
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto flex h-14 w-14 md:h-20 md:w-20 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm hover:bg-black/60 transition-colors"
+            >
+              {playing ? (
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg>
+              ) : (
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+              )}
+            </button>
+          )}
+
+          {/* episodes carousel */}
+          {showEpisodes && hasEpisodes && (
+            <div className="absolute bottom-[68px] md:bottom-[76px] left-0 right-0 pointer-events-auto px-3 md:px-5">
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                {episodes!.map((ep) => {
+                  const isCur = ep.season === season && ep.episode === episode;
+                  return (
+                    <button
+                      key={`${ep.season}-${ep.episode}`}
+                      type="button"
+                      onClick={() => {
+                        onSelectEpisode?.(ep.season, ep.episode);
+                        setShowEpisodes(false);
+                      }}
+                      className={cn(
+                        'shrink-0 w-32 md:w-44 rounded-md overflow-hidden border bg-black/60 text-left transition-colors',
+                        isCur ? 'border-[#e50914]' : 'border-white/15 hover:border-white/40',
+                      )}
+                    >
+                      <div className="relative aspect-video bg-white/5">
+                        {ep.still ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={ep.still} alt="" loading="lazy" className="h-full w-full object-cover" />
+                        ) : null}
+                        <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1 text-[10px] font-semibold text-white">
+                          E{ep.episode}
+                        </span>
+                      </div>
+                      <div className="px-2 py-1 text-[11px] text-white/80 line-clamp-1">
+                        {ep.name ?? `Episode ${ep.episode}`}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* bottom bar */}
+          <div className="bg-gradient-to-t from-black/85 to-transparent px-3 md:px-5 pb-3 pt-12 pointer-events-auto">
             {/* scrubber */}
             <div
               ref={scrubRef}
@@ -569,12 +639,12 @@ export function PeachifyPlayer({
                 <div className="absolute h-full rounded-full bg-[#e50914]" style={{ width: pct(current) }} />
               </div>
               <div
-                className="absolute h-3 w-3 -translate-x-1/2 rounded-full bg-[#e50914] opacity-0 group-hover/scrub:opacity-100 transition-opacity"
+                className="absolute h-3.5 w-3.5 -translate-x-1/2 rounded-full bg-[#e50914] opacity-0 group-hover/scrub:opacity-100 transition-opacity"
                 style={{ left: pct(current) }}
               />
             </div>
 
-            <div className="mt-1 flex items-center gap-3 md:gap-4 text-white">
+            <div className="mt-1 flex flex-nowrap items-center gap-2 md:gap-4 text-white">
               <Ctrl onClick={togglePlay} label={playing ? 'Pause' : 'Play'}>
                 {playing ? (
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg>
@@ -582,19 +652,22 @@ export function PeachifyPlayer({
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
                 )}
               </Ctrl>
-              <Ctrl onClick={() => skip(-10)} label="Back 10s">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5" /></svg>
+
+              {/* skip — hidden on compact (mobile, non-fullscreen) */}
+              <Ctrl onClick={() => skip(-10)} label="Back 10s" className={fullscreen ? 'inline-flex' : 'hidden md:inline-flex'}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 4 4 11l7 7" /><path d="M4 11h11a5 5 0 0 1 0 10h-1" /></svg>
               </Ctrl>
-              <Ctrl onClick={() => skip(10)} label="Forward 10s">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M13 17l5-5-5-5M6 17l5-5-5-5" /></svg>
+              <Ctrl onClick={() => skip(10)} label="Forward 10s" className={fullscreen ? 'inline-flex' : 'hidden md:inline-flex'}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m13 4 7 7-7 7" /><path d="M20 11H9a5 5 0 0 0 0 10h1" /></svg>
               </Ctrl>
 
-              <div className="group/vol flex items-center">
+              {/* volume */}
+              <div className="group/vol flex items-center gap-1">
                 <Ctrl onClick={toggleMute} label={muted ? 'Unmute' : 'Mute'}>
                   {muted || volume === 0 ? (
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 00-2.5-4v8a4.5 4.5 0 002.5-4z" opacity="0.4" /><path d="M19 5l-2 2m0 10l2 2" stroke="currentColor" strokeWidth="2" /></svg>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z" /><path d="m22 9-6 6M16 9l6 6" /></svg>
                   ) : (
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 8v8a4.5 4.5 0 002.5-4zM14 3.2v2.1a6.5 6.5 0 010 13.4v2.1a8.5 8.5 0 000-17.6z" /></svg>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z" /><path d="M16 9a5 5 0 0 1 0 6M19 7a8 8 0 0 1 0 10" /></svg>
                   )}
                 </Ctrl>
                 <input
@@ -604,38 +677,65 @@ export function PeachifyPlayer({
                   step={0.05}
                   value={muted ? 0 : volume}
                   onChange={(e) => changeVolume(Number(e.target.value))}
-                  className="w-0 group-hover/vol:w-20 transition-all duration-200 accent-white h-1 cursor-pointer"
+                  className="hidden md:block w-0 opacity-0 group-hover/vol:w-20 group-hover/vol:opacity-100 transition-all duration-200 h-1 cursor-pointer accent-[#e50914]"
                   aria-label="Volume"
                 />
               </div>
 
-              <span className="text-xs md:text-sm tabular-nums text-white/90">
+              <span className="shrink-0 whitespace-nowrap text-xs md:text-sm tabular-nums text-white/90">
                 {fmt(current)} <span className="text-white/40">/ {fmt(duration)}</span>
               </span>
 
-              <div className="ml-auto flex items-center gap-3 md:gap-4">
-                {subs.length > 0 && (
-                  <Ctrl onClick={() => setMenu(menu === 'subs' ? null : 'subs')} label="Subtitles" active={subIndex >= 0}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2zm2 9h6v2H6v-2zm8 0h4v2h-4v-2zM6 9h4v2H6V9zm6 0h6v2h-6V9z" /></svg>
+              <div className="ml-auto flex flex-nowrap items-center gap-2 md:gap-4 shrink-0">
+                {hasEpisodes && (
+                  <Ctrl onClick={() => { setMenu(null); setShowEpisodes((s) => !s); }} label="Episodes" active={showEpisodes}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2" /><path d="M20 8v10a2 2 0 0 1-2 2H8" /></svg>
                   </Ctrl>
                 )}
-                <Ctrl onClick={() => setMenu(menu ? null : 'main')} label="Settings">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" /></svg>
+
+                {/* captions (CC) — dedicated button */}
+                {subs.length > 0 && (
+                  <Ctrl
+                    onClick={() => { setShowEpisodes(false); setMenu(menu === 'captions' ? null : 'captions'); }}
+                    label="Subtitles"
+                    active={subIndex >= 0}
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+                      <rect x="2.5" y="5" width="19" height="14" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
+                      <text x="12" y="15.5" textAnchor="middle" fontSize="7.5" fontWeight="700" fill="currentColor" fontFamily="system-ui, sans-serif">CC</text>
+                    </svg>
+                  </Ctrl>
+                )}
+
+                {/* audio (dub) — dedicated button */}
+                {languages.length > 1 && (
+                  <Ctrl
+                    onClick={() => { setShowEpisodes(false); setMenu(menu === 'audio' ? null : 'audio'); }}
+                    label="Audio"
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 14v-3a9 9 0 0 1 18 0v3" /><path d="M3 14a2 2 0 0 1 2-2h1v6H5a2 2 0 0 1-2-2zM21 14a2 2 0 0 0-2-2h-1v6h1a2 2 0 0 0 2-2z" /></svg>
+                  </Ctrl>
+                )}
+
+                {/* settings (quality / speed / server) */}
+                <Ctrl onClick={() => { setShowEpisodes(false); setMenu(menu === 'settings' || menu === 'quality' || menu === 'speed' || menu === 'server' ? null : 'settings'); }} label="Settings">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
                 </Ctrl>
-                {/* Fill-to-screen: a screen frame with an inner content rect.
-                    Filled inner = currently cropped-to-fill; outline = letterboxed.
-                    Visually distinct from the fullscreen corner-arrows icon. */}
+
+                {/* fill-to-screen */}
                 <Ctrl onClick={() => setFit((f) => (f === 'cover' ? 'contain' : 'cover'))} label="Fill to screen" active={fit === 'cover'}>
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                     <rect x="2.5" y="6" width="19" height="12" rx="1.5" />
                     <rect x="7.5" y="9.5" width="9" height="5" rx="1" fill={fit === 'cover' ? 'currentColor' : 'none'} stroke="none" />
                   </svg>
                 </Ctrl>
+
+                {/* fullscreen — diagonal expand (top-left + bottom-right) */}
                 <Ctrl onClick={toggleFullscreen} label="Fullscreen">
                   {fullscreen ? (
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M8 3v3a2 2 0 01-2 2H3M21 8h-3a2 2 0 01-2-2V3M3 16h3a2 2 0 012 2v3M16 21v-3a2 2 0 012-2h3" /></svg>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10 4v6H4" /><path d="m10 10-6-6" /><path d="M14 20v-6h6" /><path d="m14 14 6 6" /></svg>
                   ) : (
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3" /></svg>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 4H4v5" /><path d="m4 4 6 6" /><path d="M15 20h5v-5" /><path d="m20 20-6-6" /></svg>
                   )}
                 </Ctrl>
               </div>
@@ -644,30 +744,12 @@ export function PeachifyPlayer({
 
           {/* menu panel */}
           {menu && (
-            <div className="absolute bottom-20 right-4 min-w-44 max-h-[55vh] overflow-y-auto rounded-lg bg-black/95 border border-white/15 py-1 text-sm text-white shadow-2xl">
-              {menu === 'main' && (
+            <div className="absolute bottom-[68px] md:bottom-[76px] right-3 md:right-5 min-w-44 max-h-[55vh] overflow-y-auto rounded-lg bg-black/95 border border-white/15 py-1 text-sm text-white shadow-2xl pointer-events-auto">
+              {menu === 'settings' && (
                 <>
                   {servers.length > 1 && <Row label="Server" value={server} onClick={() => setMenu('server')} />}
-                  <Row label="Audio" value={lang} onClick={() => setMenu('audio')} />
-                  <Row
-                    label="Quality"
-                    value={
-                      active?.type === 'hls'
-                        ? hlsLevel >= 0 && hlsLevels[hlsLevel]
-                          ? `${hlsLevels[hlsLevel]}p`
-                          : 'Auto'
-                        : quality
-                    }
-                    onClick={() => setMenu('quality')}
-                  />
+                  <Row label="Quality" value={qualityValue} onClick={() => setMenu('quality')} />
                   <Row label="Speed" value={`${rate}x`} onClick={() => setMenu('speed')} />
-                  {subs.length > 0 && (
-                    <Row
-                      label="Subtitles"
-                      value={subIndex >= 0 ? (subs[subIndex]?.label ?? 'On') : 'Off'}
-                      onClick={() => setMenu('subs')}
-                    />
-                  )}
                 </>
               )}
               {menu === 'server' &&
@@ -678,7 +760,6 @@ export function PeachifyPlayer({
                     active={srv === server}
                     onClick={() => {
                       setServer(srv);
-                      // Move to a language/quality this server actually provides.
                       const has = sources.filter((s) => s.provider === srv);
                       if (!has.some((s) => dubLabel(s) === lang)) {
                         const first = has[0];
@@ -707,7 +788,6 @@ export function PeachifyPlayer({
                 ))}
               {menu === 'quality' &&
                 (active?.type === 'hls' && hlsLevels.length > 0 ? (
-                  // HLS: switch level in place (no source reload / restart).
                   <>
                     <Opt
                       label="Auto"
@@ -735,7 +815,6 @@ export function PeachifyPlayer({
                       ))}
                   </>
                 ) : (
-                  // mp4: each quality is a separate file → switch source.
                   qualities.map((q) => (
                     <Opt key={q} label={q} active={q === quality} onClick={() => { setQuality(q); setMenu(null); }} />
                   ))
@@ -752,7 +831,7 @@ export function PeachifyPlayer({
                     }}
                   />
                 ))}
-              {menu === 'subs' && (
+              {menu === 'captions' && (
                 <>
                   <Opt label="Off" active={subIndex === -1} onClick={() => { setSubIndex(-1); setMenu(null); }} />
                   {subs.map((s, i) => (
@@ -776,17 +855,35 @@ export function PeachifyPlayer({
           <div className="text-xs text-white/50">{errorMsg}</div>
         </div>
       )}
+
+      {/* close panels when tapping elsewhere */}
+      {(menu || showEpisodes) && (
+        // biome-ignore lint/a11y/useKeyWithClickEvents: dismiss layer
+        <div className="absolute inset-0 z-[19]" onClick={closePanels} aria-hidden="true" />
+      )}
     </div>
   );
 }
 
-function Ctrl({ onClick, label, active, children }: { onClick: () => void; label: string; active?: boolean; children: React.ReactNode }) {
+function Ctrl({
+  onClick,
+  label,
+  active,
+  className,
+  children,
+}: {
+  onClick: () => void;
+  label: string;
+  active?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={label}
-      className={cn('text-white/90 hover:text-white transition-colors', active && 'text-[#e50914] hover:text-[#e50914]')}
+      className={cn('text-white/90 hover:text-white transition-colors', active && 'text-[#e50914] hover:text-[#e50914]', className)}
     >
       {children}
     </button>

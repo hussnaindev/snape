@@ -16,6 +16,7 @@ import { WatchlistButton } from '@/components/watchlist-button';
 import { registerParallax } from '@/lib/parallax-controller';
 import { cn } from '@/lib/utils';
 import type { PreferredProviderKey } from '@/lib/watch-providers';
+import { tmdbImage } from '@/lib/tmdb-image';
 import type { TMDBSeason, TMDBSeasonSummary } from '@/types/tmdb';
 
 import { PeachifyPlayer } from '@/components/peachify-player';
@@ -263,19 +264,12 @@ export function SeriesDetailHero({
     setPlayerActive(true);
   }
 
-  // Register / unregister controls in topbar
+  // The player owns its own fullscreen + episodes controls now — keep the
+  // topbar clear.
   useEffect(() => {
-    if (!playerActive || !playerVisible) {
-      setControls(null);
-      return;
-    }
-    setControls({
-      isFullscreen,
-      onFullscreen: handleFullscreen,
-      ...(seasons.length > 0 && initialSeason ? { onEpisodes: handleEpisodes } : {}),
-    });
+    setControls(null);
     return () => setControls(null);
-  }, [playerActive, playerVisible, isFullscreen, handleFullscreen, handleEpisodes, setControls]);
+  }, [setControls]);
 
   // Parallax: backdrop vertical movement
   useEffect(() => {
@@ -349,6 +343,15 @@ export function SeriesDetailHero({
             episode={currentEpisode}
             title={name}
             {...(logoUrl ? { logoUrl } : {})}
+            episodes={
+              initialSeason?.episodes?.map((e) => ({
+                season: e.season_number,
+                episode: e.episode_number,
+                name: e.name,
+                ...(e.still_path ? { still: tmdbImage(e.still_path, 'w300') } : {}),
+              })) ?? []
+            }
+            onSelectEpisode={handleEpisodeSelect}
             className={cn(
               'absolute inset-0 w-full h-full transition-opacity duration-700',
               playerVisible ? 'opacity-100' : 'opacity-0',

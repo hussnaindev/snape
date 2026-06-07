@@ -215,15 +215,11 @@ export function MovieDetailHero({
     setPlayerActive(true);
   }
 
-  // Register / unregister fullscreen button in topbar
+  // The player owns its own fullscreen button now — keep the topbar clear.
   useEffect(() => {
-    if (!playerActive || !playerVisible) {
-      setControls(null);
-      return;
-    }
-    setControls({ isFullscreen, onFullscreen: handleFullscreen });
+    setControls(null);
     return () => setControls(null);
-  }, [playerActive, playerVisible, isFullscreen, handleFullscreen, setControls]);
+  }, [setControls]);
 
   // Parallax: backdrop vertical movement
   useEffect(() => {
