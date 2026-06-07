@@ -88,7 +88,8 @@ function unwrap(rawUrl) {
     }
     const isProxy =
       (u.hostname.endsWith('.workers.dev') || u.hostname.endsWith('.eat-peach.sbs')) &&
-      u.pathname.includes('proxy');
+      // mp4-proxy / m3u8-proxy wrap video; ts-segment wraps subtitles.
+      /proxy|segment/i.test(u.pathname);
     const inner = u.searchParams.get('url');
     if (!isProxy || !inner) break;
     const h = u.searchParams.get('headers');
@@ -187,7 +188,18 @@ function collectProviderSources(raw, providerLabel) {
   const subtitles = Array.isArray(raw.subtitles)
     ? raw.subtitles
         .filter((s) => typeof s.url === 'string')
-        .map((s) => ({ url: s.url, label: s.label ?? s.language ?? null, lang: s.language ?? s.lang ?? null }))
+        .map((s) => {
+          // Subtitles are wrapped in the same flaky eat-peach proxy (/ts-segment).
+          // Unwrap to the real CDN URL + headers so the media proxy can fetch it —
+          // the eat-peach hosts block Cloudflare's datacenter IPs (→ 403).
+          const { url, headers } = unwrap(s.url);
+          return {
+            url,
+            headers,
+            label: s.label ?? s.language ?? null,
+            lang: s.language ?? s.lang ?? null,
+          };
+        })
     : [];
   return { sources, subtitles };
 }
@@ -309,7 +321,10 @@ export default async (req) => {
   // `&sub=1` tells the media proxy to normalize the body to WebVTT (browsers
   // ignore SRT in <track>). It's outside the signed payload — just a render hint.
   const subtitles = await Promise.all(
-    rawSubs.map(async (s) => ({ ...s, url: `${await signedMediaUrl(s.url)}&sub=1` })),
+    rawSubs.map(async ({ headers, ...s }) => ({
+      ...s,
+      url: `${await signedMediaUrl(s.url, headers)}&sub=1`,
+    })),
   );
 
   return new Response(JSON.stringify({ ok: true, data: { sources, subtitles }, debug }), {
