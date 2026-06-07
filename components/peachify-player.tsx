@@ -214,7 +214,6 @@ export function PeachifyPlayer({
     // hls instance LOCAL to this effect run, so cleanup destroys exactly this
     // one (a shared ref got overwritten across runs → leaked, overlapping audio).
     let hls: import('hls.js').default | null = null;
-    let mp4Retry = 0;
     setHlsLevels([]);
     setHlsLevel(-1);
 
@@ -290,16 +289,11 @@ export function PeachifyPlayer({
       video.src = s.url;
       onError = () => {
         if (destroyed) return;
-        if (!startedRef.current) {
-          fallback();
-          return;
-        }
-        // Mid-playback: one in-place reload at the same spot, never switch source.
-        if (mp4Retry < 1) {
-          mp4Retry += 1;
-          resumeRef.current = { time: video.currentTime, playing: !video.paused };
-          video.load();
-        }
+        // Only act on initial-load failure (try the next source). After
+        // playback has started we do NOT call video.load(): it resets
+        // currentTime to 0, which is what made a failed/again seek "jump back
+        // to the start". A failed seek now simply stays put.
+        if (!startedRef.current) fallback();
       };
       video.addEventListener('error', onError);
     }
