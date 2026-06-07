@@ -155,6 +155,7 @@ export function PeachifyPlayer({
   const [playing, setPlaying] = useState(false);
   const [buffering, setBuffering] = useState(false);
   const [current, setCurrent] = useState(0);
+  const [scrubPreview, setScrubPreview] = useState<number | null>(null);
   const [duration, setDuration] = useState(0);
   const [buffered, setBuffered] = useState(0);
   const [volume, setVolume] = useState(1);
@@ -621,18 +622,25 @@ export function PeachifyPlayer({
   );
 
   const scrubRef = useRef<HTMLDivElement>(null);
-  const scrubToClient = useCallback(
+  const scrubToFraction = useCallback(
     (clientX: number) => {
       const el = scrubRef.current;
-      if (!el || !duration) return;
+      if (!el || !duration) return 0;
       const rect = el.getBoundingClientRect();
-      const frac = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-      seekTo(frac * duration);
+      return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     },
-    [duration, seekTo],
+    [duration],
+  );
+  const commitScrub = useCallback(
+    (clientX: number) => {
+      if (!duration) return;
+      seekTo(scrubToFraction(clientX) * duration);
+    },
+    [duration, scrubToFraction, seekTo],
   );
 
   const pct = (v: number) => (duration ? `${(v / duration) * 100}%` : '0%');
+  const displayTime = scrubPreview ?? current;
   const closePanels = () => {
     setMenu(null);
     setShowEpisodes(false);
@@ -766,19 +774,25 @@ export function PeachifyPlayer({
               className="group/scrub relative h-4 flex items-center cursor-pointer"
               onPointerDown={(e) => {
                 (e.target as HTMLElement).setPointerCapture(e.pointerId);
-                scrubToClient(e.clientX);
+                if (duration) setScrubPreview(scrubToFraction(e.clientX) * duration);
               }}
               onPointerMove={(e) => {
-                if (e.buttons === 1) scrubToClient(e.clientX);
+                if (e.buttons !== 1 || !duration) return;
+                setScrubPreview(scrubToFraction(e.clientX) * duration);
               }}
+              onPointerUp={(e) => {
+                commitScrub(e.clientX);
+                setScrubPreview(null);
+              }}
+              onPointerCancel={() => setScrubPreview(null)}
             >
               <div className="absolute left-0 right-0 h-1 group-hover/scrub:h-1.5 rounded-full bg-white/25 transition-all">
                 <div className="absolute h-full rounded-full bg-white/40" style={{ width: pct(buffered) }} />
-                <div className="absolute h-full rounded-full bg-[#e50914]" style={{ width: pct(current) }} />
+                <div className="absolute h-full rounded-full bg-[#e50914]" style={{ width: pct(displayTime) }} />
               </div>
               <div
                 className="absolute h-3.5 w-3.5 -translate-x-1/2 rounded-full bg-[#e50914] opacity-0 group-hover/scrub:opacity-100 transition-opacity"
-                style={{ left: pct(current) }}
+                style={{ left: pct(displayTime) }}
               />
             </div>
 
@@ -821,7 +835,7 @@ export function PeachifyPlayer({
               </div>
 
               <span className="shrink-0 whitespace-nowrap text-xs md:text-sm tabular-nums text-white/90">
-                {fmt(current)} <span className="text-white/40">/ {fmt(duration)}</span>
+                {fmt(displayTime)} <span className="text-white/40">/ {fmt(duration)}</span>
               </span>
 
               <div className="ml-auto flex flex-nowrap items-center gap-2 md:gap-4 shrink-0">

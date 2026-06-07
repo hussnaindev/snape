@@ -76,6 +76,40 @@ export async function signedMediaUrl(
   return `/api/media-proxy?u=${encodeURIComponent(absoluteUrl)}${hParam}&s=${sig}`;
 }
 
+/** One HMAC for an entire HLS manifest — child segment URLs reuse this scope. */
+export async function signManifestScope(
+  manifestUrl: string,
+  headers?: UpstreamHeaders,
+): Promise<{ mb: string; mh: string; ms: string }> {
+  const mh = encodeHeaders(headers);
+  const ms = await hmac(`manifest:${manifestUrl}\n${mh}`);
+  return { mb: manifestUrl, mh, ms };
+}
+
+/** Verify a manifest-scoped child URL (same CDN origin as the manifest). */
+export async function verifyManifestChild(
+  childUrl: string,
+  manifestUrl: string,
+  headersBlob: string,
+  scopeSig: string,
+): Promise<boolean> {
+  const expected = await hmac(`manifest:${manifestUrl}\n${headersBlob}`);
+  if (scopeSig !== expected) return false;
+  try {
+    return new URL(childUrl).origin === new URL(manifestUrl).origin;
+  } catch {
+    return false;
+  }
+}
+
+export function manifestScopedProxyUrl(
+  childAbsoluteUrl: string,
+  scope: { mb: string; mh: string; ms: string },
+): string {
+  const mh = scope.mh ? `&mh=${encodeURIComponent(scope.mh)}` : '';
+  return `/api/media-proxy?mu=${encodeURIComponent(childAbsoluteUrl)}&mb=${encodeURIComponent(scope.mb)}${mh}&ms=${scope.ms}`;
+}
+
 /** Verify a media-proxy request's signature over (url + headers blob). */
 export async function verifyMediaUrl(
   absoluteUrl: string,

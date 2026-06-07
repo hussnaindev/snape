@@ -2,8 +2,11 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 import {
   decodeHeaders,
+  manifestScopedProxyUrl,
   signedMediaUrl,
+  signManifestScope,
   type UpstreamHeaders,
+  verifyManifestChild,
   verifyMediaUrl,
 } from '@/lib/media-sign';
 
@@ -48,6 +51,32 @@ async function fetchRetry(url: string, init: RequestInit, attempts = 3): Promise
   return last as Response;
 }
 
+async function readUpTo(body: ReadableStream<Uint8Array>, max: number): Promise<Uint8Array> {
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (total < max) {
+      const { done, value } = await reader.read();
+      if (done || !value) break;
+      const room = max - total;
+      const slice = value.byteLength <= room ? value : value.subarray(0, room);
+      chunks.push(slice);
+      total += slice.byteLength;
+      if (slice.byteLength < value.byteLength) break;
+    }
+  } finally {
+    reader.cancel().catch(() => {});
+  }
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) {
+    out.set(c, off);
+    off += c.byteLength;
+  }
+  return out;
+}
+
 // Serve a progressive mp4 as a fixed-length, range-correct partial response.
 // The browser sends `Range: bytes=N-`; we fetch a bounded window from the CDN
 // and stream it back with explicit Content-Length + Content-Range so scrubbing
@@ -79,15 +108,21 @@ async function serveRangedMp4(
     return new NextResponse('Bad gateway', { status: 502, headers: CORS });
   }
 
-  // If the CDN ignored the range (200), stream it through rather than buffering
-  // the whole file into memory.
+  // If the CDN ignored the range (200), never pipe the whole file through the
+  // Worker — read at most one chunk (common cause of Error 1102 on seek).
   if (res.status === 200) {
     const h = new Headers(CORS);
-    const ct = res.headers.get('content-type');
-    if (ct) h.set('Content-Type', ct);
+    h.set('Content-Type', res.headers.get('content-type') ?? 'video/mp4');
+    h.set('Accept-Ranges', 'bytes');
+    h.set('Cache-Control', 'no-store');
+    if (rangeHeader && res.body) {
+      const limited = await readUpTo(res.body, MP4_CHUNK);
+      h.set('Content-Length', String(limited.byteLength));
+      h.set('Content-Range', `bytes ${start}-${start + limited.byteLength - 1}/*`);
+      return new NextResponse(limited as unknown as BodyInit, { status: 206, headers: h });
+    }
     const cl = res.headers.get('content-length');
     if (cl) h.set('Content-Length', cl);
-    h.set('Accept-Ranges', 'bytes');
     return new NextResponse(res.body, { status: 200, headers: h });
   }
 
@@ -139,16 +174,21 @@ async function rewriteManifest(
 ): Promise<string> {
   const lines = text.split('\n');
   const out: string[] = [];
-  const signedCache = new Map<string, string>();
+  const scope = await signManifestScope(baseUrl, headers);
+  const baseOrigin = new URL(baseUrl).origin;
+  const crossOriginCache = new Map<string, string>();
 
   const resolve = async (uri: string): Promise<string> => {
     try {
       const abs = new URL(uri, baseUrl).toString();
-      const cached = signedCache.get(abs);
+      if (new URL(abs).origin === baseOrigin) {
+        return manifestScopedProxyUrl(abs, scope);
+      }
+      const cached = crossOriginCache.get(abs);
       if (cached) return cached;
-      const url = await signedMediaUrl(abs, headers);
-      signedCache.set(abs, url);
-      return url;
+      const signed = await signedMediaUrl(abs, headers);
+      crossOriginCache.set(abs, signed);
+      return signed;
     } catch {
       return uri;
     }
@@ -178,9 +218,14 @@ async function rewriteManifest(
 }
 
 export async function GET(req: NextRequest) {
-  const raw = req.nextUrl.searchParams.get('u');
-  const headersBlob = req.nextUrl.searchParams.get('h') ?? '';
-  const sig = req.nextUrl.searchParams.get('s') ?? '';
+  const scopedMu = req.nextUrl.searchParams.get('mu');
+  const scopedMb = req.nextUrl.searchParams.get('mb');
+  const scopedMs = req.nextUrl.searchParams.get('ms') ?? '';
+  const scopedMh = req.nextUrl.searchParams.get('mh') ?? '';
+
+  const raw = scopedMu ?? req.nextUrl.searchParams.get('u');
+  const headersBlob = scopedMu ? scopedMh : (req.nextUrl.searchParams.get('h') ?? '');
+  const sig = scopedMu ? scopedMs : (req.nextUrl.searchParams.get('s') ?? '');
   if (!raw) return new NextResponse('Missing u', { status: 400, headers: CORS });
 
   let target: URL;
@@ -190,9 +235,11 @@ export async function GET(req: NextRequest) {
     return new NextResponse('Bad url', { status: 400, headers: CORS });
   }
 
-  // Only serve URLs we minted — prevents open-proxy abuse while still allowing
-  // the arbitrary CDN hosts that appear inside HLS manifests.
-  if (!(await verifyMediaUrl(raw, headersBlob, sig))) {
+  if (scopedMu && scopedMb) {
+    if (!(await verifyManifestChild(raw, scopedMb, scopedMh, scopedMs))) {
+      return new NextResponse('Bad signature', { status: 403, headers: CORS });
+    }
+  } else if (!(await verifyMediaUrl(raw, headersBlob, sig))) {
     return new NextResponse('Bad signature', { status: 403, headers: CORS });
   }
 
