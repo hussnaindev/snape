@@ -586,11 +586,11 @@ export function PeachifyPlayer({
           {showEpisodes && hasEpisodes && (
             <div className="absolute bottom-[68px] md:bottom-[76px] left-0 right-0 pointer-events-auto px-3 md:px-5">
               <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                {episodes!.map((ep) => {
+                {episodes!.map((ep, i) => {
                   const isCur = ep.season === season && ep.episode === episode;
                   return (
                     <button
-                      key={`${ep.season}-${ep.episode}`}
+                      key={`${ep.season}-${ep.episode}-${i}`}
                       type="button"
                       onClick={() => {
                         onSelectEpisode?.(ep.season, ep.episode);
