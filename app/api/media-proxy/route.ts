@@ -33,9 +33,17 @@ function looksLikeManifest(url: string, contentType: string | null): boolean {
   return /\.m3u8(\?|$)/i.test(url);
 }
 
-// Size of each mp4 chunk window. Keep modest — buffering multi-MB responses in
-// the Worker on every scrub/seek burns CPU and triggers Cloudflare Error 1102.
-const MP4_CHUNK = 1024 * 1024;
+// Cloudflare's edge cache. Caching the *rewritten* HLS manifest means the
+// O(segments) URL-parsing/signing in rewriteManifest() runs at most once per
+// manifest URL per TTL instead of on every fetch — that recompute was the main
+// CPU cause of Error 1102 on the HLS path. Absent in `next dev` (returns null).
+function edgeCache(): Cache | null {
+  try {
+    return (globalThis as unknown as { caches?: { default?: Cache } }).caches?.default ?? null;
+  } catch {
+    return null;
+  }
+}
 
 // Fetch with a short backoff on 429 / 5xx. CDNs (esp. goodstream for HLS) can
 // rate-limit Cloudflare's egress under load; a couple of quick retries smooths
@@ -49,106 +57,6 @@ async function fetchRetry(url: string, init: RequestInit, attempts = 3): Promise
     if (i < attempts - 1) await new Promise((r) => setTimeout(r, 250 * (i + 1)));
   }
   return last as Response;
-}
-
-async function readUpTo(body: ReadableStream<Uint8Array>, max: number): Promise<Uint8Array> {
-  const reader = body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  try {
-    while (total < max) {
-      const { done, value } = await reader.read();
-      if (done || !value) break;
-      const room = max - total;
-      const slice = value.byteLength <= room ? value : value.subarray(0, room);
-      chunks.push(slice);
-      total += slice.byteLength;
-      if (slice.byteLength < value.byteLength) break;
-    }
-  } finally {
-    reader.cancel().catch(() => {});
-  }
-  const out = new Uint8Array(total);
-  let off = 0;
-  for (const c of chunks) {
-    out.set(c, off);
-    off += c.byteLength;
-  }
-  return out;
-}
-
-// Serve a progressive mp4 as a fixed-length, range-correct partial response.
-// The browser sends `Range: bytes=N-`; we fetch a bounded window from the CDN
-// and stream it back with explicit Content-Length + Content-Range so scrubbing
-// works without buffering the whole chunk into Worker memory.
-async function serveRangedMp4(
-  target: string,
-  baseHeaders: Record<string, string>,
-  rangeHeader: string | null,
-): Promise<NextResponse> {
-  let start = 0;
-  let reqEnd: number | null = null;
-  if (rangeHeader) {
-    const m = /bytes=(\d+)-(\d*)/.exec(rangeHeader);
-    if (m) {
-      start = Number(m[1]);
-      reqEnd = m[2] ? Number(m[2]) : null;
-    }
-  }
-  const end = reqEnd != null ? Math.min(reqEnd, start + MP4_CHUNK - 1) : start + MP4_CHUNK - 1;
-
-  let res: Response;
-  try {
-    res = await fetchRetry(
-      target,
-      { headers: { ...baseHeaders, Range: `bytes=${start}-${end}` }, redirect: 'follow' },
-      2,
-    );
-  } catch {
-    return new NextResponse('Bad gateway', { status: 502, headers: CORS });
-  }
-
-  // If the CDN ignored the range (200), never pipe the whole file through the
-  // Worker — read at most one chunk (common cause of Error 1102 on seek).
-  if (res.status === 200) {
-    const h = new Headers(CORS);
-    h.set('Content-Type', res.headers.get('content-type') ?? 'video/mp4');
-    h.set('Accept-Ranges', 'bytes');
-    h.set('Cache-Control', 'no-store');
-    if (rangeHeader && res.body) {
-      const limited = await readUpTo(res.body, MP4_CHUNK);
-      h.set('Content-Length', String(limited.byteLength));
-      h.set('Content-Range', `bytes ${start}-${start + limited.byteLength - 1}/*`);
-      return new NextResponse(limited as unknown as BodyInit, { status: 206, headers: h });
-    }
-    const cl = res.headers.get('content-length');
-    if (cl) h.set('Content-Length', cl);
-    return new NextResponse(res.body, { status: 200, headers: h });
-  }
-
-  const h = new Headers(CORS);
-  h.set('Content-Type', res.headers.get('content-type') ?? 'video/mp4');
-  h.set('Accept-Ranges', 'bytes');
-  h.set('Cache-Control', 'no-store');
-  const upstreamCl = res.headers.get('content-length');
-  const upstreamCr = res.headers.get('content-range');
-  if (upstreamCl) {
-    h.set('Content-Length', upstreamCl);
-  } else if (upstreamCr) {
-    const m = /bytes\s+(\d+)-(\d+)\//.exec(upstreamCr);
-    if (m) h.set('Content-Length', String(Number(m[2]) - Number(m[1]) + 1));
-  }
-  if (upstreamCr) h.set('Content-Range', upstreamCr);
-  else h.set('Content-Range', `bytes ${start}-${end}/*`);
-
-  // Stream through when we can derive Content-Length — avoids arrayBuffer CPU.
-  if (h.has('Content-Length') && res.body) {
-    return new NextResponse(res.body, { status: 206, headers: h });
-  }
-
-  const buf = await res.arrayBuffer();
-  h.set('Content-Length', String(buf.byteLength));
-  return new NextResponse(buf, { status: 206, headers: h });
 }
 
 // Convert SubRip (SRT) to WebVTT — browsers only render VTT in <track>.
@@ -253,12 +161,20 @@ export async function GET(req: NextRequest) {
   if (cdnHeaders.origin) upstreamHeaders.Origin = cdnHeaders.origin;
   const range = req.headers.get('range');
 
-  // mp4 video: serve fixed-length bounded chunks so Chrome can seek.
-  if (req.nextUrl.searchParams.get('v') === '1') {
-    return serveRangedMp4(target.toString(), upstreamHeaders, range);
-  }
-
+  // mp4 video + ts segments: forward the browser's Range verbatim and stream the
+  // CDN response straight through (constant Worker memory, no windowing). The
+  // previous 1 MB chunking forced Chrome into a request storm on every seek
+  // (each 1 MB = one Worker invocation) — the recurring Error 1102 trigger.
   if (range) upstreamHeaders.Range = range;
+
+  // Serve a cached, already-rewritten HLS manifest if we have one. The signed
+  // child URLs baked into it never expire, so the cache entry stays valid.
+  const cache = edgeCache();
+  const maybeManifest = looksLikeManifest(target.toString(), null);
+  if (cache && maybeManifest) {
+    const hit = await cache.match(req.url);
+    if (hit) return hit;
+  }
 
   let res: Response;
   try {
@@ -279,18 +195,22 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // HLS manifest: buffer + rewrite (and sign) child URIs through the proxy.
+  // HLS manifest: buffer + rewrite (and sign) child URIs through the proxy, then
+  // stash the rewritten result in the edge cache so the per-segment URL signing
+  // isn't recomputed on every fetch (the HLS-path Error 1102 cause).
   if (looksLikeManifest(target.toString(), contentType)) {
     const text = await res.text();
     const rewritten = await rewriteManifest(text, target.toString(), cdnHeaders);
-    return new NextResponse(rewritten, {
-      status: res.status === 206 ? 200 : res.status,
-      headers: {
-        ...CORS,
-        'Content-Type': 'application/vnd.apple.mpegurl',
-        'Cache-Control': 'no-store',
-      },
-    });
+    const status = res.status === 206 ? 200 : res.status;
+    const headers = {
+      ...CORS,
+      'Content-Type': 'application/vnd.apple.mpegurl',
+      'Cache-Control': 'public, max-age=300',
+    };
+    if (cache && status === 200) {
+      await cache.put(req.url, new Response(rewritten, { status, headers })).catch(() => {});
+    }
+    return new NextResponse(rewritten, { status, headers });
   }
 
   // Everything else (mp4 byte ranges, ts segments): stream through.

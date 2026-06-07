@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { usePlayerControls } from '@/lib/player-controls-context';
 
-import { PeachifyPlayer } from '@/components/peachify-player';
+import { PeachifyPlayer, prefetchStream } from '@/components/peachify-player';
 import { ExpandableText } from '@/components/ui/expandable-text';
 import { RatingBadge } from '@/components/ui/rating-badge';
 import { TagChip } from '@/components/ui/tag-chip';
@@ -211,6 +211,12 @@ export function MovieDetailHero({
         .catch(() => {});
     }
   }, [isFullscreen]);
+
+  // Extract sources in the background while the user is on the detail page, so
+  // playback starts (near-)instantly when they hit Watch.
+  useEffect(() => {
+    prefetchStream('movie', movieId);
+  }, [movieId]);
 
   function handleWatchClick() {
     setPlayerActive(true);

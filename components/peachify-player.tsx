@@ -97,6 +97,21 @@ function loadStreamData(key: string, url: string): Promise<StreamResponse> {
   return inflight;
 }
 
+/**
+ * Warm the stream-source cache ahead of playback. Call this from a detail page
+ * (e.g. on mount) so extraction runs in parallel while the user reads the page;
+ * when they hit Watch, the player's own fetch resolves instantly from this cache
+ * or joins the already-in-flight request. No-op in dev (caching disabled there).
+ */
+export function prefetchStream(type: 'movie' | 'tv', tmdbId: number, season?: number, episode?: number) {
+  if (IS_DEV) return;
+  if (type === 'tv' && (season == null || episode == null)) return;
+  const key = streamKey(type, tmdbId, season, episode);
+  if (streamCache.has(key) || streamInflight.has(key)) return;
+  const qs = type === 'tv' ? `?season=${season}&episode=${episode}` : '';
+  void loadStreamData(key, `/api/stream/${type}/${tmdbId}${qs}`).catch(() => {});
+}
+
 const qLabel = (s: StreamSource) => (s.type === 'hls' ? 'Auto' : s.quality ? `${s.quality}p` : 'Auto');
 const dubLabel = (s: StreamSource) => s.dub ?? DEFAULT_LABEL;
 
