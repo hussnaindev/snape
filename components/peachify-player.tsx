@@ -363,6 +363,29 @@ export function PeachifyPlayer({
     return () => document.removeEventListener('fullscreenchange', onFs);
   }, []);
 
+  // Hard stop on unmount: tear down hls + pause and detach the media element so
+  // no audio keeps playing when the player is removed — e.g. navigating between
+  // detail pages, or switching episodes (which remounts the player via its key).
+  // Without this the old element can linger and overlap the newly-mounted one.
+  useEffect(() => {
+    const v = videoRef.current;
+    return () => {
+      if (hlsApiRef.current) {
+        try {
+          hlsApiRef.current.destroy();
+        } catch {}
+        hlsApiRef.current = null;
+      }
+      if (v) {
+        try {
+          v.pause();
+          v.removeAttribute('src');
+          v.load();
+        } catch {}
+      }
+    };
+  }, []);
+
   // ---------- controls ----------
   const showControls = useCallback(() => {
     setControlsShown(true);
