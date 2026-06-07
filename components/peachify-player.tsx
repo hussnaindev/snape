@@ -613,7 +613,8 @@ export function PeachifyPlayer({
       lastTapRef.current = { t: now, x };
 
       if (isDouble) {
-        // Second tap of a double-tap: cancel the pending single-tap toggle and seek.
+        // Double-tap: cancel the pending single-tap toggle, then seek (sides) or
+        // play/pause (center) and reveal the controls.
         if (tapTimer.current) {
           clearTimeout(tapTimer.current);
           tapTimer.current = null;
@@ -626,14 +627,15 @@ export function PeachifyPlayer({
         return;
       }
 
-      // Single tap: defer briefly so a follow-up tap can register as a double-tap,
-      // then toggle the controls based on their state at tap start (tapShownRef).
+      // Single tap: tiny 100ms defer so a quick double-tap can cancel it, then
+      // toggle. The decision uses the state captured at pointerdown (tapShownRef)
+      // so a synthetic mousemove from the tap can't flip it first.
       if (tapTimer.current) clearTimeout(tapTimer.current);
       tapTimer.current = setTimeout(() => {
         tapTimer.current = null;
         if (tapShownRef.current) hideControls();
         else showControls();
-      }, 300);
+      }, 100);
     },
     [showControls, hideControls, skip, togglePlay],
   );
