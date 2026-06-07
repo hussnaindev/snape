@@ -65,6 +65,157 @@ async function fetchRetry(url: string, init: RequestInit, attempts = 3): Promise
   return last as Response;
 }
 
+// --- Parallel range accelerator for progressive MP4 -----------------------
+// The MovieBox/Iron CDN throttles each TCP connection to ~6 Mbps — below the
+// 1080p bitrate (~9 Mbps) — so a single-connection progressive download stalls.
+// The CDN *does* allow parallel connections (measured ~3-4x aggregate). So we
+// serve each window as several parallel sub-ranges, read them concurrently, and
+// emit them in order — feeding the browser's one connection at the aggregate
+// rate. Window is bounded so per-response memory/subrequests stay small; the
+// browser requests the next window as it plays (standard 206 byte-serving).
+const ACCEL_WINDOW = 16 * 1024 * 1024; // bytes served per response
+const ACCEL_SUBCHUNK = 4 * 1024 * 1024; // size of each parallel sub-range (→ 4 in flight)
+
+function parseRange(h: string | null): { start: number; end: number | null } {
+  const m = /bytes=(\d+)-(\d*)/.exec(h ?? '');
+  if (!m) return { start: 0, end: null };
+  return { start: Number(m[1]), end: m[2] ? Number(m[2]) : null };
+}
+
+interface Part {
+  chunks: Uint8Array[];
+  done: boolean;
+  err: unknown;
+  wake: (() => void) | null;
+}
+
+async function serveAcceleratedMp4(
+  target: string,
+  baseHeaders: Record<string, string>,
+  rangeHeader: string,
+): Promise<Response> {
+  const { start, end: reqEnd } = parseRange(rangeHeader);
+  const fetchRange = (s: number, e: number) =>
+    fetchRetry(target, { headers: { ...baseHeaders, Range: `bytes=${s}-${e}` }, redirect: 'follow' }, 2);
+
+  // First sub-chunk also reveals the total size + whether ranges are honored.
+  const firstReqEnd = reqEnd != null ? Math.min(reqEnd, start + ACCEL_SUBCHUNK - 1) : start + ACCEL_SUBCHUNK - 1;
+  let first: Response;
+  try {
+    first = await fetchRange(start, firstReqEnd);
+  } catch {
+    return new Response('Bad gateway', { status: 502, headers: CORS });
+  }
+  const contentType = first.headers.get('content-type') ?? 'video/mp4';
+
+  // CDN ignored the range (200) → no acceleration possible; stream straight through.
+  if (first.status !== 206) {
+    const h = new Headers(CORS);
+    h.set('Content-Type', contentType);
+    h.set('Accept-Ranges', 'bytes');
+    const cl = first.headers.get('content-length');
+    if (cl) h.set('Content-Length', cl);
+    h.set('Cache-Control', 'no-store');
+    return new Response(first.body, { status: first.status, headers: h });
+  }
+
+  const cr = first.headers.get('content-range') ?? '';
+  const total = (() => {
+    const m = /\/(\d+)\s*$/.exec(cr);
+    return m ? Number(m[1]) : null;
+  })();
+  const firstEnd = (() => {
+    const m = /bytes\s+\d+-(\d+)\//.exec(cr);
+    return m ? Number(m[1]) : firstReqEnd;
+  })();
+
+  // End of the window this response serves.
+  let end = reqEnd != null ? reqEnd : total != null ? total - 1 : firstEnd;
+  if (total != null) end = Math.min(end, total - 1);
+  end = Math.min(end, start + ACCEL_WINDOW - 1);
+
+  // Build the list of bodies: the first (already fetched) plus parallel fetches
+  // for the rest of the window.
+  const bodies: Array<Promise<ReadableStream<Uint8Array> | null>> = [
+    Promise.resolve(first.body),
+  ];
+  for (let s = firstEnd + 1; s <= end; s = s + ACCEL_SUBCHUNK) {
+    const e = Math.min(s + ACCEL_SUBCHUNK - 1, end);
+    bodies.push(fetchRange(s, e).then((r) => r.body));
+  }
+
+  // Pump every sub-range concurrently into its own buffer; emit them in order.
+  const parts: Part[] = bodies.map(() => ({ chunks: [], done: false, err: null, wake: null }));
+  const wake = (p: Part) => {
+    const w = p.wake;
+    p.wake = null;
+    if (w) w();
+  };
+  bodies.forEach((bodyPromise, i) => {
+    const p = parts[i] as Part;
+    (async () => {
+      try {
+        const body = await bodyPromise;
+        if (!body) {
+          p.done = true;
+          wake(p);
+          return;
+        }
+        const reader = body.getReader();
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) p.chunks.push(value);
+          wake(p);
+        }
+        p.done = true;
+        wake(p);
+      } catch (err) {
+        p.err = err;
+        wake(p);
+      }
+    })();
+  });
+
+  let pi = 0;
+  const stream = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      for (;;) {
+        const p = parts[pi];
+        if (!p) {
+          controller.close();
+          return;
+        }
+        if (p.chunks.length > 0) {
+          controller.enqueue(p.chunks.shift() as Uint8Array);
+          return;
+        }
+        if (p.err) {
+          controller.error(p.err);
+          return;
+        }
+        if (p.done) {
+          pi++;
+          continue;
+        }
+        // Wait for more data. Safe against races: the check above and this
+        // assignment are synchronous, so a pump can't slip a chunk in between.
+        await new Promise<void>((r) => {
+          p.wake = r;
+        });
+      }
+    },
+  });
+
+  const h = new Headers(CORS);
+  h.set('Content-Type', contentType);
+  h.set('Accept-Ranges', 'bytes');
+  h.set('Content-Range', total != null ? `bytes ${start}-${end}/${total}` : `bytes ${start}-${end}/*`);
+  h.set('Content-Length', String(end - start + 1));
+  h.set('Cache-Control', 'no-store');
+  return new Response(stream, { status: 206, headers: h });
+}
+
 // Convert SubRip (SRT) to WebVTT — browsers only render VTT in <track>.
 function srtToVtt(input: string): string {
   const body = input
@@ -172,9 +323,17 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
   };
   if (cdnHeaders.origin) upstreamHeaders.Origin = cdnHeaders.origin;
 
-  // mp4 video + ts segments: forward the browser's Range verbatim and stream the
-  // CDN response straight through (constant Worker memory, no windowing).
   const range = req.headers.get('range');
+
+  // Progressive MP4 (Iron/MovieBox): the CDN throttles each connection to
+  // ~6 Mbps, below the 1080p bitrate, so a single-connection download buffers.
+  // Serve it via parallel sub-ranges to multiply throughput. Only mp4 sources
+  // carry v=1 (HLS segments/manifests don't), so this never touches HLS.
+  if (sp.get('v') === '1' && range) {
+    return serveAcceleratedMp4(target.toString(), upstreamHeaders, range);
+  }
+
+  // ts segments + mp4 without a Range: forward Range verbatim and stream through.
   if (range) upstreamHeaders.Range = range;
 
   // Serve a cached, already-rewritten HLS manifest if we have one.
