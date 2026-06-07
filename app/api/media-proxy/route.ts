@@ -30,6 +30,60 @@ function looksLikeManifest(url: string, contentType: string | null): boolean {
   return /\.m3u8(\?|$)/i.test(url);
 }
 
+// Size of each mp4 chunk we buffer + serve. Buffering (vs streaming) lets us
+// send an explicit Content-Length so Chrome treats the mp4 as seekable.
+const MP4_CHUNK = 4 * 1024 * 1024;
+
+// Serve a progressive mp4 as a fixed-length, range-correct partial response.
+// The browser sends `Range: bytes=N-`; we fetch a bounded window from the CDN,
+// buffer it, and return 206 with an exact Content-Length + Content-Range +
+// Accept-Ranges. That combination is what makes fast-forward / scrub work.
+async function serveRangedMp4(
+  target: string,
+  baseHeaders: Record<string, string>,
+  rangeHeader: string | null,
+): Promise<NextResponse> {
+  let start = 0;
+  let reqEnd: number | null = null;
+  if (rangeHeader) {
+    const m = /bytes=(\d+)-(\d*)/.exec(rangeHeader);
+    if (m) {
+      start = Number(m[1]);
+      reqEnd = m[2] ? Number(m[2]) : null;
+    }
+  }
+  const end = reqEnd != null ? Math.min(reqEnd, start + MP4_CHUNK - 1) : start + MP4_CHUNK - 1;
+
+  let res: Response;
+  try {
+    res = await fetch(target, { headers: { ...baseHeaders, Range: `bytes=${start}-${end}` }, redirect: 'follow' });
+  } catch {
+    return new NextResponse('Bad gateway', { status: 502, headers: CORS });
+  }
+
+  // If the CDN ignored the range (200), stream it through rather than buffering
+  // the whole file into memory.
+  if (res.status === 200) {
+    const h = new Headers(CORS);
+    const ct = res.headers.get('content-type');
+    if (ct) h.set('Content-Type', ct);
+    const cl = res.headers.get('content-length');
+    if (cl) h.set('Content-Length', cl);
+    h.set('Accept-Ranges', 'bytes');
+    return new NextResponse(res.body, { status: 200, headers: h });
+  }
+
+  const buf = await res.arrayBuffer();
+  const h = new Headers(CORS);
+  h.set('Content-Type', res.headers.get('content-type') ?? 'video/mp4');
+  h.set('Accept-Ranges', 'bytes');
+  h.set('Content-Length', String(buf.byteLength));
+  const cr = res.headers.get('content-range');
+  if (cr) h.set('Content-Range', cr);
+  h.set('Cache-Control', 'no-store');
+  return new NextResponse(buf, { status: 206, headers: h });
+}
+
 // Convert SubRip (SRT) to WebVTT — browsers only render VTT in <track>.
 function srtToVtt(input: string): string {
   const body = input
@@ -113,6 +167,12 @@ export async function GET(req: NextRequest) {
   };
   if (cdnHeaders.origin) upstreamHeaders.Origin = cdnHeaders.origin;
   const range = req.headers.get('range');
+
+  // mp4 video: serve fixed-length bounded chunks so Chrome can seek.
+  if (req.nextUrl.searchParams.get('v') === '1') {
+    return serveRangedMp4(target.toString(), upstreamHeaders, range);
+  }
+
   if (range) upstreamHeaders.Range = range;
 
   let res: Response;
@@ -148,11 +208,30 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Everything else (mp4 byte ranges, ts segments, vtt subs): stream through.
+  // Everything else (mp4 byte ranges, ts segments): stream through.
   const headers = new Headers(CORS);
-  for (const h of ['content-type', 'content-length', 'content-range', 'accept-ranges', 'cache-control']) {
+  for (const h of ['content-type', 'content-range', 'cache-control']) {
     const v = res.headers.get(h);
     if (v !== null) headers.set(h, v);
   }
+
+  // Always advertise byte-range support so the browser treats the resource as
+  // seekable.
+  headers.set('Accept-Ranges', 'bytes');
+
+  // Content-Length is essential: if it's missing the response goes out
+  // chunked, and Chrome's media stack treats a length-less stream as
+  // non-seekable (fast-forward/scrub silently fail). The runtime can drop the
+  // upstream Content-Length when we re-stream the body, so derive it from the
+  // Content-Range (end - start + 1) and set it explicitly.
+  const cl = res.headers.get('content-length');
+  const cr = res.headers.get('content-range');
+  if (cl) {
+    headers.set('Content-Length', cl);
+  } else if (cr) {
+    const m = /bytes\s+(\d+)-(\d+)\//.exec(cr);
+    if (m) headers.set('Content-Length', String(Number(m[2]) - Number(m[1]) + 1));
+  }
+
   return new NextResponse(res.body, { status: res.status, headers });
 }

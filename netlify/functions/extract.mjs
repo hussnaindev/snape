@@ -236,8 +236,14 @@ export default async (req) => {
     return (b.quality ?? 0) - (a.quality ?? 0);
   });
 
+  // mp4 URLs get &v=1 so the media proxy serves them as fixed-length bounded
+  // chunks (Content-Length set) — required for Chrome to treat progressive mp4
+  // as seekable. HLS is segment-based and doesn't need it.
   const sources = await Promise.all(
-    rawSources.map(async ({ headers, ...s }) => ({ ...s, url: await signedMediaUrl(s.url, headers) })),
+    rawSources.map(async ({ headers, ...s }) => {
+      const signed = await signedMediaUrl(s.url, headers);
+      return { ...s, url: s.type === 'mp4' ? `${signed}&v=1` : signed };
+    }),
   );
   // `&sub=1` tells the media proxy to normalize the body to WebVTT (browsers
   // ignore SRT in <track>). It's outside the signed payload — just a render hint.
