@@ -30,9 +30,9 @@ function looksLikeManifest(url: string, contentType: string | null): boolean {
   return /\.m3u8(\?|$)/i.test(url);
 }
 
-// Size of each mp4 chunk we buffer + serve. Buffering (vs streaming) lets us
-// send an explicit Content-Length so Chrome treats the mp4 as seekable.
-const MP4_CHUNK = 4 * 1024 * 1024;
+// Size of each mp4 chunk window. Keep modest — buffering multi-MB responses in
+// the Worker on every scrub/seek burns CPU and triggers Cloudflare Error 1102.
+const MP4_CHUNK = 1024 * 1024;
 
 // Fetch with a short backoff on 429 / 5xx. CDNs (esp. goodstream for HLS) can
 // rate-limit Cloudflare's egress under load; a couple of quick retries smooths
@@ -49,9 +49,9 @@ async function fetchRetry(url: string, init: RequestInit, attempts = 3): Promise
 }
 
 // Serve a progressive mp4 as a fixed-length, range-correct partial response.
-// The browser sends `Range: bytes=N-`; we fetch a bounded window from the CDN,
-// buffer it, and return 206 with an exact Content-Length + Content-Range +
-// Accept-Ranges. That combination is what makes fast-forward / scrub work.
+// The browser sends `Range: bytes=N-`; we fetch a bounded window from the CDN
+// and stream it back with explicit Content-Length + Content-Range so scrubbing
+// works without buffering the whole chunk into Worker memory.
 async function serveRangedMp4(
   target: string,
   baseHeaders: Record<string, string>,
@@ -70,7 +70,11 @@ async function serveRangedMp4(
 
   let res: Response;
   try {
-    res = await fetchRetry(target, { headers: { ...baseHeaders, Range: `bytes=${start}-${end}` }, redirect: 'follow' });
+    res = await fetchRetry(
+      target,
+      { headers: { ...baseHeaders, Range: `bytes=${start}-${end}` }, redirect: 'follow' },
+      2,
+    );
   } catch {
     return new NextResponse('Bad gateway', { status: 502, headers: CORS });
   }
@@ -87,14 +91,28 @@ async function serveRangedMp4(
     return new NextResponse(res.body, { status: 200, headers: h });
   }
 
-  const buf = await res.arrayBuffer();
   const h = new Headers(CORS);
   h.set('Content-Type', res.headers.get('content-type') ?? 'video/mp4');
   h.set('Accept-Ranges', 'bytes');
-  h.set('Content-Length', String(buf.byteLength));
-  const cr = res.headers.get('content-range');
-  if (cr) h.set('Content-Range', cr);
   h.set('Cache-Control', 'no-store');
+  const upstreamCl = res.headers.get('content-length');
+  const upstreamCr = res.headers.get('content-range');
+  if (upstreamCl) {
+    h.set('Content-Length', upstreamCl);
+  } else if (upstreamCr) {
+    const m = /bytes\s+(\d+)-(\d+)\//.exec(upstreamCr);
+    if (m) h.set('Content-Length', String(Number(m[2]) - Number(m[1]) + 1));
+  }
+  if (upstreamCr) h.set('Content-Range', upstreamCr);
+  else h.set('Content-Range', `bytes ${start}-${end}/*`);
+
+  // Stream through when we can derive Content-Length — avoids arrayBuffer CPU.
+  if (h.has('Content-Length') && res.body) {
+    return new NextResponse(res.body, { status: 206, headers: h });
+  }
+
+  const buf = await res.arrayBuffer();
+  h.set('Content-Length', String(buf.byteLength));
   return new NextResponse(buf, { status: 206, headers: h });
 }
 
@@ -121,10 +139,16 @@ async function rewriteManifest(
 ): Promise<string> {
   const lines = text.split('\n');
   const out: string[] = [];
+  const signedCache = new Map<string, string>();
 
   const resolve = async (uri: string): Promise<string> => {
     try {
-      return await signedMediaUrl(new URL(uri, baseUrl).toString(), headers);
+      const abs = new URL(uri, baseUrl).toString();
+      const cached = signedCache.get(abs);
+      if (cached) return cached;
+      const url = await signedMediaUrl(abs, headers);
+      signedCache.set(abs, url);
+      return url;
     } catch {
       return uri;
     }
