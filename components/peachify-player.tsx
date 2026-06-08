@@ -932,9 +932,8 @@ export function PeachifyPlayer({
                   <Ctrl
                     onClick={() => { setShowEpisodes(false); setMenu(menu === 'captions' ? null : 'captions'); }}
                     label="Subtitles"
-                    active={subIndex >= 0}
                   >
-                    <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
                       <rect x="2.5" y="5" width="19" height="14" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
                       <text x="12" y="15.5" textAnchor="middle" fontSize="7.5" fontWeight="700" fill="currentColor" fontFamily="system-ui, sans-serif">CC</text>
                     </svg>
@@ -957,7 +956,7 @@ export function PeachifyPlayer({
                 </Ctrl>
 
                 {/* fill-to-screen */}
-                <Ctrl onClick={() => setFit((f) => (f === 'cover' ? 'contain' : 'cover'))} label="Fill to screen" active={fit === 'cover'}>
+                <Ctrl onClick={() => setFit((f) => (f === 'cover' ? 'contain' : 'cover'))} label="Fill to screen">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                     <rect x="2.5" y="6" width="19" height="12" rx="1.5" />
                     <rect x="7.5" y="9.5" width="9" height="5" rx="1" fill={fit === 'cover' ? 'currentColor' : 'none'} stroke="none" />
