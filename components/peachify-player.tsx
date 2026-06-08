@@ -927,15 +927,16 @@ export function PeachifyPlayer({
                   </Ctrl>
                 )}
 
-                {/* captions (CC) — dedicated button */}
+                {/* captions — dedicated button */}
                 {subs.length > 0 && (
                   <Ctrl
                     onClick={() => { setShowEpisodes(false); setMenu(menu === 'captions' ? null : 'captions'); }}
                     label="Subtitles"
                   >
-                    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-                      <rect x="2.5" y="5" width="19" height="14" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
-                      <text x="12" y="14.5" textAnchor="middle" fontSize="8" fontWeight="700" fill="currentColor" fontFamily="system-ui, sans-serif" dominantBaseline="middle">CC</text>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <rect x="1.5" y="3" width="21" height="17" rx="2" />
+                      <path d="M11 15H9a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2h2" />
+                      <path d="M17 15h-2a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2h2" />
                     </svg>
                   </Ctrl>
                 )}
@@ -958,11 +959,11 @@ export function PeachifyPlayer({
                 {/* fill-to-screen */}
                 <Ctrl onClick={() => setFit((f) => (f === 'cover' ? 'contain' : 'cover'))} label="Fill to screen">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <rect x="3" y="5" width="18" height="14" rx="1" />
-                    <path d="M7 9l-3-3m0 0l3-3m-3 3h6" />
-                    <path d="M17 9l3-3m0 0l-3-3m3 3h-6" />
-                    <path d="M7 15l-3 3m0 0l3 3m-3-3h6" />
-                    <path d="M17 15l3 3m0 0l-3 3m3-3h-6" />
+                    <rect x="2" y="3" width="20" height="18" rx="1" />
+                    <path d="M6 7l-3-3m0 0l3-3m-3 3h5" />
+                    <path d="M18 7l3-3m0 0l-3-3m3 3h-5" />
+                    <path d="M6 17l-3 3m0 0l3 3m-3-3h5" />
+                    <path d="M18 17l3 3m0 0l-3 3m3-3h-5" />
                   </svg>
                 </Ctrl>
 
