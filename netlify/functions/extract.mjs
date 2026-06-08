@@ -103,6 +103,24 @@ function unwrap(rawUrl) {
   return { url, headers };
 }
 
+// CDNs that block Cloudflare's egress IPs — the media proxy (a Worker) can never
+// reach them — but that serve fine from residential IPs AND send
+// `Access-Control-Allow-Origin: *`. For these we hand the RAW CDN URL to the
+// browser and let our own hls.js fetch it directly: the user's own (allowed) IP
+// is used, and because the CDN binds its segment tokens to the IP that fetched
+// the playlist, browser-side fetching keeps the whole playlist→segment chain on
+// that one IP. Still ad-free — it's our player loading raw video, no Peachify
+// scripts. (Discovered for the Multi provider's keymi417exx CDN.)
+const CLIENT_DIRECT_HOSTS = ['keymi417exx.com'];
+function isClientDirectHost(rawUrl) {
+  try {
+    const h = new URL(rawUrl).hostname.toLowerCase();
+    return CLIENT_DIRECT_HOSTS.some((d) => h === d || h.endsWith(`.${d}`));
+  } catch {
+    return false;
+  }
+}
+
 // ---- media-proxy signing (MUST match lib/media-sign.ts) -----------------
 const SECRET = process.env.MEDIA_PROXY_SECRET ?? 'snape-media-proxy-dev-secret';
 let signKey;
@@ -314,6 +332,9 @@ export default async (req) => {
   // as seekable. HLS is segment-based and doesn't need it.
   const sources = await Promise.all(
     rawSources.map(async ({ headers, ...s }) => {
+      // CF-blocked CDN → play it straight from the browser (see isClientDirectHost).
+      // No signing/headers: the raw CDN URL is loaded directly by our player.
+      if (isClientDirectHost(s.url)) return { ...s, url: s.url, direct: true };
       const signed = await signedMediaUrl(s.url, headers);
       return { ...s, url: s.type === 'mp4' ? `${signed}&v=1` : signed };
     }),

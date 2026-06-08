@@ -13,6 +13,13 @@ interface StreamSource {
   quality: number | null;
   dub: string | null;
   provider: string;
+  /**
+   * When true, `url` is a raw CDN URL the browser loads directly (not via our
+   * media proxy) — used for CDNs that block Cloudflare's IPs but serve
+   * residential IPs with `Access-Control-Allow-Origin: *`. The user's own IP is
+   * used, so it works where the proxy can't. See extract.mjs `isClientDirectHost`.
+   */
+  direct?: boolean;
 }
 interface StreamSubtitle {
   url: string;
