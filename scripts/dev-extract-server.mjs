@@ -4,12 +4,23 @@
 //
 // Listens on EXTRACT_PORT (default 8787). Point NETLIFY_EXTRACT_URL at:
 //   http://localhost:8787/extract
+//
+// Requires PROXY_LIST in .env.local (same host:port:user:pass list as Netlify).
 
 import { createServer } from 'node:http';
-import { pathToFileURL } from 'node:url';
+import { proxyCount } from './load-env.mjs';
 
 const PORT = Number(process.env.EXTRACT_PORT ?? 8787);
-const extractPath = pathToFileURL(new URL('../netlify/functions/extract.mjs', import.meta.url));
+const proxies = proxyCount();
+if (proxies === 0) {
+  console.warn(
+    '[dev-extract] PROXY_LIST is empty — eat-peach will 403. Copy the value from Netlify into .env.local, or point NETLIFY_EXTRACT_URL at your deployed Netlify function.',
+  );
+} else {
+  console.log(`[dev-extract] ${proxies} proxies loaded`);
+}
+
+const extractPath = new URL('../netlify/functions/extract.mjs', import.meta.url);
 const { default: extract } = await import(extractPath.href);
 
 const server = createServer(async (req, res) => {

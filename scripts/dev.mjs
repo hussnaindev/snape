@@ -1,4 +1,5 @@
 // Start the local extract server and Next.js dev server together.
+import './load-env.mjs';
 import { spawn } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +10,7 @@ const nextBin = join(root, 'node_modules', 'next', 'dist', 'bin', 'next');
 const children = [];
 
 function run(cmd, args) {
-  const child = spawn(cmd, args, { stdio: 'inherit', env: process.env, shell: process.platform === 'win32' });
+  const child = spawn(cmd, args, { stdio: 'inherit', env: process.env });
   children.push(child);
   child.on('exit', (code, signal) => {
     if (signal) return;
