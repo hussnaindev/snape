@@ -51,13 +51,37 @@ function edgeCache(): Cache | null {
   }
 }
 
+// Follow redirects MANUALLY, re-attaching our upstream headers on every hop.
+// With redirect:'follow' the edge runtime applies the default referrer policy
+// and DROPS the Referer on cross-origin redirects. That breaks referer-gated
+// CDNs: e.g. keymi417exx's `i-arch-400` host 302-redirects to a `cdnXXXXX` node
+// that returns 404 unless a Referer is present, so playback dies on the very
+// first manifest. Re-issuing the request to each Location with the same headers
+// keeps every hop authenticated. (Other CDNs serve directly, so they were fine —
+// which is why only redirecting hosts like keymi417exx broke.)
+async function fetchFollow(url: string, init: RequestInit, maxRedirects = 5): Promise<Response> {
+  let current = url;
+  for (let i = 0; i <= maxRedirects; i++) {
+    const res = await fetch(current, { ...init, redirect: 'manual' });
+    if (res.status >= 300 && res.status < 400) {
+      const loc = res.headers.get('location');
+      if (!loc) return res;
+      current = new URL(loc, current).toString();
+      continue;
+    }
+    return res;
+  }
+  // Too many redirects: do one final non-following fetch so the caller sees a real status.
+  return fetch(current, { ...init, redirect: 'manual' });
+}
+
 // Fetch with a short backoff on 429 / 5xx. CDNs (esp. goodstream for HLS) can
 // rate-limit Cloudflare's egress under load; a couple of quick retries smooths
 // transient limits.
 async function fetchRetry(url: string, init: RequestInit, attempts = 3): Promise<Response> {
   let last: Response | null = null;
   for (let i = 0; i < attempts; i++) {
-    const res = await fetch(url, init);
+    const res = await fetchFollow(url, init);
     if (res.status !== 429 && res.status < 500) return res;
     last = res;
     if (i < attempts - 1) await new Promise((r) => setTimeout(r, 250 * (i + 1)));
@@ -367,6 +391,19 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
   // stash the rewritten result in the edge cache.
   if (looksLikeManifest(target.toString(), contentType)) {
     const text = await res.text();
+    // A dead/expired stream URL often answers with an HTML error page (e.g. an
+    // nginx "404 Not Found") while the URL still ends in .m3u8. Rewriting that as
+    // a manifest turns every HTML line into a bogus segment URL, which the player
+    // tries to load and dies on with "Format error" instead of cleanly advancing
+    // to the next source — and an upstream 200-with-HTML would even get cached for
+    // 5 min. Only rewrite a genuine manifest; otherwise fail clean and uncached.
+    const isHls = text.replace(/^﻿/, '').trimStart().startsWith('#EXTM3U');
+    if (!res.ok || !isHls) {
+      return new Response('Upstream manifest unavailable', {
+        status: res.ok ? 502 : res.status,
+        headers: { ...CORS, 'Cache-Control': 'no-store' },
+      });
+    }
     const rewritten = await rewriteManifest(text, target.toString(), cdnHeaders);
     const status = res.status === 206 ? 200 : res.status;
     const headers = {

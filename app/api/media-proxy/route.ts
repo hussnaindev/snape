@@ -45,13 +45,34 @@ function edgeCache(): Cache | null {
   }
 }
 
+// Follow redirects MANUALLY, re-attaching our upstream headers on every hop.
+// With redirect:'follow' the edge runtime applies the default referrer policy
+// and DROPS the Referer on cross-origin redirects, which breaks referer-gated
+// CDNs (e.g. keymi417exx's `i-arch-400` 302-redirects to a `cdnXXXXX` node that
+// 404s without a Referer). Re-issuing each Location with the same headers keeps
+// every hop authenticated.
+async function fetchFollow(url: string, init: RequestInit, maxRedirects = 5): Promise<Response> {
+  let current = url;
+  for (let i = 0; i <= maxRedirects; i++) {
+    const res = await fetch(current, { ...init, redirect: 'manual' });
+    if (res.status >= 300 && res.status < 400) {
+      const loc = res.headers.get('location');
+      if (!loc) return res;
+      current = new URL(loc, current).toString();
+      continue;
+    }
+    return res;
+  }
+  return fetch(current, { ...init, redirect: 'manual' });
+}
+
 // Fetch with a short backoff on 429 / 5xx. CDNs (esp. goodstream for HLS) can
 // rate-limit Cloudflare's egress under load; a couple of quick retries smooths
 // transient limits.
 async function fetchRetry(url: string, init: RequestInit, attempts = 3): Promise<Response> {
   let last: Response | null = null;
   for (let i = 0; i < attempts; i++) {
-    const res = await fetch(url, init);
+    const res = await fetchFollow(url, init);
     if (res.status !== 429 && res.status < 500) return res;
     last = res;
     if (i < attempts - 1) await new Promise((r) => setTimeout(r, 250 * (i + 1)));
@@ -200,6 +221,17 @@ export async function GET(req: NextRequest) {
   // isn't recomputed on every fetch (the HLS-path Error 1102 cause).
   if (looksLikeManifest(target.toString(), contentType)) {
     const text = await res.text();
+    // A dead/expired stream URL often answers with an HTML error page (e.g. nginx
+    // "404 Not Found") while the URL still ends in .m3u8. Rewriting that as a
+    // manifest turns every HTML line into a bogus segment URL → the player chokes
+    // with "Format error" instead of advancing. Only rewrite a genuine manifest.
+    const isHls = text.replace(/^﻿/, '').trimStart().startsWith('#EXTM3U');
+    if (!res.ok || !isHls) {
+      return new NextResponse('Upstream manifest unavailable', {
+        status: res.ok ? 502 : res.status,
+        headers: { ...CORS, 'Cache-Control': 'no-store' },
+      });
+    }
     const rewritten = await rewriteManifest(text, target.toString(), cdnHeaders);
     const status = res.status === 206 ? 200 : res.status;
     const headers = {
