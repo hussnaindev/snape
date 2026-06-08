@@ -43,3 +43,6 @@ public/workbox-*.js
 
 # Local SQLite dev database (replaced by wrangler-managed local D1)
 local.db
+
+# wrangler local secrets
+.dev.vars
