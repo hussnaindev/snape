@@ -179,6 +179,7 @@ export function PeachifyPlayer({
   const [buffering, setBuffering] = useState(false);
   const [current, setCurrent] = useState(0);
   const [scrubPreview, setScrubPreview] = useState<number | null>(null);
+  const [hoverFrac, setHoverFrac] = useState<number | null>(null);
   const [duration, setDuration] = useState(0);
   const [buffered, setBuffered] = useState(0);
   const [volume, setVolume] = useState(1);
@@ -310,6 +311,10 @@ export function PeachifyPlayer({
     let destroyed = false;
     let hls: import('hls.js').default | null = null;
     let fallbackUsed = false;
+    // Per-attach guard: markReady runs once for THIS source (first load or a
+    // quality/server switch). Gating on the global startedRef instead would skip
+    // the resume seek on every switch after the first, restarting from 0.
+    let ready = false;
     setHlsLevels([]);
     setHlsLevel(-1);
     setBuffering(true);
@@ -335,7 +340,8 @@ export function PeachifyPlayer({
     claimActiveMedia(stopMedia, video);
 
     const markReady = () => {
-      if (destroyed || attachGenRef.current !== gen || startedRef.current) return;
+      if (destroyed || attachGenRef.current !== gen || ready) return;
+      ready = true;
       const r = resumeRef.current;
       if (r) {
         try {
@@ -849,9 +855,9 @@ export function PeachifyPlayer({
               className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto flex h-14 w-14 md:h-20 md:w-20 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white hover:bg-white/20 hover:border-white/30 transition-colors"
             >
               {playing ? (
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg>
+                <svg width="34" height="34" viewBox="0 0 36 36" fill="currentColor" aria-hidden="true"><path d="M12.75 4.5h-3A2.25 2.25 0 0 0 7.5 6.75v22.5a2.25 2.25 0 0 0 2.25 2.25h3A2.25 2.25 0 0 0 15 29.25V6.75a2.25 2.25 0 0 0-2.25-2.25Zm13.5 0h-3A2.25 2.25 0 0 0 21 6.75v22.5a2.25 2.25 0 0 0 2.25 2.25h3a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25Z" /></svg>
               ) : (
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+                <svg width="36" height="36" viewBox="0 0 36 36" fill="currentColor" aria-hidden="true"><path d="M10.89 4.99A2.25 2.25 0 0 0 7.5 6.93v22.13a2.25 2.25 0 0 0 3.39 1.94l19-11.06a2.25 2.25 0 0 0 0-3.89l-19-11.06Z" /></svg>
               )}
             </button>
           )}
@@ -901,30 +907,39 @@ export function PeachifyPlayer({
               controlsShown || !playing ? 'pointer-events-auto' : 'pointer-events-none',
             )}
           >
-            {/* scrubber */}
+            {/* scrubber — YouTube-style progress bar */}
             <div
               ref={scrubRef}
-              className="group/scrub relative h-4 flex items-center cursor-pointer"
+              className="group/scrub relative h-3 flex items-center cursor-pointer"
               onPointerDown={(e) => {
                 (e.target as HTMLElement).setPointerCapture(e.pointerId);
                 if (duration) setScrubPreview(scrubToFraction(e.clientX) * duration);
               }}
               onPointerMove={(e) => {
-                if (e.buttons !== 1 || !duration) return;
-                setScrubPreview(scrubToFraction(e.clientX) * duration);
+                if (!duration) return;
+                setHoverFrac(scrubToFraction(e.clientX));
+                if (e.buttons === 1) setScrubPreview(scrubToFraction(e.clientX) * duration);
               }}
+              onPointerLeave={() => setHoverFrac(null)}
               onPointerUp={(e) => {
                 commitScrub(e.clientX);
                 setScrubPreview(null);
               }}
               onPointerCancel={() => setScrubPreview(null)}
             >
-              <div className="absolute left-0 right-0 h-1 group-hover/scrub:h-1.5 rounded-full bg-white/25 transition-all">
-                <div className="absolute h-full rounded-full bg-white/40" style={{ width: pct(buffered) }} />
-                <div className="absolute h-full rounded-full bg-[#e50914]" style={{ width: pct(displayTime) }} />
+              <div className="absolute left-0 right-0 h-[3px] group-hover/scrub:h-[5px] bg-white/20 transition-[height] duration-100">
+                {/* loaded buffer */}
+                <div className="absolute inset-y-0 left-0 bg-white/40" style={{ width: pct(buffered) }} />
+                {/* hover preview */}
+                {hoverFrac !== null && (
+                  <div className="absolute inset-y-0 left-0 bg-white/50" style={{ width: `${hoverFrac * 100}%` }} />
+                )}
+                {/* played */}
+                <div className="absolute inset-y-0 left-0 bg-[#f00]" style={{ width: pct(displayTime) }} />
               </div>
+              {/* scrubber knob */}
               <div
-                className="absolute h-3.5 w-3.5 -translate-x-1/2 rounded-full bg-[#e50914] opacity-0 group-hover/scrub:opacity-100 transition-opacity"
+                className="absolute h-[13px] w-[13px] -translate-x-1/2 rounded-full bg-[#f00] scale-0 group-hover/scrub:scale-100 transition-transform duration-100"
                 style={{ left: pct(displayTime) }}
               />
             </div>
@@ -932,9 +947,9 @@ export function PeachifyPlayer({
             <div className="mt-1 flex flex-nowrap items-center gap-2 md:gap-4 text-white">
               <Ctrl onClick={togglePlay} label={playing ? 'Pause' : 'Play'}>
                 {playing ? (
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg>
+                  <svg width="26" height="26" viewBox="0 0 36 36" fill="currentColor" aria-hidden="true"><path d="M12.75 4.5h-3A2.25 2.25 0 0 0 7.5 6.75v22.5a2.25 2.25 0 0 0 2.25 2.25h3A2.25 2.25 0 0 0 15 29.25V6.75a2.25 2.25 0 0 0-2.25-2.25Zm13.5 0h-3A2.25 2.25 0 0 0 21 6.75v22.5a2.25 2.25 0 0 0 2.25 2.25h3a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25Z" /></svg>
                 ) : (
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+                  <svg width="26" height="26" viewBox="0 0 36 36" fill="currentColor" aria-hidden="true"><path d="M10.89 4.99A2.25 2.25 0 0 0 7.5 6.93v22.13a2.25 2.25 0 0 0 3.39 1.94l19-11.06a2.25 2.25 0 0 0 0-3.89l-19-11.06Z" /></svg>
                 )}
               </Ctrl>
 
@@ -950,9 +965,16 @@ export function PeachifyPlayer({
               <div className="group/vol flex items-center gap-1">
                 <Ctrl onClick={toggleMute} label={muted ? 'Unmute' : 'Mute'}>
                   {muted || volume === 0 ? (
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z" /><path d="m22 9-6 6M16 9l6 6" /></svg>
+                    <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+                      <path fill="currentColor" d="M11.6 2.08 11.48 2.14 3.91 6.68C3.02 7.21 2.28 7.97 1.77 8.87 1.26 9.77 1 10.79 1 11.83V12.16C1.07 13.52 1.37 14.46 1.87 15.29 2.38 16.12 3.08 16.81 3.91 17.31L11.48 21.85C11.63 21.94 11.8 21.99 11.98 21.99 12.16 22 12.33 21.95 12.49 21.87 12.64 21.78 12.77 21.65 12.86 21.5 12.95 21.35 13 21.17 13 21V3C12.99 2.83 12.95 2.67 12.87 2.52 12.8 2.37 12.68 2.25 12.54 2.16 12.41 2.07 12.25 2.01 12.08 2 11.92 1.98 11.75 2.01 11.6 2.08Z" />
+                      <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" d="M16.5 9.5l5 5m0-5l-5 5" />
+                    </svg>
                   ) : (
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z" /><path d="M16 9a5 5 0 0 1 0 6M19 7a8 8 0 0 1 0 10" /></svg>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M11.6 2.08 11.48 2.14 3.91 6.68C3.02 7.21 2.28 7.97 1.77 8.87 1.26 9.77 1 10.79 1 11.83V12.16C1.07 13.52 1.37 14.46 1.87 15.29 2.38 16.12 3.08 16.81 3.91 17.31L11.48 21.85C11.63 21.94 11.8 21.99 11.98 21.99 12.16 22 12.33 21.95 12.49 21.87 12.64 21.78 12.77 21.65 12.86 21.5 12.95 21.35 13 21.17 13 21V3C12.99 2.83 12.95 2.67 12.87 2.52 12.8 2.37 12.68 2.25 12.54 2.16 12.41 2.07 12.25 2.01 12.08 2 11.92 1.98 11.75 2.01 11.6 2.08Z" />
+                      <path d="M15.53 7.05C15.35 7.22 15.25 7.45 15.24 7.7 15.23 7.95 15.31 8.19 15.46 8.38L15.53 8.46 15.7 8.64C16.09 9.06 16.39 9.55 16.61 10.08 16.9 10.85 17 11.42 17 12 16.96 12.73 16.87 13.22 16.7 13.68 16.36 14.51 15.99 15.07 15.53 15.53 15.35 15.72 15.25 15.97 15.26 16.23 15.26 16.49 15.37 16.74 15.55 16.92 15.73 17.11 15.98 17.21 16.24 17.22 16.5 17.22 16.76 17.12 16.95 16.95 17.6 16.29 18.11 15.52 18.46 14.67L18.59 14.35C18.82 13.71 18.95 13.03 18.99 12.34L19 12C18.99 11.19 18.86 10.39 18.59 9.64L18.46 9.32C18.15 8.57 17.72 7.89 17.18 7.3L16.95 7.05 16.87 6.98C16.68 6.82 16.43 6.74 16.19 6.75 15.94 6.77 15.71 6.87 15.53 7.05Z" />
+                      <path d="M18.36 4.22C18.18 4.39 18.08 4.62 18.07 4.87 18.05 5.12 18.13 5.36 18.29 5.56L18.36 5.63 18.66 5.95C19.36 6.72 19.91 7.6 20.31 8.55L20.47 8.96C20.82 9.94 21 10.96 21 11.99L20.98 12.44C20.94 13.32 20.77 14.19 20.47 15.03L20.31 15.44C19.86 16.53 19.19 17.52 18.36 18.36 18.17 18.55 18.07 18.8 18.07 19.07 18.07 19.33 18.17 19.59 18.36 19.77 18.55 19.96 18.8 20.07 19.07 20.07 19.33 20.07 19.59 19.96 19.77 19.77 20.79 18.75 21.61 17.54 22.16 16.2L22.35 15.7C22.72 14.68 22.93 13.62 22.98 12.54L23 12C22.99 10.73 22.78 9.48 22.35 8.29L22.16 7.79C21.67 6.62 20.99 5.54 20.15 4.61L19.77 4.22 19.7 4.15C19.51 3.99 19.26 3.91 19.02 3.93 18.77 3.94 18.53 4.04 18.36 4.22Z" />
+                    </svg>
                   )}
                 </Ctrl>
                 <input
@@ -962,13 +984,13 @@ export function PeachifyPlayer({
                   step={0.05}
                   value={muted ? 0 : volume}
                   onChange={(e) => changeVolume(Number(e.target.value))}
-                  className="hidden md:block w-0 opacity-0 group-hover/vol:w-20 group-hover/vol:opacity-100 transition-all duration-200 h-1 cursor-pointer accent-[#e50914]"
+                  className="hidden md:block w-0 opacity-0 group-hover/vol:w-[72px] group-hover/vol:opacity-100 transition-all duration-200 h-1 cursor-pointer accent-white"
                   aria-label="Volume"
                 />
               </div>
 
-              <span className="shrink-0 whitespace-nowrap text-xs md:text-sm tabular-nums text-white/90">
-                {fmt(displayTime)} <span className="text-white/40">/ {fmt(duration)}</span>
+              <span className="shrink-0 whitespace-nowrap text-[12px] md:text-[13px] tabular-nums text-white">
+                {fmt(displayTime)}<span className="px-1 text-white/90"> / </span>{fmt(duration)}
               </span>
 
               <div className="ml-auto flex flex-nowrap items-center gap-2 md:gap-4 shrink-0">
