@@ -5,7 +5,9 @@ export interface WatchHistoryEntry {
   posterPath: string | null;
   backdropPath: string | null;
   year: string;
-  progress: number; // 0–100
+  progress: number; // 0–100, derived from positionSeconds/durationSeconds
+  positionSeconds: number; // last playback position
+  durationSeconds: number; // media duration (0 until known)
   watchedAt: number; // Date.now()
   season?: number;
   episode?: number;
@@ -16,7 +18,14 @@ export const WATCH_HISTORY_MIN_ENTRIES = 1;
 
 const STORAGE_KEY = 'heroflix_watch_history';
 const COOKIE_KEY = 'hwh';
-const MAX_ENTRIES = 10;
+
+// History is unbounded by count — entries are pruned only when untouched for two
+// weeks. The "Continue Watching" carousel separately shows just the most recent
+// titles (one card per title) via getContinueWatching().
+const STALE_MS = 14 * 24 * 60 * 60 * 1000;
+const CONTINUE_WATCHING_LIMIT = 10;
+// Upper bound for a single bulk server sync payload (must match the API schema).
+const BULK_MAX = 200;
 
 function setHistoryCookie() {
   document.cookie = `${COOKIE_KEY}=1; path=/; max-age=31536000; SameSite=Lax`;
@@ -35,27 +44,86 @@ export function syncWatchHistoryCookie(items: WatchHistoryEntry[]): void {
   }
 }
 
-// Deterministic pseudo-random progress 15–85 based on TMDB id.
-// Same title always shows the same bar — avoids it jumping on re-renders.
-export function seededProgress(id: number): number {
-  return (((id * 2654435761) >>> 0) % 71) + 15;
+// A title at/above this fraction is treated as "finished": reopening restarts
+// from the beginning rather than resuming at the tail end.
+const FINISHED_FRACTION = 0.95;
+
+function progressPct(positionSeconds: number, durationSeconds: number): number {
+  if (!(durationSeconds > 0)) return 0;
+  return Math.max(0, Math.min(100, Math.round((positionSeconds / durationSeconds) * 100)));
 }
 
+/**
+ * Identity of a single resume slot. Movies have one slot per title; series have
+ * one slot per episode, so each episode keeps its own resume position.
+ */
+function entryKey(
+  id: number,
+  type: 'movie' | 'series',
+  season?: number,
+  episode?: number,
+): string {
+  return type === 'series' ? `series:${id}:${season ?? 0}:${episode ?? 0}` : `movie:${id}`;
+}
+
+function entrySlot(e: WatchHistoryEntry): string {
+  return entryKey(e.id, e.type, e.season, e.episode);
+}
+
+function pruneStale(items: WatchHistoryEntry[]): WatchHistoryEntry[] {
+  const cutoff = Date.now() - STALE_MS;
+  return items.filter((e) => e.watchedAt >= cutoff);
+}
+
+function persist(items: WatchHistoryEntry[]): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  if (items.length >= WATCH_HISTORY_MIN_ENTRIES) setHistoryCookie();
+  else clearHistoryCookie();
+}
+
+/** All stored slots (movies + individual series episodes), pruned of stale ones. */
 export function getWatchHistory(): WatchHistoryEntry[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as WatchHistoryEntry[];
+    const all = JSON.parse(raw) as WatchHistoryEntry[];
+    const fresh = pruneStale(all);
+    if (fresh.length !== all.length) persist(fresh); // drop stale entries on read
+    return fresh;
   } catch {
     return [];
   }
 }
 
-export function addToWatchHistory(entry: Omit<WatchHistoryEntry, 'progress' | 'watchedAt'>): void {
+/**
+ * The "Continue Watching" view: the most recently watched titles, deduped to one
+ * card per title (latest episode for a series), capped at CONTINUE_WATCHING_LIMIT.
+ */
+export function getContinueWatching(limit = CONTINUE_WATCHING_LIMIT): WatchHistoryEntry[] {
+  const byTitle = new Map<string, WatchHistoryEntry>();
+  for (const e of getWatchHistory()) {
+    const key = `${e.type}:${e.id}`;
+    const cur = byTitle.get(key);
+    if (!cur || e.watchedAt > cur.watchedAt) byTitle.set(key, e);
+  }
+  return Array.from(byTitle.values())
+    .sort((a, b) => b.watchedAt - a.watchedAt)
+    .slice(0, limit);
+}
+
+/**
+ * Mount-time marker: record (or refresh) the slot for a title/episode the user
+ * just opened. An existing slot's position/progress are preserved (so resume
+ * survives); metadata and watchedAt are refreshed. Returns the stored entry.
+ */
+export function addToWatchHistory(
+  entry: Omit<WatchHistoryEntry, 'progress' | 'positionSeconds' | 'durationSeconds' | 'watchedAt'>,
+): WatchHistoryEntry | null {
   try {
+    const slot = entryKey(entry.id, entry.type, entry.season, entry.episode);
     const history = getWatchHistory();
-    const existing = history.find((e) => e.id === entry.id && e.type === entry.type);
-    const filtered = history.filter((e) => !(e.id === entry.id && e.type === entry.type));
+    const existing = history.find((e) => entrySlot(e) === slot);
+    const filtered = history.filter((e) => entrySlot(e) !== slot);
     const newEntry: WatchHistoryEntry = {
       id: entry.id,
       type: entry.type,
@@ -63,28 +131,94 @@ export function addToWatchHistory(entry: Omit<WatchHistoryEntry, 'progress' | 'w
       posterPath: entry.posterPath,
       backdropPath: entry.backdropPath,
       year: entry.year,
-      progress: seededProgress(entry.id),
+      progress: existing?.progress ?? 0,
+      positionSeconds: existing?.positionSeconds ?? 0,
+      durationSeconds: existing?.durationSeconds ?? 0,
       watchedAt: Date.now(),
       vote_average: entry.vote_average ?? 0,
     };
-    // Preserve existing season/episode if not provided in new entry
-    const season = entry.season ?? existing?.season;
-    const episode = entry.episode ?? existing?.episode;
-    if (season !== undefined) newEntry.season = season;
-    if (episode !== undefined) newEntry.episode = episode;
+    if (entry.season !== undefined) newEntry.season = entry.season;
+    if (entry.episode !== undefined) newEntry.episode = entry.episode;
     filtered.unshift(newEntry);
-    const next = filtered.slice(0, MAX_ENTRIES);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    if (next.length >= WATCH_HISTORY_MIN_ENTRIES) setHistoryCookie();
-  } catch {}
+    persist(filtered);
+    return newEntry;
+  } catch {
+    return null;
+  }
 }
 
+/**
+ * Update the stored playback position for a slot during playback. Updates it in
+ * place (relying on {@link addToWatchHistory} for metadata), recomputes progress,
+ * and returns the updated entry so the caller can sync it to the server.
+ */
+export function recordPlaybackProgress(input: {
+  id: number;
+  type: 'movie' | 'series';
+  positionSeconds: number;
+  durationSeconds: number;
+  season?: number;
+  episode?: number;
+}): WatchHistoryEntry | null {
+  try {
+    const slot = entryKey(input.id, input.type, input.season, input.episode);
+    const history = getWatchHistory();
+    const existing = history.find((e) => entrySlot(e) === slot);
+    const filtered = history.filter((e) => entrySlot(e) !== slot);
+    const entry: WatchHistoryEntry = {
+      id: input.id,
+      type: input.type,
+      title: existing?.title ?? '',
+      posterPath: existing?.posterPath ?? null,
+      backdropPath: existing?.backdropPath ?? null,
+      year: existing?.year ?? '',
+      vote_average: existing?.vote_average ?? 0,
+      positionSeconds: Math.max(0, Math.round(input.positionSeconds)),
+      durationSeconds: Math.max(0, Math.round(input.durationSeconds)),
+      progress: progressPct(input.positionSeconds, input.durationSeconds),
+      watchedAt: Date.now(),
+    };
+    if (input.season !== undefined) entry.season = input.season;
+    else if (existing?.season !== undefined) entry.season = existing.season;
+    if (input.episode !== undefined) entry.episode = input.episode;
+    else if (existing?.episode !== undefined) entry.episode = existing.episode;
+    filtered.unshift(entry);
+    persist(filtered);
+    return entry;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resume position (seconds) for a title/episode the user is about to play.
+ * Returns the saved position when a matching slot exists and isn't finished;
+ * otherwise 0 (start from the beginning).
+ */
+export function getResumePosition(
+  id: number,
+  type: 'movie' | 'series',
+  season?: number,
+  episode?: number,
+): number {
+  try {
+    const slot = entryKey(id, type, season, episode);
+    const entry = getWatchHistory().find((e) => entrySlot(e) === slot);
+    if (!entry) return 0;
+    if (entry.durationSeconds > 0 && entry.positionSeconds / entry.durationSeconds >= FINISHED_FRACTION) {
+      return 0;
+    }
+    return entry.positionSeconds > 0 ? entry.positionSeconds : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Remove a title from history entirely (all episodes, for a series). */
 export function removeFromWatchHistory(id: number, type: 'movie' | 'series'): void {
   try {
-    const history = getWatchHistory();
-    const updated = history.filter((e) => !(e.id === id && e.type === type));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    if (updated.length === 0) clearHistoryCookie();
+    const updated = getWatchHistory().filter((e) => !(e.id === id && e.type === type));
+    persist(updated);
   } catch {}
 }
 
@@ -134,6 +268,8 @@ export async function fetchServerWatchHistory(): Promise<WatchHistoryEntry[]> {
         backdropPath: string | null;
         year: string;
         progress: number;
+        positionSeconds: number | null;
+        durationSeconds: number | null;
         watchedAt: string;
         season: number | null;
         episode: number | null;
@@ -145,6 +281,8 @@ export async function fetchServerWatchHistory(): Promise<WatchHistoryEntry[]> {
         backdropPath: item.backdropPath ?? null,
         year: item.year ?? '',
         progress: item.progress ?? 0,
+        positionSeconds: item.positionSeconds ?? 0,
+        durationSeconds: item.durationSeconds ?? 0,
         watchedAt: new Date(item.watchedAt).getTime(),
         ...(item.season ? { season: item.season } : {}),
         ...(item.episode ? { episode: item.episode } : {}),
@@ -166,6 +304,8 @@ export async function uploadEntryToServer(entry: WatchHistoryEntry): Promise<voi
       backdropPath: entry.backdropPath,
       year: entry.year,
       progress: entry.progress,
+      positionSeconds: entry.positionSeconds,
+      durationSeconds: entry.durationSeconds,
     };
     if (entry.season !== undefined) body.season = entry.season;
     if (entry.episode !== undefined) body.episode = entry.episode;
@@ -180,39 +320,26 @@ export async function uploadEntryToServer(entry: WatchHistoryEntry): Promise<voi
   }
 }
 
-/** Merge local and server histories, keeping most recent by watchedAt. */
+/** Merge local and server histories per resume slot, keeping the most recent. */
 export function mergeWatchHistories(
   local: WatchHistoryEntry[],
   server: WatchHistoryEntry[],
 ): WatchHistoryEntry[] {
   const map = new Map<string, WatchHistoryEntry>();
 
-  // First pass: add all entries
+  // Most recently watched wins (it carries the real position/progress). On an
+  // exact tie, prefer the entry that's further along.
   for (const entry of [...server, ...local]) {
-    const key = `${entry.id}:${entry.type}`;
+    const key = entrySlot(entry);
     const existing = map.get(key);
     if (!existing || entry.watchedAt > existing.watchedAt) {
       map.set(key, entry);
-    } else if (existing && existing.watchedAt === entry.watchedAt) {
-      // Same timestamp - prefer entry with non-zero progress (correct fake progress)
-      if (entry.progress > 0 && existing.progress === 0) {
-        map.set(key, entry);
-      }
+    } else if (entry.watchedAt === existing.watchedAt && entry.progress > existing.progress) {
+      map.set(key, entry);
     }
   }
 
-  // Second pass: ensure local progress is preserved when server has 0
-  for (const entry of local) {
-    const key = `${entry.id}:${entry.type}`;
-    const existing = map.get(key);
-    if (existing && existing.progress === 0 && entry.progress > 0) {
-      // Server has 0 progress but local has correct fake progress - use local
-      map.set(key, { ...existing, progress: entry.progress });
-    }
-  }
-
-  const merged = Array.from(map.values()).sort((a, b) => b.watchedAt - a.watchedAt);
-  return merged.slice(0, MAX_ENTRIES);
+  return pruneStale(Array.from(map.values())).sort((a, b) => b.watchedAt - a.watchedAt);
 }
 
 /**
@@ -225,10 +352,11 @@ export async function syncOnLogin(): Promise<void> {
     const server = await fetchServerWatchHistory();
     const merged = mergeWatchHistories(local, server);
 
-    // Upload merged to server via bulk API
-    if (merged.length > 0) {
+    // Upload merged to server via bulk API (capped to the API's batch limit).
+    const batch = merged.slice(0, BULK_MAX);
+    if (batch.length > 0) {
       try {
-        const entries = merged.map((entry) => {
+        const entries = batch.map((entry) => {
           const item: Record<string, unknown> = {
             tmdbId: entry.id,
             mediaType: entry.type,
@@ -237,6 +365,8 @@ export async function syncOnLogin(): Promise<void> {
             backdropPath: entry.backdropPath,
             year: entry.year,
             progress: entry.progress,
+            positionSeconds: entry.positionSeconds,
+            durationSeconds: entry.durationSeconds,
           };
           if (entry.season !== undefined) item.season = entry.season;
           if (entry.episode !== undefined) item.episode = entry.episode;
@@ -254,8 +384,7 @@ export async function syncOnLogin(): Promise<void> {
     }
 
     // Replace local with merged
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-    syncWatchHistoryCookie(merged);
+    persist(merged);
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent(SYNCED_EVENT, { detail: merged }));

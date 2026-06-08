@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 
 import { claimActiveMedia, isFullscreenRoot, releaseActiveMedia, silenceOtherVideos } from '@/lib/active-media';
+import { publishPlaybackProgress } from '@/lib/playback-progress';
 import { cn } from '@/lib/utils';
+import { getResumePosition } from '@/lib/watch-history';
 
 interface StreamSource {
   type: 'mp4' | 'hls';
@@ -248,7 +250,11 @@ export function PeachifyPlayer({
     setBuffering(false);
     failedRef.current = new Set();
     startedRef.current = false;
-    resumeRef.current = null;
+    // Cross-session resume: seed from saved watch-history position so the first
+    // successful load seeks there (markReady applies resumeRef). In-session
+    // quality/server switches re-seed resumeRef separately below.
+    const startAt = getResumePosition(tmdbId, type === 'tv' ? 'series' : 'movie', season, episode);
+    resumeRef.current = startAt > 0 ? { time: startAt, playing: autoPlay } : null;
 
     const qs = type === 'tv' ? `?season=${season}&episode=${episode}` : '';
     const key = streamKey(type, tmdbId, season, episode);
@@ -270,7 +276,7 @@ export function PeachifyPlayer({
         setErrorType('network');
         console.error('Failed to load sources:', err);
       });
-  }, [type, tmdbId, season, episode]);
+  }, [type, tmdbId, season, episode, autoPlay]);
 
   useEffect(() => {
     if (sources.length === 0) return;
@@ -473,6 +479,51 @@ export function PeachifyPlayer({
       v.removeEventListener('ratechange', onRate);
     };
   }, []);
+
+  // Emit real playback progress so the watch-history recorder can persist
+  // position for cross-session resume. Throttled on timeupdate (~5s) with an
+  // immediate report on pause, end, and tab-hide so the latest position sticks.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    let last = 0;
+    const report = (ended: boolean) => {
+      if (!startedRef.current) return;
+      const dur = v.duration;
+      if (!Number.isFinite(dur) || dur <= 0) return;
+      if (!ended && v.currentTime <= 0) return;
+      publishPlaybackProgress({
+        type,
+        tmdbId,
+        positionSeconds: v.currentTime,
+        durationSeconds: dur,
+        ended,
+        ...(season !== undefined ? { season } : {}),
+        ...(episode !== undefined ? { episode } : {}),
+      });
+    };
+    const onTime = () => {
+      const now = Date.now();
+      if (now - last < 5000) return;
+      last = now;
+      report(false);
+    };
+    const onPause = () => report(false);
+    const onEnded = () => report(true);
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') report(false);
+    };
+    v.addEventListener('timeupdate', onTime);
+    v.addEventListener('pause', onPause);
+    v.addEventListener('ended', onEnded);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      v.removeEventListener('timeupdate', onTime);
+      v.removeEventListener('pause', onPause);
+      v.removeEventListener('ended', onEnded);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [type, tmdbId, season, episode]);
 
   // Imperatively attach subtitle tracks so React never adds/removes <track>
   // children during playback (which can restart the media element in some browsers).

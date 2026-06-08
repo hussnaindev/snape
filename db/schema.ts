@@ -87,13 +87,17 @@ export const watchHistory = sqliteTable(
     backdropPath: text('backdrop_path'),
     year: text('year').notNull().default(''),
     progress: integer('progress').notNull().default(0),
-    season: integer('season'),
-    episode: integer('episode'),
+    positionSeconds: integer('position_seconds').notNull().default(0),
+    durationSeconds: integer('duration_seconds').notNull().default(0),
+    // 0 for movies; real values for series episodes. Kept non-null so the
+    // per-episode unique key works (SQLite treats NULLs as distinct in UNIQUE).
+    season: integer('season').notNull().default(0),
+    episode: integer('episode').notNull().default(0),
     watchedAt: integer('watched_at', { mode: 'timestamp' })
       .notNull()
       .$defaultFn(() => new Date()),
   },
-  (t) => [unique('watch_history_unique').on(t.profileId, t.tmdbId, t.mediaType)],
+  (t) => [unique('watch_history_unique').on(t.profileId, t.tmdbId, t.mediaType, t.season, t.episode)],
 );
 
 export const preferences = sqliteTable('preferences', {

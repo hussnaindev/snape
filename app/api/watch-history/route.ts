@@ -3,9 +3,14 @@ export const runtime = 'edge';
 import { watchHistory } from '@/db/schema';
 import { getDb } from '@/lib/db';
 import { getSession } from '@/lib/session';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, lt } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+
+// Entries untouched for this long are pruned (mirrors the client). 0 season /
+// episode means "movie" (or whole-title), so the per-episode unique key holds.
+const STALE_MS = 14 * 24 * 60 * 60 * 1000;
+const MAX_ROWS = 200;
 
 const upsertSchema = z.object({
   tmdbId: z.number().int().positive(),
@@ -15,12 +20,14 @@ const upsertSchema = z.object({
   backdropPath: z.string().nullable().optional(),
   year: z.string().max(4).default(''),
   progress: z.number().min(0).max(100).default(0),
-  season: z.number().int().positive().nullable().optional(),
-  episode: z.number().int().positive().nullable().optional(),
+  positionSeconds: z.number().int().min(0).default(0),
+  durationSeconds: z.number().int().min(0).default(0),
+  season: z.number().int().min(0).default(0),
+  episode: z.number().int().min(0).default(0),
 });
 
 const bulkUpsertSchema = z.object({
-  entries: z.array(upsertSchema).min(1).max(20),
+  entries: z.array(upsertSchema).min(1).max(MAX_ROWS),
 });
 
 export async function GET() {
@@ -29,12 +36,23 @@ export async function GET() {
     return NextResponse.json({ ok: false, error: 'Unauthenticated', code: 401 }, { status: 401 });
 
   const db = await getDb();
+
+  // Prune stale rows (untouched for two weeks) before reading.
+  await db
+    .delete(watchHistory)
+    .where(
+      and(
+        eq(watchHistory.profileId, session.profileId),
+        lt(watchHistory.watchedAt, new Date(Date.now() - STALE_MS)),
+      ),
+    );
+
   const items = await db
     .select()
     .from(watchHistory)
     .where(eq(watchHistory.profileId, session.profileId))
     .orderBy(desc(watchHistory.watchedAt))
-    .limit(20)
+    .limit(MAX_ROWS)
     .all();
 
   return NextResponse.json({ ok: true, data: items });
@@ -57,12 +75,22 @@ export async function POST(req: Request) {
         .insert(watchHistory)
         .values({ profileId: session.profileId, ...entry, watchedAt: now })
         .onConflictDoUpdate({
-          target: [watchHistory.profileId, watchHistory.tmdbId, watchHistory.mediaType],
+          target: [
+            watchHistory.profileId,
+            watchHistory.tmdbId,
+            watchHistory.mediaType,
+            watchHistory.season,
+            watchHistory.episode,
+          ],
           set: {
+            title: entry.title,
+            posterPath: entry.posterPath ?? null,
+            backdropPath: entry.backdropPath ?? null,
+            year: entry.year,
             progress: entry.progress,
+            positionSeconds: entry.positionSeconds,
+            durationSeconds: entry.durationSeconds,
             watchedAt: now,
-            season: entry.season ?? null,
-            episode: entry.episode ?? null,
           },
         });
     }
@@ -80,12 +108,22 @@ export async function POST(req: Request) {
     .insert(watchHistory)
     .values({ profileId: session.profileId, ...parsed.data, watchedAt: new Date() })
     .onConflictDoUpdate({
-      target: [watchHistory.profileId, watchHistory.tmdbId, watchHistory.mediaType],
+      target: [
+        watchHistory.profileId,
+        watchHistory.tmdbId,
+        watchHistory.mediaType,
+        watchHistory.season,
+        watchHistory.episode,
+      ],
       set: {
+        title: parsed.data.title,
+        posterPath: parsed.data.posterPath ?? null,
+        backdropPath: parsed.data.backdropPath ?? null,
+        year: parsed.data.year,
         progress: parsed.data.progress,
+        positionSeconds: parsed.data.positionSeconds,
+        durationSeconds: parsed.data.durationSeconds,
         watchedAt: new Date(),
-        season: parsed.data.season ?? null,
-        episode: parsed.data.episode ?? null,
       },
     });
 

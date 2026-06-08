@@ -15,6 +15,20 @@
       "when": 1777911555638,
       "tag": "0001_tiny_hellion",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1780923339195,
+      "tag": "0002_medical_nick_fury",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1780924854355,
+      "tag": "0003_classy_the_hood",
+      "breakpoints": true
     }
   ]
 }

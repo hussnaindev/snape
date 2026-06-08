@@ -4,7 +4,7 @@ import { tmdbImage } from '@/lib/tmdb-image';
 import {
   WATCH_HISTORY_MIN_ENTRIES,
   clearAllWatchHistory,
-  getWatchHistory,
+  getContinueWatching,
   syncWatchHistoryCookie,
 } from '@/lib/watch-history';
 import { SYNCED_EVENT } from '@/lib/watch-history';
@@ -141,18 +141,18 @@ export function ContinueWatchingCarousel({ hasHistory }: { hasHistory: boolean }
   const [items, setItems] = useState<WatchHistoryEntry[] | null>(null);
 
   useEffect(() => {
-    const history = getWatchHistory();
+    const history = getContinueWatching();
     syncWatchHistoryCookie(history); // corrects stale cookies from prior sessions
     setItems(history);
   }, []);
 
   useEffect(() => {
     function onCleared() {
-      setItems(getWatchHistory());
+      setItems(getContinueWatching());
       syncWatchHistoryCookie([]);
     }
     function onSynced() {
-      setItems(getWatchHistory());
+      setItems(getContinueWatching());
     }
     window.addEventListener('watch-history-cleared', onCleared);
     window.addEventListener(SYNCED_EVENT, onSynced);
