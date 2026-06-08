@@ -171,6 +171,7 @@ export function PeachifyPlayer({
   const [subIndex, setSubIndex] = useState(-1);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
+  const [errorType, setErrorType] = useState<'no-sources' | 'playback-failed' | 'network' | null>(null);
 
   const [playing, setPlaying] = useState(false);
   const [buffering, setBuffering] = useState(false);
@@ -256,16 +257,18 @@ export function PeachifyPlayer({
         if (fetchGenRef.current !== gen) return;
         if (!json.ok || !json.data || json.data.sources.length === 0) {
           setStatus('error');
-          setErrorMsg(json.error ?? 'No playable sources found');
+          setErrorType('no-sources');
+          if (IS_DEV) console.error('No sources available', { json, type, tmdbId, season, episode });
           return;
         }
         setSources(json.data.sources);
         setSubs(json.data.subtitles);
       })
-      .catch(() => {
+      .catch((err) => {
         if (fetchGenRef.current !== gen) return;
         setStatus('error');
-        setErrorMsg('Failed to load sources');
+        setErrorType('network');
+        console.error('Failed to load sources:', err);
       });
   }, [type, tmdbId, season, episode]);
 
@@ -344,11 +347,12 @@ export function PeachifyPlayer({
       startedRef.current = true;
       onReady?.();
     };
-    const fallback = () => {
+    const fallback = (error?: Error | null) => {
       if (fallbackUsed || startedRef.current || destroyed || attachGenRef.current !== gen) return;
       fallbackUsed = true;
       stopMedia();
       failedRef.current.add(s.url);
+      if (error) console.error('Source playback failed:', s, error);
       const remaining = sources.filter((c) => !failedRef.current.has(c.url));
       const next = bestSource(remaining);
       if (next) {
@@ -358,7 +362,8 @@ export function PeachifyPlayer({
         setActive(next);
       } else {
         setStatus('error');
-        setErrorMsg('All sources failed to play');
+        setErrorType('playback-failed');
+        if (IS_DEV) console.error('All sources failed:', { failedSources: Array.from(failedRef.current) });
       }
     };
 
@@ -395,15 +400,18 @@ export function PeachifyPlayer({
             if (!data.fatal) return;
             if (data.type === 'networkError') instance.startLoad();
             else if (data.type === 'mediaError') instance.recoverMediaError();
-            else fallback();
+            else fallback(new Error(`HLS ${data.type}: ${data.reason}`));
           });
         })
-        .catch(fallback);
+        .catch((err) => fallback(err));
     } else {
       video.src = s.url;
       onError = () => {
         if (destroyed || attachGenRef.current !== gen) return;
-        if (!startedRef.current) fallback();
+        if (!startedRef.current) {
+          const error = video.error ? new Error(`MediaError ${video.error.code}: ${video.error.message}`) : new Error('Unknown video error');
+          fallback(error);
+        }
       };
       video.addEventListener('error', onError);
     }
@@ -1079,8 +1087,14 @@ export function PeachifyPlayer({
 
       {status === 'error' && (
         <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-black px-4 text-center">
-          <div className="text-sm font-semibold uppercase tracking-[0.14em] text-white">Unable to play</div>
-          <div className="text-xs text-white/50">{errorMsg}</div>
+          <div className="text-sm font-semibold uppercase tracking-[0.14em] text-white">
+            {errorType === 'no-sources' ? 'Coming Soon' : 'Servers are busy right now'}
+          </div>
+          <div className="text-xs text-white/50">
+            {errorType === 'no-sources'
+              ? 'This content is not yet available for streaming'
+              : 'Try again later'}
+          </div>
         </div>
       )}
 
