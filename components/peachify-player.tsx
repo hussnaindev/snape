@@ -959,11 +959,11 @@ export function PeachifyPlayer({
                 {/* fill-to-screen */}
                 <Ctrl onClick={() => setFit((f) => (f === 'cover' ? 'contain' : 'cover'))} label="Fill to screen">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <rect x="2" y="3" width="20" height="18" rx="1" />
-                    <path d="M6 7l-3-3m0 0l3-3m-3 3h5" />
-                    <path d="M18 7l3-3m0 0l-3-3m3 3h-5" />
-                    <path d="M6 17l-3 3m0 0l3 3m-3-3h5" />
-                    <path d="M18 17l3 3m0 0l-3 3m3-3h-5" />
+                    <rect x="4" y="4" width="16" height="16" rx="1" />
+                    <path d="M8 4V0M4 8H0" />
+                    <path d="M16 4v-4M20 8h4" />
+                    <path d="M8 20v4M4 16h-4" />
+                    <path d="M16 20v4M20 16h4" />
                   </svg>
                 </Ctrl>
 
