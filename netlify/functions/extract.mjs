@@ -315,25 +315,28 @@ async function fetchProvider(p, type, id, season, episode) {
 // The resolved m3u8 lives on a rotating `*.space` CDN that sends `ACAO: *` and
 // needs no Referer, so we play it CLIENT-DIRECT (raw URL, no media proxy).
 const VSEMBED_BASE = 'https://vsembed.ru';
-const VSEMBED_TIMEOUT_MS = 4500;
+const VSEMBED_TIMEOUT_MS = 3500;
 // Hard ceiling on the whole vsembed chain so a slow/hung hop can never delay the
 // (already-resolved) Peachify response — `await vsembedP` is capped by this.
-const VSEMBED_DEADLINE_MS = 7000;
+const VSEMBED_DEADLINE_MS = 8000;
 
-// The rcp/prorcp hops flake intermittently (transient non-200), so retry once.
-async function vsFetchText(url, referer) {
-  for (let attempt = 0; attempt < 2; attempt++) {
+// These sites are Cloudflare-fronted (not eat-peach) and serve datacenter IPs, so
+// try DIRECT from Netlify first (fast, avoids residential-proxy CF challenges),
+// then fall back to the proxy. `last` records the final failure for debug.
+async function vsFetchText(url, referer, diag) {
+  for (const useProxy of [false, true]) {
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), VSEMBED_TIMEOUT_MS);
     try {
       const res = await uFetch(url, {
         headers: { 'User-Agent': UA, ...(referer ? { Referer: referer } : {}) },
-        dispatcher: pickProxyAgent(),
+        ...(useProxy ? { dispatcher: pickProxyAgent() } : {}),
         signal: ac.signal,
       });
       if (res.ok) return await res.text();
-    } catch {
-      // fall through to retry / give up
+      if (diag) diag.last = `${useProxy ? 'proxy' : 'direct'}:${res.status}`;
+    } catch (e) {
+      if (diag) diag.last = `${useProxy ? 'proxy' : 'direct'}:${e?.name === 'AbortError' ? 'timeout' : e?.message || 'err'}`;
     } finally {
       clearTimeout(timer);
     }
@@ -341,33 +344,37 @@ async function vsFetchText(url, referer) {
   return null;
 }
 
+// Returns { sources, stage } — `stage` is the last hop reached, surfaced in the
+// response `debug` so a prod failure is diagnosable without guessing.
 async function fetchVsembed(type, id, season, episode) {
+  const diag = {};
+  const out = (stage) => ({ sources: [], stage: diag.last ? `${stage}(${diag.last})` : stage });
   const embedUrl =
     type === 'tv'
       ? `${VSEMBED_BASE}/embed/tv/${id}/${season}/${episode}`
       : `${VSEMBED_BASE}/embed/movie/${id}`;
-  const embed = await vsFetchText(embedUrl, VSEMBED_BASE);
-  if (!embed) return [];
+  const embed = await vsFetchText(embedUrl, VSEMBED_BASE, diag);
+  if (!embed) return out('embed');
   // CloudStream Pro = the iframe's own rcp hash (the other listed servers are
   // separate, less reliable embed chains we don't follow).
   const iframe = embed.match(/id="player_iframe"\s+src="\/\/([^/"]+)\/rcp\/([^"]+)"/);
-  if (!iframe) return [];
+  if (!iframe) return out('iframe');
   const rcpDomain = iframe[1];
-  const rcp = await vsFetchText(`https://${rcpDomain}/rcp/${iframe[2]}`, `${VSEMBED_BASE}/`);
-  if (!rcp) return [];
+  const rcp = await vsFetchText(`https://${rcpDomain}/rcp/${iframe[2]}`, `${VSEMBED_BASE}/`, diag);
+  if (!rcp) return out('rcp');
   const pro = rcp.match(/src:\s*'(\/prorcp\/[^']+)'/);
-  if (!pro) return [];
-  const player = await vsFetchText(`https://${rcpDomain}${pro[1]}`, `https://${rcpDomain}/`);
-  if (!player) return [];
+  if (!pro) return out('prorcp-link');
+  const player = await vsFetchText(`https://${rcpDomain}${pro[1]}`, `https://${rcpDomain}/`, diag);
+  if (!player) return out('player');
   const file = player.match(/file:\s*"([^"]+)"/);
-  if (!file) return [];
+  if (!file) return out('file');
   // `file` can be "<url1> or <url2>" (mirrors) — take the first valid m3u8.
   const url = file[1]
     .split(/\s+or\s+/)
     .map((s) => s.trim())
     .find((u) => /^https?:\/\/\S+\.m3u8/i.test(u));
-  if (!url) return [];
-  return [{ type: 'hls', url, headers: {}, quality: null, dub: null, provider: 'Bolt', direct: true }];
+  if (!url) return out('nourl');
+  return { sources: [{ type: 'hls', url, headers: {}, quality: null, dub: null, provider: 'Bolt', direct: true }], stage: 'ok' };
 }
 
 export default async (req) => {
@@ -390,8 +397,8 @@ export default async (req) => {
   // so it adds no latency, and is appended last (lowest priority). Fail-open,
   // and hard-capped so it can never delay the Peachify response.
   const vsembedP = Promise.race([
-    fetchVsembed(type, id, season, episode).catch(() => []),
-    new Promise((resolve) => setTimeout(() => resolve([]), VSEMBED_DEADLINE_MS)),
+    fetchVsembed(type, id, season, episode).catch((e) => ({ sources: [], stage: `throw:${e?.message || 'err'}` })),
+    new Promise((resolve) => setTimeout(() => resolve({ sources: [], stage: 'deadline' }), VSEMBED_DEADLINE_MS)),
   ]);
   /** @type {{ provider: string, sources: typeof rawSources, subtitles: typeof rawSubs } | null} */
   let hlsFallback = null;
@@ -440,9 +447,9 @@ export default async (req) => {
   // Append vsembed last (after all Peachify sources) so the player only reaches
   // it when the preferred sources fail — or uses it as the sole source when
   // Peachify found nothing.
-  const vsembedSources = await vsembedP;
-  rawSources.push(...vsembedSources);
-  debug.vsembed = vsembedSources.length;
+  const vsembedResult = await vsembedP;
+  rawSources.push(...vsembedResult.sources);
+  debug.vsembed = vsembedResult.stage;
 
   if (rawSources.length === 0) {
     return Response.json({ ok: false, error: 'No sources found', debug }, { status: 502 });
