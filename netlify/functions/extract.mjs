@@ -327,9 +327,10 @@ async function fetchProvider(p, type, id, season, episode) {
 // needs no Referer, so we play it CLIENT-DIRECT (raw URL, no media proxy).
 const VSEMBED_BASE = 'https://vsembed.ru';
 const VSEMBED_TIMEOUT_MS = 4000;
-// Hard ceiling on the whole vsembed chain so a slow/hung hop can never delay the
-// (already-resolved) Peachify response — `await vsembedP` is capped by this.
-const VSEMBED_DEADLINE_MS = 8500;
+// Hard ceiling on the whole vsembed chain. It runs sequentially after the
+// Peachify loop (only when Peachify has no mp4), so this is kept tight to keep
+// total extraction under Netlify's ~10s function limit.
+const VSEMBED_DEADLINE_MS = 5000;
 // cloudnestra's /prorcp endpoint is Cloudflare-protected: it 403s datacenter IPs
 // (so a direct Netlify fetch fails) and serves a small CF challenge page to most
 // proxy IPs — only a fraction of residential-proxy IPs pass. The embed/rcp hops
@@ -429,14 +430,6 @@ export default async (req) => {
   const rawSources = [];
   let rawSubs = [];
   const mp4Sources = [];
-
-  // Independent fallback chain — runs in parallel with the Peachify loop below
-  // so it adds no latency, and is appended last (lowest priority). Fail-open,
-  // and hard-capped so it can never delay the Peachify response.
-  const vsembedP = Promise.race([
-    fetchVsembed(type, id, season, episode).catch((e) => ({ sources: [], stage: `throw:${e?.message || 'err'}` })),
-    new Promise((resolve) => setTimeout(() => resolve({ sources: [], stage: 'deadline' }), VSEMBED_DEADLINE_MS)),
-  ]);
   /** @type {{ provider: string, sources: typeof rawSources, subtitles: typeof rawSubs } | null} */
   let hlsFallback = null;
   let hlsFallbackScore = -1;
@@ -481,12 +474,21 @@ export default async (req) => {
     debug.reason = 'hls-fallback';
   }
 
-  // Append vsembed last (after all Peachify sources) so the player only reaches
-  // it when the preferred sources fail — or uses it as the sole source when
-  // Peachify found nothing.
-  const vsembedResult = await vsembedP;
-  rawSources.push(...vsembedResult.sources);
-  debug.vsembed = vsembedResult.stage;
+  // vsembed runs ONLY as a true fallback — when Peachify has no mp4 (dead/weak,
+  // e.g. a Multi-only title whose keymi token is dead). Healthy titles (mp4
+  // present) skip it entirely, so they're never delayed by the CF-gated, possibly
+  // slow vsembed chain. Appended last so the player reaches it only after the
+  // Peachify sources, or uses it as the sole source when Peachify found nothing.
+  if (mp4Sources.length === 0) {
+    const vsembedResult = await Promise.race([
+      fetchVsembed(type, id, season, episode).catch((e) => ({ sources: [], stage: `throw:${e?.message || 'err'}` })),
+      new Promise((resolve) => setTimeout(() => resolve({ sources: [], stage: 'deadline' }), VSEMBED_DEADLINE_MS)),
+    ]);
+    rawSources.push(...vsembedResult.sources);
+    debug.vsembed = vsembedResult.stage;
+  } else {
+    debug.vsembed = 'skipped(mp4)';
+  }
 
   if (rawSources.length === 0) {
     // no-store so a transient "no sources" isn't cached and replayed on refresh.
