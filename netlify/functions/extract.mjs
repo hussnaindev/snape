@@ -50,6 +50,17 @@ function pickProxyAgent() {
   const url = PROXIES[Math.floor(Math.random() * PROXIES.length)];
   return new ProxyAgent(url);
 }
+// Up to `max` DISTINCT proxy agents in random order — so a one-per-proxy parallel
+// sweep covers the whole pool (and is guaranteed to include any good IP when the
+// pool is small) instead of random draws that can repeat or miss it.
+function distinctProxyAgents(max) {
+  const arr = [...PROXIES];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.slice(0, max).map((url) => new ProxyAgent(url));
+}
 
 // ---- crypto: decrypt source payloads ------------------------------------
 function b64urlToBytes(input) {
@@ -323,22 +334,23 @@ const VSEMBED_DEADLINE_MS = 8500;
 // (so a direct Netlify fetch fails) and serves a small CF challenge page to most
 // proxy IPs — only a fraction of residential-proxy IPs pass. The embed/rcp hops
 // pass on most IPs, and the /prorcp LINK is portable across IPs, so we fetch
-// embed+rcp once, then fire the prorcp fetch through MANY proxies in parallel and
-// take the first that returns the real player (fast: failures are tiny ~3KB).
-const VSEMBED_PRORCP_TRIES = 16;
+// embed+rcp once, then fire the prorcp fetch through one-per-DISTINCT-proxy in
+// parallel and take the first that returns the real player (failures are tiny
+// ~3KB CF challenge pages, so sweeping the whole pool is cheap).
+const VSEMBED_PRORCP_MAX_PROXIES = 24;
 const VSEMBED_HEADERS = {
   'User-Agent': UA,
   Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
   'Accept-Language': 'en-US,en;q=0.9',
 };
 
-async function vsFetch(url, referer, useProxy) {
+async function vsFetch(url, referer, dispatcher) {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), VSEMBED_TIMEOUT_MS);
   try {
     const res = await uFetch(url, {
       headers: { ...VSEMBED_HEADERS, ...(referer ? { Referer: referer } : {}) },
-      ...(useProxy ? { dispatcher: pickProxyAgent() } : {}),
+      ...(dispatcher ? { dispatcher } : {}),
       signal: ac.signal,
     });
     return res.ok ? await res.text() : null;
@@ -350,9 +362,11 @@ async function vsFetch(url, referer, useProxy) {
 }
 
 // embed/rcp pass on most IPs — try direct (works in dev where there's no proxy),
-// then one proxy attempt.
+// then a couple of random proxy attempts.
 async function vsFetchPage(url, referer) {
-  return (await vsFetch(url, referer, false)) ?? (await vsFetch(url, referer, true));
+  let r = await vsFetch(url, referer);
+  for (let i = 0; !r && i < 2; i++) r = await vsFetch(url, referer, pickProxyAgent());
+  return r;
 }
 
 // Returns { sources, stage } — `stage` is the last hop reached, surfaced in the
@@ -375,10 +389,11 @@ async function fetchVsembed(type, id, season, episode) {
   if (!pro) return { sources: [], stage: 'prorcp-link' };
   const proUrl = `https://${rcpDomain}${pro[1]}`;
   const proRef = `https://${rcpDomain}/`;
-  // Brute-force the CF-gated prorcp across proxies in parallel; first proxy that
-  // returns a player exposing a `file:` m3u8 wins. (The link is IP-portable.)
-  const attempt = async () => {
-    const player = await vsFetch(proUrl, proRef, true);
+  // Sweep the CF-gated prorcp across distinct proxies in parallel; first proxy
+  // that returns a player exposing a `file:` m3u8 wins. (The link is IP-portable,
+  // and trying each proxy once guarantees a small pool's good IP is included.)
+  const attempt = (dispatcher) => async () => {
+    const player = await vsFetch(proUrl, proRef, dispatcher);
     const file = player?.match(/file:\s*"([^"]+)"/);
     // `file` can be "<url1> or <url2>" (mirrors) — take the first valid m3u8.
     const url = file?.[1]
@@ -388,9 +403,11 @@ async function fetchVsembed(type, id, season, episode) {
     if (!url) throw new Error('no-file');
     return url;
   };
+  const agents = distinctProxyAgents(VSEMBED_PRORCP_MAX_PROXIES);
+  const sweep = (agents.length ? agents : [undefined]).map((a) => attempt(a)());
   let url;
   try {
-    url = await Promise.any(Array.from({ length: VSEMBED_PRORCP_TRIES }, attempt));
+    url = await Promise.any(sweep);
   } catch {
     return { sources: [], stage: 'prorcp-cf' };
   }
