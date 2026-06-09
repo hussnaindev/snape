@@ -15,9 +15,11 @@ interface StreamSource {
   provider: string;
   /**
    * When true, `url` is a raw CDN URL the browser loads directly (not via our
-   * media proxy) — used for CDNs that block Cloudflare's IPs but serve
-   * residential IPs with `Access-Control-Allow-Origin: *`. The user's own IP is
-   * used, so it works where the proxy can't. See extract.mjs `isClientDirectHost`.
+   * media proxy) — used for CDNs that block Cloudflare's IPs but serve the user's
+   * own IP with `Access-Control-Allow-Origin: *`. extract.mjs pre-resolves the
+   * CDN's redirect so the browser fetches the terminal edge directly (the
+   * cross-origin redirect could otherwise strip the Referer keymi requires).
+   * See extract.mjs `isClientDirectHost` / `resolveClientDirectUrl`.
    */
   direct?: boolean;
 }
@@ -55,7 +57,7 @@ interface Props {
 }
 
 const DEFAULT_LABEL = 'Default';
-const PROVIDER_ORDER = ['Iron', 'Spider', 'Wolf', 'Multi', 'Dark'];
+const PROVIDER_ORDER = ['Iron', 'Spider', 'Wolf', 'Multi', 'Dark', 'Bolt'];
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const streamCache = new Map<string, StreamResponse>();
 const streamInflight = new Map<string, Promise<StreamResponse>>();
@@ -272,7 +274,7 @@ export function PeachifyPlayer({
         if (!json.ok || !json.data || json.data.sources.length === 0) {
           setStatus('error');
           setErrorType('no-sources');
-          if (IS_DEV) console.error('No sources available', { json, type, tmdbId, season, episode });
+          console.error('[player] no sources available', { type, tmdbId, season, episode, error: json.error });
           return;
         }
         setSources(json.data.sources);
@@ -366,23 +368,34 @@ export function PeachifyPlayer({
       startedRef.current = true;
       onReady?.();
     };
+    const sourceLabel = (c: StreamSource) => ({
+      provider: c.provider,
+      type: c.type,
+      dub: c.dub,
+      quality: c.quality,
+      url: c.url,
+    });
     const fallback = (error?: Error | null) => {
       if (fallbackUsed || startedRef.current || destroyed || attachGenRef.current !== gen) return;
       fallbackUsed = true;
       stopMedia();
       failedRef.current.add(s.url);
-      if (error) console.error('Source playback failed:', s, error);
+      console.error('[player] source failed to play:', sourceLabel(s), error ?? '');
       const remaining = sources.filter((c) => !failedRef.current.has(c.url));
       const next = bestSource(remaining);
       if (next) {
+        console.warn(
+          `[player] failing over to next source (${failedRef.current.size}/${sources.length} tried):`,
+          sourceLabel(next),
+        );
         setLang(dubLabel(next));
         setQuality(qLabel(next));
         setServer(next.provider);
         setActive(next);
       } else {
+        console.error('[player] all sources failed:', [...failedRef.current]);
         setStatus('error');
         setErrorType('playback-failed');
-        if (IS_DEV) console.error('All sources failed:', { failedSources: Array.from(failedRef.current) });
       }
     };
 
@@ -414,12 +427,29 @@ export function PeachifyPlayer({
             setHlsLevel(top);
             markReady();
           });
+          let netRetry = 0;
+          let mediaRetry = 0;
           instance.on(Hls.Events.ERROR, (_e, data) => {
             if (destroyed || attachGenRef.current !== gen) return;
             if (!data.fatal) return;
-            if (data.type === 'networkError') instance.startLoad();
-            else if (data.type === 'mediaError') instance.recoverMediaError();
-            else fallback(new Error(`HLS ${data.type}: ${data.reason}`));
+            // A dead manifest (404/CORS — e.g. an expired CDN token) won't recover
+            // on retry, so advance to the next source immediately. Other network/
+            // media errors get a single bounded retry before failing over.
+            const manifestDead =
+              data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR ||
+              data.details === Hls.ErrorDetails.MANIFEST_LOAD_TIMEOUT ||
+              data.details === Hls.ErrorDetails.MANIFEST_PARSING_ERROR;
+            if (data.type === Hls.ErrorTypes.NETWORK_ERROR && !manifestDead && netRetry++ < 1) {
+              console.warn('[player] HLS network error, retrying load:', data.details, s.url);
+              instance.startLoad();
+              return;
+            }
+            if (data.type === Hls.ErrorTypes.MEDIA_ERROR && mediaRetry++ < 1) {
+              console.warn('[player] HLS media error, recovering:', data.details, s.url);
+              instance.recoverMediaError();
+              return;
+            }
+            fallback(new Error(`HLS ${data.type}: ${data.details ?? data.reason ?? 'fatal'}`));
           });
         })
         .catch((err) => fallback(err));

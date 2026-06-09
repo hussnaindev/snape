@@ -104,13 +104,21 @@ function unwrap(rawUrl) {
 }
 
 // CDNs that block Cloudflare's egress IPs — the media proxy (a Worker) can never
-// reach them — but that serve fine from residential IPs AND send
+// reach them — but that serve fine from the user's residential IP AND send
 // `Access-Control-Allow-Origin: *`. For these we hand the RAW CDN URL to the
-// browser and let our own hls.js fetch it directly: the user's own (allowed) IP
-// is used, and because the CDN binds its segment tokens to the IP that fetched
-// the playlist, browser-side fetching keeps the whole playlist→segment chain on
-// that one IP. Still ad-free — it's our player loading raw video, no Peachify
-// scripts. (Discovered for the Multi provider's keymi417exx CDN.)
+// browser and let our own hls.js fetch it directly. Still ad-free — it's our
+// player loading raw video, no Peachify scripts. (Multi provider's keymi417exx.)
+//
+// NOTE on the redirect (see resolveClientDirectUrl): keymi's intake host
+// (`i-arch-*`) 302-redirects the playlist to a CDN edge (`cdnNNNNN`). The edge
+// REQUIRES a `Referer` header — with one it returns 200 + ACAO:*, without one it
+// 404s (and a 404 carries no ACAO, which the browser surfaces as a CORS error →
+// hls.js DEMUXER_ERROR_COULD_NOT_PARSE). Browsers reliably send our origin as the
+// Referer on a *direct* cross-origin request, but can DROP it across a *cross-
+// origin redirect* (varies by browser/service-worker) → intermittent failures.
+// The CDN is NOT IP-locked and tolerates a stale token, so we pre-follow the
+// redirect server-side and hand the browser the already-resolved edge URL; it
+// then makes one direct request (Referer present) and the redirect can't strip it.
 const CLIENT_DIRECT_HOSTS = ['keymi417exx.com'];
 function isClientDirectHost(rawUrl) {
   try {
@@ -119,6 +127,44 @@ function isClientDirectHost(rawUrl) {
   } catch {
     return false;
   }
+}
+
+// Follow client-direct redirects server-side so the browser fetches the terminal
+// edge URL directly (no cross-origin redirect that could strip the Referer the
+// CDN requires). Manual hops; we never read the body (just the Location), so no
+// segment tokens are consumed. Fail-open: on any error/timeout return the input
+// URL unchanged (the browser will still try the redirecting URL, as before).
+const REDIRECT_RESOLVE_TIMEOUT_MS = 4000;
+async function resolveClientDirectUrl(rawUrl) {
+  let url = rawUrl;
+  try {
+    for (let hop = 0; hop < 3; hop++) {
+      const ac = new AbortController();
+      const timer = setTimeout(() => ac.abort(), REDIRECT_RESOLVE_TIMEOUT_MS);
+      try {
+        const res = await uFetch(url, {
+          method: 'GET',
+          headers: { Referer: REFERER, 'User-Agent': UA },
+          dispatcher: pickProxyAgent(),
+          redirect: 'manual',
+          signal: ac.signal,
+        });
+        // Don't download the playlist body — we only need the redirect target.
+        res.body?.cancel?.();
+        const loc = res.headers.get('location');
+        if (res.status >= 300 && res.status < 400 && loc) {
+          url = new URL(loc, url).toString();
+          continue;
+        }
+        break; // terminal (2xx/4xx): `url` is what the browser should fetch.
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+  } catch {
+    return rawUrl;
+  }
+  return url;
 }
 
 // ---- media-proxy signing (MUST match lib/media-sign.ts) -----------------
@@ -256,6 +302,74 @@ async function fetchProvider(p, type, id, season, episode) {
   return { status: lastStatus, raw: null };
 }
 
+// ---- vsembed fallback provider (vidsrc / cloudnestra clone) -------------
+// Independent of eat-peach. Used as a LAST-resort source (appended after every
+// Peachify source) so the player auto-advances to it when a Peachify CDN token
+// is dead (e.g. an expired keymi URL on a Multi-only title). Chain:
+//   1. GET vsembed.ru/embed/{movie/<tmdbId> | tv/<tmdbId>/<s>/<e>}
+//      → the "CloudStream Pro" player_iframe: //<rcpDomain>/rcp/<hash>
+//        (rcpDomain rotates — cloudnestra/cloudorchestranova/… — so read it
+//         from the page, never hardcode it).
+//   2. GET <rcpDomain>/rcp/<hash>      → `src: '/prorcp/<id>'`
+//   3. GET <rcpDomain>/prorcp/<id>     → Playerjs `file: "<m3u8> or <m3u8>"`
+// The resolved m3u8 lives on a rotating `*.space` CDN that sends `ACAO: *` and
+// needs no Referer, so we play it CLIENT-DIRECT (raw URL, no media proxy).
+const VSEMBED_BASE = 'https://vsembed.ru';
+const VSEMBED_TIMEOUT_MS = 4500;
+// Hard ceiling on the whole vsembed chain so a slow/hung hop can never delay the
+// (already-resolved) Peachify response — `await vsembedP` is capped by this.
+const VSEMBED_DEADLINE_MS = 7000;
+
+// The rcp/prorcp hops flake intermittently (transient non-200), so retry once.
+async function vsFetchText(url, referer) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), VSEMBED_TIMEOUT_MS);
+    try {
+      const res = await uFetch(url, {
+        headers: { 'User-Agent': UA, ...(referer ? { Referer: referer } : {}) },
+        dispatcher: pickProxyAgent(),
+        signal: ac.signal,
+      });
+      if (res.ok) return await res.text();
+    } catch {
+      // fall through to retry / give up
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return null;
+}
+
+async function fetchVsembed(type, id, season, episode) {
+  const embedUrl =
+    type === 'tv'
+      ? `${VSEMBED_BASE}/embed/tv/${id}/${season}/${episode}`
+      : `${VSEMBED_BASE}/embed/movie/${id}`;
+  const embed = await vsFetchText(embedUrl, VSEMBED_BASE);
+  if (!embed) return [];
+  // CloudStream Pro = the iframe's own rcp hash (the other listed servers are
+  // separate, less reliable embed chains we don't follow).
+  const iframe = embed.match(/id="player_iframe"\s+src="\/\/([^/"]+)\/rcp\/([^"]+)"/);
+  if (!iframe) return [];
+  const rcpDomain = iframe[1];
+  const rcp = await vsFetchText(`https://${rcpDomain}/rcp/${iframe[2]}`, `${VSEMBED_BASE}/`);
+  if (!rcp) return [];
+  const pro = rcp.match(/src:\s*'(\/prorcp\/[^']+)'/);
+  if (!pro) return [];
+  const player = await vsFetchText(`https://${rcpDomain}${pro[1]}`, `https://${rcpDomain}/`);
+  if (!player) return [];
+  const file = player.match(/file:\s*"([^"]+)"/);
+  if (!file) return [];
+  // `file` can be "<url1> or <url2>" (mirrors) — take the first valid m3u8.
+  const url = file[1]
+    .split(/\s+or\s+/)
+    .map((s) => s.trim())
+    .find((u) => /^https?:\/\/\S+\.m3u8/i.test(u));
+  if (!url) return [];
+  return [{ type: 'hls', url, headers: {}, quality: null, dub: null, provider: 'Bolt', direct: true }];
+}
+
 export default async (req) => {
   const sp = new URL(req.url).searchParams;
   const type = sp.get('type') === 'tv' ? 'tv' : 'movie';
@@ -271,6 +385,14 @@ export default async (req) => {
   const rawSources = [];
   let rawSubs = [];
   const mp4Sources = [];
+
+  // Independent fallback chain — runs in parallel with the Peachify loop below
+  // so it adds no latency, and is appended last (lowest priority). Fail-open,
+  // and hard-capped so it can never delay the Peachify response.
+  const vsembedP = Promise.race([
+    fetchVsembed(type, id, season, episode).catch(() => []),
+    new Promise((resolve) => setTimeout(() => resolve([]), VSEMBED_DEADLINE_MS)),
+  ]);
   /** @type {{ provider: string, sources: typeof rawSources, subtitles: typeof rawSubs } | null} */
   let hlsFallback = null;
   let hlsFallbackScore = -1;
@@ -315,6 +437,13 @@ export default async (req) => {
     debug.reason = 'hls-fallback';
   }
 
+  // Append vsembed last (after all Peachify sources) so the player only reaches
+  // it when the preferred sources fail — or uses it as the sole source when
+  // Peachify found nothing.
+  const vsembedSources = await vsembedP;
+  rawSources.push(...vsembedSources);
+  debug.vsembed = vsembedSources.length;
+
   if (rawSources.length === 0) {
     return Response.json({ ok: false, error: 'No sources found', debug }, { status: 502 });
   }
@@ -331,10 +460,17 @@ export default async (req) => {
   // chunks (Content-Length set) — required for Chrome to treat progressive mp4
   // as seekable. HLS is segment-based and doesn't need it.
   const sources = await Promise.all(
-    rawSources.map(async ({ headers, ...s }) => {
+    rawSources.map(async ({ headers, direct, ...s }) => {
+      // vsembed's CDN (pre-marked direct) sends ACAO:* and needs no Referer →
+      // load the raw URL straight from the browser, no media proxy / signing.
+      if (direct) return { ...s, direct: true };
       // CF-blocked CDN → play it straight from the browser (see isClientDirectHost).
+      // Pre-resolve its redirect so the browser hits the terminal edge directly,
+      // avoiding the cross-origin redirect that can strip the Referer keymi needs.
       // No signing/headers: the raw CDN URL is loaded directly by our player.
-      if (isClientDirectHost(s.url)) return { ...s, url: s.url, direct: true };
+      if (isClientDirectHost(s.url)) {
+        return { ...s, url: await resolveClientDirectUrl(s.url), direct: true };
+      }
       const signed = await signedMediaUrl(s.url, headers);
       return { ...s, url: s.type === 'mp4' ? `${signed}&v=1` : signed };
     }),

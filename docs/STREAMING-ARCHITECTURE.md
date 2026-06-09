@@ -144,6 +144,62 @@ because we want to set the CDN headers ourselves in the media proxy.
 
 ---
 
+## Client-direct CDNs (`extract.mjs` `CLIENT_DIRECT_HOSTS`)
+
+Some CDNs **block Cloudflare's egress IPs**, so the media proxy (a Worker) can
+never fetch them — but they serve fine from the user's own residential IP and
+send `Access-Control-Allow-Origin: *`. For these (currently the **Multi**
+provider's `*.keymi417exx.com`), `extract.mjs` skips signing and hands the
+browser the **raw CDN URL** with `direct: true`; our hls.js loads it directly.
+Still ad-free (our player, raw video only).
+
+**Gotcha — the Referer + cross-origin redirect (fixed via `resolveClientDirectUrl`):**
+keymi's intake host (`i-arch-*`) 302-redirects the playlist to a CDN edge
+(`cdnNNNNN`). The edge **requires a `Referer` header**: with one → `200` +
+`ACAO: *`; without one → `404` (and a 404 has no ACAO, so the browser reports a
+*CORS* error and hls.js dies with `DEMUXER_ERROR_COULD_NOT_PARSE`). Browsers send
+our origin as the Referer on a *direct* cross-origin request, but can **drop it
+across the cross-origin 302** — the cause of intermittent "plays for some titles,
+not others." The CDN is **not IP-locked** and tolerates a stale token, so
+`extract.mjs` **pre-follows the redirect server-side** (manual hops, body never
+read → no token consumed, fail-open) and emits the terminal edge URL. The browser
+then makes one direct request with the Referer intact. Keep the app's default
+`Referrer-Policy` (must send ≥ the origin cross-origin; never `no-referrer`).
+
+---
+
+## Fallback provider: vsembed (`extract.mjs` `fetchVsembed`)
+
+A second, independent extraction chain (NOT eat-peach) used as a **last-resort
+source**. It exists for the case a Peachify CDN token is dead but Peachify still
+returns it (e.g. an expired keymi URL on a Multi-only title, which would
+otherwise be an unrecoverable blank player). `fetchVsembed` runs **in parallel**
+with the Peachify loop (so it adds no latency), is **hard-capped** at
+`VSEMBED_DEADLINE_MS` (so a slow hop can never delay the Peachify response), and
+is **appended last** (provider label `Bolt`, `providerRank` 99 → sorts after
+every Peachify source). The player therefore only reaches it when the preferred
+sources fail to play — or uses it as the sole source when Peachify found nothing.
+
+`vsembed.ru` is a vidsrc/cloudnestra clone. Chain (all hops via the residential
+proxy, since the sites are Cloudflare-fronted):
+1. `GET vsembed.ru/embed/movie/<tmdbId>` or `…/embed/tv/<tmdbId>/<s>/<e>`
+   (both use the **TMDB** id) → the `player_iframe` for the "CloudStream Pro"
+   server: `//<rcpDomain>/rcp/<hash>`. **`rcpDomain` rotates**
+   (cloudnestra → cloudorchestranova → …) so it's read from the page, never
+   hardcoded; cloudnestra.com itself no longer resolves.
+2. `GET <rcpDomain>/rcp/<hash>` → `src: '/prorcp/<id>'` (these hops flake
+   intermittently → `vsFetchText` retries once).
+3. `GET <rcpDomain>/prorcp/<id>` → Playerjs `file: "<m3u8> or <m3u8>"` (mirrors;
+   first valid one is taken).
+
+The resolved m3u8 lives on a **rotating `*.space` CDN** (vestigialvortex,
+obeliskoverture, penumbrapalimpsest, …) that sends `Access-Control-Allow-Origin: *`
+and needs **no Referer** — so it's emitted with `direct: true` and played
+**client-direct** (raw URL, no signing, no media proxy). No new env var; the same
+`PROXY_LIST` is reused.
+
+---
+
 ## URL signing (`lib/media-sign.ts` ⇄ `extract.mjs`)
 
 Two implementations that **must produce identical output**:
