@@ -42,12 +42,27 @@ export async function GET(
   }
 
   const body = await res.text();
+  // Only cache a genuine success WITH sources. Caching a failure ("No sources
+  // found" / "servers are busy") would replay that error on every refresh for
+  // the whole TTL even when it was a transient upstream blip — so those stay
+  // no-store and a refresh re-attempts extraction.
+  let cacheable = false;
+  if (res.ok) {
+    try {
+      const json = JSON.parse(body);
+      cacheable = json?.ok === true && Array.isArray(json?.data?.sources) && json.data.sources.length > 0;
+    } catch {
+      // unparseable → treat as failure → no-store
+    }
+  }
   return new NextResponse(body, {
     status: res.status,
     headers: {
       'Content-Type': 'application/json',
       'Cache-Control':
-        process.env.NODE_ENV === 'development' ? 'no-store' : 's-maxage=300, stale-while-revalidate=600',
+        process.env.NODE_ENV === 'development' || !cacheable
+          ? 'no-store'
+          : 's-maxage=300, stale-while-revalidate=600',
     },
   });
 }

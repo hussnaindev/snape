@@ -452,7 +452,11 @@ export default async (req) => {
   debug.vsembed = vsembedResult.stage;
 
   if (rawSources.length === 0) {
-    return Response.json({ ok: false, error: 'No sources found', debug }, { status: 502 });
+    // no-store so a transient "no sources" isn't cached and replayed on refresh.
+    return Response.json(
+      { ok: false, error: 'No sources found', debug },
+      { status: 502, headers: { 'Cache-Control': 'no-store' } },
+    );
   }
 
   const providerRank = Object.fromEntries(PROVIDERS.map((p, i) => [p.label, i]));
