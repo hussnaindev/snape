@@ -262,13 +262,20 @@ export function PeachifyPlayer({
 
   const pickSource = useCallback(
     (l: string, q: string, srv: string): StreamSource | null => {
-      const inLang = sources.filter((s) => dubLabel(s) === l);
+      // Exclude already-failed sources at EVERY level. Without this, when failover
+      // advances by setActive(next) but lang/quality/server stay the same (e.g. the
+      // 18 xpass sources all share Default/Auto/Xpass labels), the selection effect
+      // re-runs pickSource and reverts `active` to the same first/failed source —
+      // an infinite "failing over (1/20)" loop that never progresses. Filtering
+      // failed sources here lets failover walk the whole list to a working one.
+      const avail = sources.filter((s) => !failedRef.current.has(s.url));
+      const inLang = avail.filter((s) => dubLabel(s) === l);
       return (
         bestSource(inLang.filter((s) => qLabel(s) === q && s.provider === srv)) ??
         bestSource(inLang.filter((s) => s.provider === srv)) ??
         bestSource(inLang.filter((s) => qLabel(s) === q)) ??
         bestSource(inLang) ??
-        bestSource(sources) ??
+        bestSource(avail) ??
         null
       );
     },
