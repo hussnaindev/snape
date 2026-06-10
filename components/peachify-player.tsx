@@ -229,13 +229,18 @@ export function PeachifyPlayer({
 
   const pickSource = useCallback(
     (l: string, q: string, srv: string): StreamSource | null => {
-      const inLang = sources.filter((s) => dubLabel(s) === l);
+      // Exclude already-failed sources at every level. Without this, when failover
+      // advances by setActive(next) but lang/quality/server stay the same (e.g. all
+      // xpass sources share Default/Auto/Xpass), the selection effect re-runs
+      // pickSource and reverts active to the same first/failed source.
+      const avail = sources.filter((s) => !failedRef.current.has(s.url));
+      const inLang = avail.filter((s) => dubLabel(s) === l);
       return (
         bestSource(inLang.filter((s) => qLabel(s) === q && s.provider === srv)) ??
         bestSource(inLang.filter((s) => s.provider === srv)) ??
         bestSource(inLang.filter((s) => qLabel(s) === q)) ??
         bestSource(inLang) ??
-        bestSource(sources) ??
+        bestSource(avail) ??
         null
       );
     },
@@ -407,12 +412,24 @@ export function PeachifyPlayer({
             setHlsLevel(top);
             markReady();
           });
+          let netRetry = 0;
+          let mediaRetry = 0;
           instance.on(Hls.Events.ERROR, (_e, data) => {
             if (destroyed || attachGenRef.current !== gen) return;
             if (!data.fatal) return;
-            if (data.type === 'networkError') instance.startLoad();
-            else if (data.type === 'mediaError') instance.recoverMediaError();
-            else fallback(new Error(`HLS ${data.type}: ${data.reason}`));
+            const manifestDead =
+              data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR ||
+              data.details === Hls.ErrorDetails.MANIFEST_LOAD_TIMEOUT ||
+              data.details === Hls.ErrorDetails.MANIFEST_PARSING_ERROR;
+            if (data.type === Hls.ErrorTypes.NETWORK_ERROR && !manifestDead && netRetry++ < 1) {
+              instance.startLoad();
+              return;
+            }
+            if (data.type === Hls.ErrorTypes.MEDIA_ERROR && mediaRetry++ < 1) {
+              instance.recoverMediaError();
+              return;
+            }
+            fallback(new Error(`HLS ${data.type}: ${data.details ?? data.reason ?? 'fatal'}`));
           });
         })
         .catch((err) => fallback(err));
