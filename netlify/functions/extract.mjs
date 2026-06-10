@@ -443,11 +443,13 @@ export default async (req) => {
     new Promise((resolve) => setTimeout(() => resolve(timedOut), OVERALL_DEADLINE_MS)),
   ]);
   if (result === timedOut) {
-    // Bounded so this is rare; return clean JSON (not a gateway 502) so the player
-    // shows "no sources" cleanly and a refresh re-attempts (no-store).
+    // Return HTTP 200 (not 502) with ok:false. A 502 STATUS gets replaced by
+    // Cloudflare's own non-JSON "error code: 502" page on the way through the
+    // Pages route, which makes the client's JSON.parse throw. 200 keeps our body
+    // intact; the player keys off `ok`, and no-store lets a refresh re-attempt.
     return Response.json(
       { ok: false, error: 'No sources found', debug: { deadline: true } },
-      { status: 502, headers: { 'Cache-Control': 'no-store' } },
+      { status: 200, headers: { 'Cache-Control': 'no-store' } },
     );
   }
   return result;
@@ -574,10 +576,13 @@ async function resolveStream(type, id, season, episode) {
   }
 
   if (rawSources.length === 0) {
-    // no-store so a transient "no sources" isn't cached and replayed on refresh.
+    // HTTP 200 (not 502): a 502 STATUS gets swapped for Cloudflare's non-JSON
+    // "error code: 502" page as it passes back through the Pages route, breaking
+    // the client's JSON.parse. 200 + ok:false delivers "no sources" cleanly; the
+    // player keys off `ok`. no-store so a transient miss isn't cached/replayed.
     return Response.json(
       { ok: false, error: 'No sources found', debug },
-      { status: 502, headers: { 'Cache-Control': 'no-store' } },
+      { status: 200, headers: { 'Cache-Control': 'no-store' } },
     );
   }
 
