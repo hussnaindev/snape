@@ -42,12 +42,25 @@ export async function GET(
   }
 
   const body = await res.text();
+
+  let cacheControl =
+    process.env.NODE_ENV === 'development' ? 'no-store' : 's-maxage=300, stale-while-revalidate=600';
+  if (res.status >= 400) {
+    cacheControl = 'no-store';
+  } else {
+    try {
+      const parsed = JSON.parse(body) as { ok?: boolean; data?: { sources?: unknown[] } };
+      if (!parsed.ok || !parsed.data?.sources?.length) cacheControl = 'no-store';
+    } catch {
+      cacheControl = 'no-store';
+    }
+  }
+
   return new NextResponse(body, {
     status: res.status,
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control':
-        process.env.NODE_ENV === 'development' ? 'no-store' : 's-maxage=300, stale-while-revalidate=600',
+      'Cache-Control': cacheControl,
     },
   });
 }

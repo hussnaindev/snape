@@ -58,6 +58,10 @@ function streamKey(type: string, tmdbId: number, season?: number, episode?: numb
   return type === 'tv' ? `tv:${tmdbId}:${season}:${episode}` : `movie:${tmdbId}`;
 }
 
+function invalidateStreamCache(type: string, tmdbId: number, season?: number, episode?: number) {
+  streamCache.delete(streamKey(type, tmdbId, season, episode));
+}
+
 function upstreamHost(sourceUrl: string): string {
   try {
     const u = new URL(sourceUrl, 'http://localhost');
@@ -87,10 +91,14 @@ function loadStreamData(key: string, url: string): Promise<StreamResponse> {
   let inflight = streamInflight.get(key);
   if (!inflight) {
     const fetchUrl = IS_DEV ? `${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}` : url;
-    inflight = fetch(fetchUrl, IS_DEV ? { cache: 'no-store' } : undefined)
+    inflight = fetch(fetchUrl, { cache: 'no-store' })
       .then((r) => r.json() as Promise<StreamResponse>)
       .then((json) => {
-        if (!IS_DEV && json.ok && json.data && json.data.sources.length > 0) streamCache.set(key, json);
+        if (json.ok && json.data && json.data.sources.length > 0) {
+          if (!IS_DEV) streamCache.set(key, json);
+        } else {
+          streamCache.delete(key);
+        }
         return json;
       })
       .finally(() => streamInflight.delete(key));
@@ -268,6 +276,7 @@ export function PeachifyPlayer({
       .then((json) => {
         if (fetchGenRef.current !== gen) return;
         if (!json.ok || !json.data || json.data.sources.length === 0) {
+          invalidateStreamCache(type, tmdbId, season, episode);
           setStatus('error');
           setErrorType('no-sources');
           if (IS_DEV) console.error('No sources available', { json, type, tmdbId, season, episode });
@@ -278,6 +287,7 @@ export function PeachifyPlayer({
       })
       .catch((err) => {
         if (fetchGenRef.current !== gen) return;
+        invalidateStreamCache(type, tmdbId, season, episode);
         setStatus('error');
         setErrorType('network');
         console.error('Failed to load sources:', err);
@@ -378,6 +388,7 @@ export function PeachifyPlayer({
         setServer(next.provider);
         setActive(next);
       } else {
+        invalidateStreamCache(type, tmdbId, season, episode);
         setStatus('error');
         setErrorType('playback-failed');
         if (IS_DEV) console.error('All sources failed:', { failedSources: Array.from(failedRef.current) });

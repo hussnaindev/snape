@@ -440,7 +440,10 @@ export default async (req) => {
   }
 
   if (rawSources.length === 0) {
-    return Response.json({ ok: false, error: 'No sources found', debug }, { status: 502 });
+    return Response.json(
+      { ok: false, error: 'No sources found', debug },
+      { status: 200, headers: { 'Cache-Control': 'no-store' } },
+    );
   }
 
   const providerRank = { ...Object.fromEntries(PROVIDERS.map((p, i) => [p.label, i])), Xpass: 99 };
