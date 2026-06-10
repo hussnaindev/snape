@@ -40,6 +40,72 @@ function looksLikeManifest(url: string, contentType: string | null): boolean {
   return /\.m3u8(\?|$)/i.test(url);
 }
 
+// goodstream (and similar HLS CDNs) serve playlists at extension-less URLs with a
+// non-HLS Content-Type (`text/html`), so neither the URL nor the Content-Type
+// flags them — and an un-rewritten manifest leaks its raw cross-origin segment
+// URLs straight to the browser, which can't fetch them (no CORS) → hls.js dies
+// with DEMUXER_ERROR_COULD_NOT_PARSE. So we also body-SNIFF for the `#EXTM3U`
+// magic, but ONLY when the response could plausibly be a small text playlist:
+// binary media (segments are image/png / video / multi-MB) must stream through
+// untouched — sniffing would buffer them into Worker memory.
+const MANIFEST_SNIFF_MAX = 256 * 1024;
+function couldBeManifest(contentType: string | null, contentLength: number | null): boolean {
+  if (contentType && /mpegurl/i.test(contentType)) return true;
+  if (contentType && /^(video|audio|image)\//i.test(contentType)) return false;
+  if (contentLength != null && contentLength > MANIFEST_SNIFF_MAX) return false;
+  return true;
+}
+
+// Peek the first bytes of a response for the `#EXTM3U` magic WITHOUT buffering a
+// (possibly binary) full body: read the first chunk, then hand back a stream that
+// replays it followed by the remainder. A non-manifest body then streams straight
+// through with no extra memory.
+async function peekManifest(
+  res: Response,
+): Promise<{ isHls: boolean; body: ReadableStream<Uint8Array> | null }> {
+  const reader = res.body?.getReader();
+  if (!reader) return { isHls: false, body: null };
+  const { value } = await reader.read();
+  const first = value ?? new Uint8Array();
+  const head = new TextDecoder().decode(first.subarray(0, 16)).replace(/^﻿/, '').trimStart();
+  const isHls = head.startsWith('#EXTM3U');
+  const body = new ReadableStream<Uint8Array>({
+    start(c) {
+      if (first.length) c.enqueue(first);
+    },
+    async pull(c) {
+      const { value, done } = await reader.read();
+      if (done) c.close();
+      else if (value) c.enqueue(value);
+    },
+    cancel(reason) {
+      reader.cancel(reason).catch(() => {});
+    },
+  });
+  return { isHls, body };
+}
+
+// Stream a CDN response body through to the browser with CORS + seekability
+// headers. Used for segments, mp4 byte ranges, and any candidate-manifest body
+// that turned out not to be a manifest.
+function streamMedia(body: ReadableStream<Uint8Array> | null, res: Response): Response {
+  const headers = new Headers(CORS);
+  for (const h of ['content-type', 'content-range', 'cache-control']) {
+    const v = res.headers.get(h);
+    if (v !== null) headers.set(h, v);
+  }
+  headers.set('Accept-Ranges', 'bytes');
+  const cl = res.headers.get('content-length');
+  const cr = res.headers.get('content-range');
+  if (cl) {
+    headers.set('Content-Length', cl);
+  } else if (cr) {
+    const m = /bytes\s+(\d+)-(\d+)\//.exec(cr);
+    if (m) headers.set('Content-Length', String(Number(m[2]) - Number(m[1]) + 1));
+  }
+  return new Response(body, { status: res.status, headers });
+}
+
 // Cloudflare's edge cache. Caching the *rewritten* HLS manifest means the
 // O(segments) URL signing in rewriteManifest() runs at most once per manifest
 // URL per TTL instead of on every fetch.
@@ -360,10 +426,12 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
   // ts segments + mp4 without a Range: forward Range verbatim and stream through.
   if (range) upstreamHeaders.Range = range;
 
-  // Serve a cached, already-rewritten HLS manifest if we have one.
+  // Serve a cached, already-rewritten HLS manifest if we have one. Manifests are
+  // the only thing we cache; they're always fetched without a Range and never via
+  // the v=1 accel path, so gate the lookup on that. (The old `.m3u8`-only check
+  // skipped extension-less goodstream manifests, so they were never cache-hit.)
   const cache = edgeCache();
-  const maybeManifest = looksLikeManifest(target.toString(), null);
-  if (cache && maybeManifest) {
+  if (cache && !range && sp.get('v') !== '1') {
     const hit = await cache.match(req.url);
     if (hit) return hit;
   }
@@ -376,6 +444,7 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
   }
 
   const contentType = res.headers.get('content-type');
+  const contentLength = Number(res.headers.get('content-length')) || null;
 
   // Subtitle: normalize to WebVTT so <track> renders it.
   if (sp.get('sub') === '1') {
@@ -387,60 +456,33 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
     });
   }
 
-  // HLS manifest: buffer + rewrite (and sign) child URIs through the proxy, then
-  // stash the rewritten result in the edge cache.
-  if (looksLikeManifest(target.toString(), contentType)) {
-    const text = await res.text();
-    // A dead/expired stream URL often answers with an HTML error page (e.g. an
-    // nginx "404 Not Found") while the URL still ends in .m3u8. Rewriting that as
-    // a manifest turns every HTML line into a bogus segment URL, which the player
-    // tries to load and dies on with "Format error" instead of cleanly advancing
-    // to the next source — and an upstream 200-with-HTML would even get cached for
-    // 5 min. Only rewrite a genuine manifest; otherwise fail clean and uncached.
-    const isHls = text.replace(/^﻿/, '').trimStart().startsWith('#EXTM3U');
-    if (!res.ok || !isHls) {
-      return new Response('Upstream manifest unavailable', {
-        status: res.ok ? 502 : res.status,
-        headers: { ...CORS, 'Cache-Control': 'no-store' },
-      });
+  // HLS manifest: detect by body-sniffing #EXTM3U (URL/Content-Type are unreliable
+  // — goodstream serves extension-less manifests as text/html). On a genuine
+  // manifest, rewrite (and sign) every child URI through the proxy and cache the
+  // result. Anything else streams straight through. A dead/expired stream URL that
+  // answers with an HTML error page sniffs as non-HLS and streams through with its
+  // own status, so the player advances to the next source instead of choking.
+  if (couldBeManifest(contentType, contentLength)) {
+    const { isHls, body } = await peekManifest(res);
+    if (isHls && res.ok) {
+      const text = await new Response(body).text();
+      const rewritten = await rewriteManifest(text, target.toString(), cdnHeaders);
+      const status = res.status === 206 ? 200 : res.status;
+      const headers = {
+        ...CORS,
+        'Content-Type': 'application/vnd.apple.mpegurl',
+        'Cache-Control': 'public, max-age=300',
+      };
+      if (cache && status === 200) {
+        ctx.waitUntil(cache.put(req.url, new Response(rewritten, { status, headers })));
+      }
+      return new Response(rewritten, { status, headers });
     }
-    const rewritten = await rewriteManifest(text, target.toString(), cdnHeaders);
-    const status = res.status === 206 ? 200 : res.status;
-    const headers = {
-      ...CORS,
-      'Content-Type': 'application/vnd.apple.mpegurl',
-      'Cache-Control': 'public, max-age=300',
-    };
-    if (cache && status === 200) {
-      ctx.waitUntil(cache.put(req.url, new Response(rewritten, { status, headers })));
-    }
-    return new Response(rewritten, { status, headers });
+    return streamMedia(body, res);
   }
 
-  // Everything else (mp4 byte ranges, ts segments): stream through.
-  const headers = new Headers(CORS);
-  for (const h of ['content-type', 'content-range', 'cache-control']) {
-    const v = res.headers.get(h);
-    if (v !== null) headers.set(h, v);
-  }
-
-  // Always advertise byte-range support so the browser treats the resource as
-  // seekable.
-  headers.set('Accept-Ranges', 'bytes');
-
-  // Content-Length is essential: if it's missing the response goes out chunked,
-  // and Chrome's media stack treats a length-less stream as non-seekable. Derive
-  // it from Content-Range when the upstream drops it.
-  const cl = res.headers.get('content-length');
-  const cr = res.headers.get('content-range');
-  if (cl) {
-    headers.set('Content-Length', cl);
-  } else if (cr) {
-    const m = /bytes\s+(\d+)-(\d+)\//.exec(cr);
-    if (m) headers.set('Content-Length', String(Number(m[2]) - Number(m[1]) + 1));
-  }
-
-  return new Response(res.body, { status: res.status, headers });
+  // Binary media (segments, mp4 byte ranges): stream through.
+  return streamMedia(res.body, res);
 }
 
 export default {

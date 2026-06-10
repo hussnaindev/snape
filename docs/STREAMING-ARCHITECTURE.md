@@ -153,18 +153,24 @@ provider's `*.keymi417exx.com`), `extract.mjs` skips signing and hands the
 browser the **raw CDN URL** with `direct: true`; our hls.js loads it directly.
 Still ad-free (our player, raw video only).
 
-**Gotcha — the Referer + cross-origin redirect (fixed via `resolveClientDirectUrl`):**
-keymi's intake host (`i-arch-*`) 302-redirects the playlist to a CDN edge
-(`cdnNNNNN`). The edge **requires a `Referer` header**: with one → `200` +
-`ACAO: *`; without one → `404` (and a 404 has no ACAO, so the browser reports a
-*CORS* error and hls.js dies with `DEMUXER_ERROR_COULD_NOT_PARSE`). Browsers send
-our origin as the Referer on a *direct* cross-origin request, but can **drop it
-across the cross-origin 302** — the cause of intermittent "plays for some titles,
-not others." The CDN is **not IP-locked** and tolerates a stale token, so
-`extract.mjs` **pre-follows the redirect server-side** (manual hops, body never
-read → no token consumed, fail-open) and emits the terminal edge URL. The browser
-then makes one direct request with the Referer intact. Keep the app's default
-`Referrer-Policy` (must send ≥ the origin cross-origin; never `no-referrer`).
+**Gotcha — the Referer + redirect:** keymi's intake host (`i-cdn-*` / `i-arch-*`)
+302-redirects the playlist to a rotating CDN edge (`cdnNNNNN`). The edge
+**requires a `Referer` header**: with **any non-empty** one → `200` + `ACAO: *`;
+with **none** → `404` (and a 404 has no ACAO, so the browser reports a *CORS* error
+and hls.js dies with `DEMUXER_ERROR_COULD_NOT_PARSE`). We hand the browser the
+**raw intake URL** and let **it** follow the 302: the browser's request carries our
+origin as the Referer (the edge accepts it), so it serves `200`. Keep the app's
+default `Referrer-Policy` (must send ≥ the origin across the redirect; never
+`no-referrer`).
+
+> **Do NOT pre-resolve the redirect server-side.** An earlier version pre-followed
+> the 302 in `extract.mjs` and emitted the terminal `cdnNNNNN` edge URL — but that
+> resolved edge URL is **rejected for the browser** (`404`/`405`, the edge appears
+> bound to the resolving request), which silently broke *every* keymi title. It
+> also added up to ~12s of redirect-following latency per response. Verified
+> (2026-06): raw URL + browser-followed 302 + any non-empty Referer → `200` +
+> `ACAO: *`. Some keymi tokens are simply dead (embed a timestamp+IP) and `404`
+> from every IP — those are unrecoverable (treated as "no source").
 
 ---
 

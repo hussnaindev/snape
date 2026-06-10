@@ -76,9 +76,15 @@ function upstreamHost(sourceUrl: string): string {
   return '';
 }
 
-/** mp4 first, then non-goodstream HLS, then goodstream last. */
+/** mp4 first, then proxied HLS (non-goodstream, then goodstream), client-direct last. */
 function sourceRank(s: StreamSource): number {
   if (s.type === 'mp4') return 0;
+  // Client-direct CDNs (e.g. keymi417exx) are the least reliable: the CDN edge
+  // frequently rejects the token (404/405) from any IP but its own, so a direct
+  // source often can't play at all. Try every proxied source first and only fall
+  // back to a direct one last — this stops a dead keymi source from being tried
+  // ahead of a working goodstream one (which produced the "failing over" spam).
+  if (s.direct) return 3;
   if (/goodstream\.cc/i.test(upstreamHost(s.url))) return 2;
   return 1;
 }

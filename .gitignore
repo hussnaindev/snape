@@ -46,3 +46,6 @@ local.db
 
 # wrangler local secrets
 .dev.vars
+
+# Local prod secrets (proxy creds, media-proxy secret) — never commit
+.env.prod
