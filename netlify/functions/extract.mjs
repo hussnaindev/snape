@@ -13,7 +13,7 @@
 //
 // GET ?type=movie&id=1022789   |   ?type=tv&id=1399&season=1&episode=1
 
-import { fetch as uFetch, ProxyAgent } from 'undici';
+import { ProxyAgent, fetch as uFetch } from 'undici';
 
 const AES_KEY_HEX = 'a8f2a1b5e9c470814f6b2c3a5d8e7f9c1a2b3c4d5e3f7a8b8cad1e2d0a4d5c5b';
 const REFERER = 'https://peachify.top/';
@@ -21,7 +21,7 @@ const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
 
 // Queried sequentially; mp4 from any provider beats hls-only from an earlier one.
-const PROVIDERS = [
+export const PROVIDERS = [
   { label: 'Iron', path: 'moviebox', api: 'https://uwu.eat-peach.sbs', attempts: 5 },
   { label: 'Spider', path: 'holly', api: 'https://usa.eat-peach.sbs', attempts: 5 },
   { label: 'Wolf', path: 'air', api: 'https://usa.eat-peach.sbs', attempts: 3 },
@@ -79,9 +79,13 @@ async function decrypt(data) {
   const sealed = new Uint8Array(saltB.length + ctB.length);
   sealed.set(saltB, 0);
   sealed.set(ctB, saltB.length);
-  const key = await crypto.subtle.importKey('raw', hexToBytes(AES_KEY_HEX), { name: 'AES-GCM' }, false, [
-    'decrypt',
-  ]);
+  const key = await crypto.subtle.importKey(
+    'raw',
+    hexToBytes(AES_KEY_HEX),
+    { name: 'AES-GCM' },
+    false,
+    ['decrypt'],
+  );
   const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: ivB }, key, sealed);
   return JSON.parse(new TextDecoder().decode(plain));
 }
@@ -120,18 +124,16 @@ function unwrap(rawUrl) {
 // browser and let our own hls.js fetch it directly. Still ad-free — it's our
 // player loading raw video, no Peachify scripts. (Multi provider's keymi417exx.)
 //
-// NOTE on the redirect (see resolveClientDirectUrl): keymi's intake host
-// (`i-arch-*`) 302-redirects the playlist to a CDN edge (`cdnNNNNN`). The edge
-// REQUIRES a `Referer` header — with one it returns 200 + ACAO:*, without one it
-// 404s (and a 404 carries no ACAO, which the browser surfaces as a CORS error →
-// hls.js DEMUXER_ERROR_COULD_NOT_PARSE). Browsers reliably send our origin as the
-// Referer on a *direct* cross-origin request, but can DROP it across a *cross-
-// origin redirect* (varies by browser/service-worker) → intermittent failures.
-// The CDN is NOT IP-locked and tolerates a stale token, so we pre-follow the
-// redirect server-side and hand the browser the already-resolved edge URL; it
-// then makes one direct request (Referer present) and the redirect can't strip it.
+// NOTE on the redirect: keymi's intake host (`i-cdn-*` / `i-arch-*`) 302-redirects
+// the playlist to a rotating CDN edge (`cdnNNNNN`). The edge REQUIRES a `Referer`
+// header — with ANY non-empty one it returns 200 + ACAO:*, with NONE it 404s (and
+// a 404 has no ACAO → the browser surfaces a CORS error → hls.js
+// DEMUXER_ERROR_COULD_NOT_PARSE). We hand the browser the RAW intake URL and let
+// IT follow the 302: its request carries our origin as the Referer, so the edge
+// serves 200. (We tried pre-resolving the redirect server-side, but the resolved
+// edge URL is rejected for the browser — 404/405 — so that approach is NOT used.)
 const CLIENT_DIRECT_HOSTS = ['keymi417exx.com'];
-function isClientDirectHost(rawUrl) {
+export function isClientDirectHost(rawUrl) {
   try {
     const h = new URL(rawUrl).hostname.toLowerCase();
     return CLIENT_DIRECT_HOSTS.some((d) => h === d || h.endsWith(`.${d}`));
@@ -140,43 +142,12 @@ function isClientDirectHost(rawUrl) {
   }
 }
 
-// Follow client-direct redirects server-side so the browser fetches the terminal
-// edge URL directly (no cross-origin redirect that could strip the Referer the
-// CDN requires). Manual hops; we never read the body (just the Location), so no
-// segment tokens are consumed. Fail-open: on any error/timeout return the input
-// URL unchanged (the browser will still try the redirecting URL, as before).
-const REDIRECT_RESOLVE_TIMEOUT_MS = 4000;
-async function resolveClientDirectUrl(rawUrl) {
-  let url = rawUrl;
-  try {
-    for (let hop = 0; hop < 3; hop++) {
-      const ac = new AbortController();
-      const timer = setTimeout(() => ac.abort(), REDIRECT_RESOLVE_TIMEOUT_MS);
-      try {
-        const res = await uFetch(url, {
-          method: 'GET',
-          headers: { Referer: REFERER, 'User-Agent': UA },
-          dispatcher: pickProxyAgent(),
-          redirect: 'manual',
-          signal: ac.signal,
-        });
-        // Don't download the playlist body — we only need the redirect target.
-        res.body?.cancel?.();
-        const loc = res.headers.get('location');
-        if (res.status >= 300 && res.status < 400 && loc) {
-          url = new URL(loc, url).toString();
-          continue;
-        }
-        break; // terminal (2xx/4xx): `url` is what the browser should fetch.
-      } finally {
-        clearTimeout(timer);
-      }
-    }
-  } catch {
-    return rawUrl;
-  }
-  return url;
-}
+// NOTE: keymi (client-direct) URLs are handed to the browser RAW — we deliberately
+// do NOT pre-resolve their 302 server-side. The intake host 302-redirects to a
+// rotating `cdnNNNNN` edge that requires a Referer (no Referer → 404) but accepts
+// any non-empty one; the browser following the redirect supplies its origin as the
+// Referer and gets 200 + ACAO:*. Pre-resolving instead produced an edge URL the
+// browser couldn't use (404/405), which silently broke every keymi title.
 
 // ---- media-proxy signing (MUST match lib/media-sign.ts) -----------------
 const SECRET = process.env.MEDIA_PROXY_SECRET ?? 'snape-media-proxy-dev-secret';
@@ -211,10 +182,14 @@ function encodeHeaders(h) {
 // Error 1102 during playback. Unset → relative path (Pages route, local dev).
 const MEDIA_PROXY_BASE = (process.env.MEDIA_PROXY_BASE ?? '').replace(/\/+$/, '');
 
-async function signedMediaUrl(absoluteUrl, headers) {
+export async function signedMediaUrl(absoluteUrl, headers) {
   const h = encodeHeaders(headers);
   const key = await getSignKey();
-  const sigBuf = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${absoluteUrl}\n${h}`));
+  const sigBuf = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    new TextEncoder().encode(`${absoluteUrl}\n${h}`),
+  );
   const sig = [...new Uint8Array(sigBuf)].map((b) => b.toString(16).padStart(2, '0')).join('');
   const hParam = h ? `&h=${encodeURIComponent(h)}` : '';
   return `${MEDIA_PROXY_BASE}/api/media-proxy?u=${encodeURIComponent(absoluteUrl)}${hParam}&s=${sig}`;
@@ -261,7 +236,7 @@ function hlsHostScore(sources) {
   return 1;
 }
 
-function collectProviderSources(raw, providerLabel) {
+export function collectProviderSources(raw, providerLabel) {
   const sources = [];
   for (const s of raw.sources ?? []) {
     if (typeof s.url !== 'string') continue;
@@ -294,7 +269,7 @@ function collectProviderSources(raw, providerLabel) {
   return { sources, subtitles };
 }
 
-async function fetchProvider(p, type, id, season, episode) {
+export async function fetchProvider(p, type, id, season, episode) {
   let url = `${p.api}/${p.path}/${type}/${id}`;
   if (type === 'tv') url += `/${season}/${episode}`;
 
@@ -328,7 +303,8 @@ async function fetchProvider(p, type, id, season, episode) {
       return { status: 200, raw: json };
     } catch (e) {
       clearTimeout(timer);
-      lastStatus = e?.name === 'AbortError' ? 'timeout' : e instanceof Error ? e.message : String(e);
+      lastStatus =
+        e?.name === 'AbortError' ? 'timeout' : e instanceof Error ? e.message : String(e);
     }
   }
   return { status: lastStatus, raw: null };
@@ -394,7 +370,7 @@ async function vsFetchPage(url, referer) {
 
 // Returns { sources, stage } — `stage` is the last hop reached, surfaced in the
 // response `debug` so a prod failure is diagnosable without guessing.
-async function fetchVsembed(type, id, season, episode) {
+export async function fetchVsembed(type, id, season, episode) {
   const embedUrl =
     type === 'tv'
       ? `${VSEMBED_BASE}/embed/tv/${id}/${season}/${episode}`
@@ -434,8 +410,21 @@ async function fetchVsembed(type, id, season, episode) {
   } catch {
     return { sources: [], stage: 'prorcp-cf' };
   }
-  return { sources: [{ type: 'hls', url, headers: {}, quality: null, dub: null, provider: 'Bolt', direct: true }], stage: 'ok' };
+  return {
+    sources: [
+      { type: 'hls', url, headers: {}, quality: null, dub: null, provider: 'Bolt', direct: true },
+    ],
+    stage: 'ok',
+  };
 }
+
+// Hard ceiling on the WHOLE extraction. There's a ~20s gateway in front of this
+// function (Cloudflare returns a non-JSON "error code: 502" page if we exceed it,
+// which the client then can't parse). Every internal step is already bounded
+// (provider budget 15s, vsembed 13s, all parallel) so we normally finish in
+// ~15s — but this guarantees we ALWAYS return clean JSON before the gateway
+// gives up, so the user sees "no sources" or sources, never a raw 502 timeout.
+const OVERALL_DEADLINE_MS = 18000;
 
 export default async (req) => {
   const sp = new URL(req.url).searchParams;
@@ -448,6 +437,23 @@ export default async (req) => {
     return Response.json({ ok: false, error: 'missing id' }, { status: 400 });
   }
 
+  const timedOut = Symbol('timeout');
+  const result = await Promise.race([
+    resolveStream(type, id, season, episode),
+    new Promise((resolve) => setTimeout(() => resolve(timedOut), OVERALL_DEADLINE_MS)),
+  ]);
+  if (result === timedOut) {
+    // Bounded so this is rare; return clean JSON (not a gateway 502) so the player
+    // shows "no sources" cleanly and a refresh re-attempts (no-store).
+    return Response.json(
+      { ok: false, error: 'No sources found', debug: { deadline: true } },
+      { status: 502, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
+  return result;
+};
+
+async function resolveStream(type, id, season, episode) {
   const debug = {};
   const rawSources = [];
   let rawSubs = [];
@@ -456,7 +462,10 @@ export default async (req) => {
   // running them concurrently keeps total ≈ the slowest single provider — and the
   // lower-priority results are already in flight if we end up needing them).
   const tasks = new Map(
-    PROVIDERS.map((p) => [p.label, fetchProvider(p, type, id, season, episode).then((r) => ({ p, r }))]),
+    PROVIDERS.map((p) => [
+      p.label,
+      fetchProvider(p, type, id, season, episode).then((r) => ({ p, r })),
+    ]),
   );
 
   // Kick vsembed off NOW, in parallel with the providers, so a slow/hanging
@@ -465,8 +474,13 @@ export default async (req) => {
   // the provider wait; we only AWAIT/use its result below when the providers yield
   // no mp4, so healthy titles return immediately and pay no latency for it.
   const vsembedTask = Promise.race([
-    fetchVsembed(type, id, season, episode).catch((e) => ({ sources: [], stage: `throw:${e?.message || 'err'}` })),
-    new Promise((resolve) => setTimeout(() => resolve({ sources: [], stage: 'deadline' }), VSEMBED_DEADLINE_MS)),
+    fetchVsembed(type, id, season, episode).catch((e) => ({
+      sources: [],
+      stage: `throw:${e?.message || 'err'}`,
+    })),
+    new Promise((resolve) =>
+      setTimeout(() => resolve({ sources: [], stage: 'deadline' }), VSEMBED_DEADLINE_MS),
+    ),
   ]);
 
   // Collect one provider's playable sources (mp4 first — range-seekable and more
@@ -583,12 +597,16 @@ export default async (req) => {
       // vsembed's CDN (pre-marked direct) sends ACAO:* and needs no Referer →
       // load the raw URL straight from the browser, no media proxy / signing.
       if (direct) return { ...s, direct: true };
-      // CF-blocked CDN → play it straight from the browser (see isClientDirectHost).
-      // Pre-resolve its redirect so the browser hits the terminal edge directly,
-      // avoiding the cross-origin redirect that can strip the Referer keymi needs.
-      // No signing/headers: the raw CDN URL is loaded directly by our player.
+      // CF-blocked CDN (keymi) → play it straight from the browser. Hand over the
+      // RAW intake URL and let the BROWSER follow keymi's 302 to the rotating
+      // `cdnNNNNN` edge: the browser's request carries a Referer (our origin),
+      // which is all the edge requires (verified: any non-empty Referer → 200 +
+      // ACAO:*; only a MISSING Referer → 404). We must NOT pre-resolve the redirect
+      // server-side — the resolved edge URL is rejected for the browser (404/405),
+      // which silently broke every keymi title. (Keep the app's default
+      // Referrer-Policy so the browser sends ≥ the origin across the redirect.)
       if (isClientDirectHost(s.url)) {
-        return { ...s, url: await resolveClientDirectUrl(s.url), direct: true };
+        return { ...s, direct: true };
       }
       const signed = await signedMediaUrl(s.url, headers);
       return { ...s, url: s.type === 'mp4' ? `${signed}&v=1` : signed };
@@ -611,4 +629,4 @@ export default async (req) => {
       'Cache-Control': 's-maxage=300',
     },
   });
-};
+}
