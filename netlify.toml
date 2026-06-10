@@ -17,3 +17,6 @@
 
 [functions.extract]
   timeout = 26
+
+[functions.moviebox]
+  timeout = 26
