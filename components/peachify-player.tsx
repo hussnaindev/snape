@@ -45,10 +45,14 @@ interface Props {
   onReady?: () => void;
   /** When set, fullscreen targets this element instead of the player root. */
   fullscreenRootRef?: RefObject<HTMLElement | null>;
+  /** Override the default /api/stream/{type}/{id} extraction endpoint. */
+  extractUrl?: string;
+  /** Cache key when using a custom extractUrl (defaults to streamKey). */
+  extractCacheKey?: string;
 }
 
 const DEFAULT_LABEL = 'Default';
-const PROVIDER_ORDER = ['Iron', 'Spider', 'Wolf', 'Multi', 'Dark', 'Xpass'];
+const PROVIDER_ORDER = ['Iron', 'Spider', 'Wolf', 'Multi', 'Dark', 'Xpass', 'MovieBox'];
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const streamCache = new Map<string, StreamResponse>();
 const streamInflight = new Map<string, Promise<StreamResponse>>();
@@ -152,7 +156,12 @@ export function PeachifyPlayer({
   onSelectEpisode,
   onReady,
   fullscreenRootRef,
+  extractUrl,
+  extractCacheKey,
 }: Props) {
+  const streamQs = type === 'tv' ? `?season=${season}&episode=${episode}` : '';
+  const cacheKey = extractCacheKey ?? streamKey(type, tmdbId, season, episode);
+  const sourceFetchUrl = extractUrl ?? `/api/stream/${type}/${tmdbId}${streamQs}`;
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsApiRef = useRef<import('hls.js').default | null>(null);
@@ -270,16 +279,14 @@ export function PeachifyPlayer({
     const startAt = getResumePosition(tmdbId, type === 'tv' ? 'series' : 'movie', season, episode);
     resumeRef.current = startAt > 0 ? { time: startAt, playing: autoPlay } : null;
 
-    const qs = type === 'tv' ? `?season=${season}&episode=${episode}` : '';
-    const key = streamKey(type, tmdbId, season, episode);
-    loadStreamData(key, `/api/stream/${type}/${tmdbId}${qs}`)
+    loadStreamData(cacheKey, sourceFetchUrl)
       .then((json) => {
         if (fetchGenRef.current !== gen) return;
         if (!json.ok || !json.data || json.data.sources.length === 0) {
-          invalidateStreamCache(type, tmdbId, season, episode);
+          streamCache.delete(cacheKey);
           setStatus('error');
           setErrorType('no-sources');
-          if (IS_DEV) console.error('No sources available', { json, type, tmdbId, season, episode });
+          if (IS_DEV) console.error('No sources available', { json, type, tmdbId, season, episode, sourceFetchUrl });
           return;
         }
         setSources(json.data.sources);
@@ -287,25 +294,24 @@ export function PeachifyPlayer({
       })
       .catch((err) => {
         if (fetchGenRef.current !== gen) return;
-        invalidateStreamCache(type, tmdbId, season, episode);
+        streamCache.delete(cacheKey);
         setStatus('error');
         setErrorType('network');
         console.error('Failed to load sources:', err);
       });
-  }, [type, tmdbId, season, episode, autoPlay]);
+  }, [type, tmdbId, season, episode, autoPlay, cacheKey, sourceFetchUrl]);
 
   useEffect(() => {
     if (sources.length === 0) return;
-    const initKey = streamKey(type, tmdbId, season, episode);
-    if (sourcesInitKeyRef.current === initKey) return;
-    sourcesInitKeyRef.current = initKey;
+    if (sourcesInitKeyRef.current === cacheKey) return;
+    sourcesInitKeyRef.current = cacheKey;
     const first = bestSource(sources)!;
     setLang(dubLabel(first));
     setQuality(qLabel(first));
     setServer(first.provider);
     const en = subs.findIndex((s) => /^en|english/i.test(s.lang ?? '') || /english/i.test(s.label ?? ''));
     setSubIndex(en);
-  }, [sources, subs, type, tmdbId, season, episode]);
+  }, [sources, subs, cacheKey]);
 
   useEffect(() => {
     if (sources.length === 0 || !lang) return;
@@ -388,7 +394,7 @@ export function PeachifyPlayer({
         setServer(next.provider);
         setActive(next);
       } else {
-        invalidateStreamCache(type, tmdbId, season, episode);
+        streamCache.delete(cacheKey);
         setStatus('error');
         setErrorType('playback-failed');
         if (IS_DEV) console.error('All sources failed:', { failedSources: Array.from(failedRef.current) });
