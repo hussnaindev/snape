@@ -229,8 +229,13 @@ async function signedMediaUrl(absoluteUrl, headers) {
 // 3×11s sequential would blow past Netlify's 26s function limit anyway. So we run
 // all providers concurrently and give each attempt enough time to cover the slow
 // host, bounded by a per-provider budget so a hang can't stack two long timeouts.
-const ATTEMPT_TIMEOUT_MS = 20000; // > usa's ~11s response, with headroom
-const PROVIDER_BUDGET_MS = 20000; // total per provider; each attempt is capped to
+// usa.eat-peach.sbs answers working titles in ~11s; dead-end titles (e.g. holly
+// 538858) hang until a ~31s upstream 502. There's a ~20s gateway timeout in FRONT
+// of this Netlify function (it returns a Cloudflare "error code: 502" when we take
+// ~20s), so we must respond well under that: 15s covers a real ~11s usa response
+// with margin while aborting a dead-end provider early enough to return clean JSON.
+const ATTEMPT_TIMEOUT_MS = 15000;
+const PROVIDER_BUDGET_MS = 15000; // total per provider; each attempt is capped to
 //                                   the remaining budget so retries can't overrun it.
 // vsembed runs CONCURRENTLY with the providers (see handler) — it overlaps the
 // up-to-20s provider wait instead of adding to it, so total stays under Netlify's
@@ -343,11 +348,11 @@ async function fetchProvider(p, type, id, season, episode) {
 // needs no Referer, so we play it CLIENT-DIRECT (raw URL, no media proxy).
 const VSEMBED_BASE = 'https://vsembed.ru';
 const VSEMBED_TIMEOUT_MS = 4000;
-// Hard ceiling on the whole vsembed chain. It now runs CONCURRENTLY with the
-// providers (which take up to PROVIDER_BUDGET_MS), so this can be generous without
-// adding to the total — give the multi-hop chain (embed → rcp → CF-gated prorcp
-// sweep, ~6-8s when it succeeds) real room, while staying under the providers' 20s.
-const VSEMBED_DEADLINE_MS = 16000;
+// Hard ceiling on the whole vsembed chain. It runs CONCURRENTLY with the providers
+// and is only awaited when they yield no mp4, so keep it <= PROVIDER_BUDGET_MS — it
+// then never extends the total beyond the provider wait, while still giving the
+// multi-hop chain (embed → rcp → CF-gated prorcp sweep, ~6-8s) room to finish.
+const VSEMBED_DEADLINE_MS = 13000;
 // cloudnestra's /prorcp endpoint is Cloudflare-protected: it 403s datacenter IPs
 // (so a direct Netlify fetch fails) and serves a small CF challenge page to most
 // proxy IPs — only a fraction of residential-proxy IPs pass. The embed/rcp hops
