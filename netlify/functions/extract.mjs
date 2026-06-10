@@ -250,6 +250,22 @@ const XPASS_CDN_HEADERS = { referer: `${XPASS_BASE}/`, 'user-agent': UA };
 const XPASS_TIMEOUT_MS = 7000;
 const XPASS_MAX_BACKENDS = 18;
 
+function isLikelyMediaUrl(url) {
+  try {
+    const u = url.toLowerCase();
+    if (/\.(jpe?g|png|gif|webp|svg)(\?|$)/.test(u)) return false;
+    // xpass occasionally surfaces avatar/image CDN URLs as bogus "sources".
+    if (/tiktokcdn\.com\/obj\/.*avt/.test(u)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function looksLikeHlsManifest(text) {
+  return typeof text === 'string' && text.replace(/^\uFEFF/, '').trimStart().startsWith('#EXTM3U');
+}
+
 async function xpassFetch(url, referer) {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), XPASS_TIMEOUT_MS);
@@ -328,9 +344,16 @@ async function fetchXpass(type, id, season, episode) {
       try {
         const src = JSON.parse(txt)?.playlist?.[0]?.sources?.[0];
         if (src && typeof src.file === 'string' && /^https?:\/\//.test(src.file)) {
+          const file = src.file;
+          if (!isLikelyMediaUrl(file)) return null;
+          const type = src.type === 'hls' ? 'hls' : 'mp4';
+          if (type === 'hls') {
+            const manifest = await xpassFetch(file, `${XPASS_BASE}${path}`);
+            if (!looksLikeHlsManifest(manifest)) return null;
+          }
           return {
-            type: src.type === 'hls' ? 'hls' : 'mp4',
-            url: src.file,
+            type,
+            url: file,
             headers: XPASS_CDN_HEADERS,
             quality: null,
             dub: null,
