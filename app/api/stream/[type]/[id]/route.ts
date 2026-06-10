@@ -35,28 +35,47 @@ export async function GET(
   }
 
   let res: Response;
+  let body: string;
   try {
     res = await fetch(upstream.toString(), { headers: { Accept: 'application/json' } });
+    body = await res.text();
   } catch {
-    return NextResponse.json({ ok: false, error: 'Extractor unreachable', code: 502 }, { status: 502 });
+    // Network failure reaching the extractor → clean JSON, NOT a 502 (a 502 status
+    // would be served as Cloudflare's non-JSON "error code: 502" page, which the
+    // player can't parse). The player keys off `ok`, so 200 + ok:false is correct.
+    return NextResponse.json(
+      { ok: false, error: 'Extractor unreachable' },
+      { status: 200, headers: { 'Cache-Control': 'no-store' } },
+    );
   }
 
-  const body = await res.text();
-  // Only cache a genuine success WITH sources. Caching a failure ("No sources
-  // found" / "servers are busy") would replay that error on every refresh for
-  // the whole TTL even when it was a transient upstream blip — so those stay
-  // no-store and a refresh re-attempts extraction.
-  let cacheable = false;
-  if (res.ok) {
-    try {
-      const json = JSON.parse(body);
-      cacheable = json?.ok === true && Array.isArray(json?.data?.sources) && json.data.sources.length > 0;
-    } catch {
-      // unparseable → treat as failure → no-store
-    }
+  // Always hand the client a parseable JSON envelope at HTTP 200. The extractor
+  // already returns 200 for both success and "no sources", but if it (or a gateway
+  // in front of it) ever returns a non-2xx / non-JSON body — a cold-start blip, an
+  // upstream 502 page — passing that through as-is makes the player's JSON.parse
+  // throw. So we validate the body and, when it isn't a clean envelope, synthesize
+  // an ok:false one. Only a genuine success WITH sources is cacheable; everything
+  // else is no-store so a refresh re-attempts extraction.
+  let parsed: unknown = null;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    // unparseable upstream body
   }
-  return new NextResponse(body, {
-    status: res.status,
+  const isEnvelope =
+    typeof parsed === 'object' &&
+    parsed !== null &&
+    typeof (parsed as { ok?: unknown }).ok === 'boolean';
+  const okWithSources =
+    isEnvelope &&
+    (parsed as { ok: boolean }).ok === true &&
+    Array.isArray((parsed as { data?: { sources?: unknown } }).data?.sources) &&
+    (parsed as { data: { sources: unknown[] } }).data.sources.length > 0;
+
+  const outBody = isEnvelope ? body : JSON.stringify({ ok: false, error: 'No sources found' });
+  const cacheable = res.ok && okWithSources;
+  return new NextResponse(outBody, {
+    status: 200,
     headers: {
       'Content-Type': 'application/json',
       'Cache-Control':
