@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { usePlayerControls } from '@/lib/player-controls-context';
 
-import { PeachifyPlayer, prefetchStream } from '@/components/peachify-player';
+import { PeachifyPlayer, prefetchMoviebox, prefetchStream } from '@/components/peachify-player';
 import { ExpandableText } from '@/components/ui/expandable-text';
 import { RatingBadge } from '@/components/ui/rating-badge';
 import { TagChip } from '@/components/ui/tag-chip';
@@ -197,9 +197,9 @@ export function MovieDetailHero({
     setMuted((m) => !m);
   }
 
-  // Extract sources in the background while the user is on the detail page, so
-  // playback starts (near-)instantly when they hit Watch.
+  // MovieBox first (fast), full extract in parallel — Watch reuses warmed cache.
   useEffect(() => {
+    prefetchMoviebox('movie', movieId);
     prefetchStream('movie', movieId);
   }, [movieId]);
 

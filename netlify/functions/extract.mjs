@@ -10,10 +10,13 @@
 // Env vars (set in Netlify UI):
 //   PROXY_LIST          comma/newline-separated  host:port:user:pass  entries
 //   MEDIA_PROXY_SECRET  same value as on Cloudflare
+//   TMDB_API_KEY        for MovieBox ↔ TMDB title matching (primary source)
+//   MOVIEBOX_*          optional guest-session overrides (see .env.example)
 //
 // GET ?type=movie&id=1022789   |   ?type=tv&id=1399&season=1&episode=1
 
 import { fetch as uFetch, ProxyAgent } from 'undici';
+import { fetchMoviebox } from '../lib/moviebox.mjs';
 
 const AES_KEY_HEX = 'a8f2a1b5e9c470814f6b2c3a5d8e7f9c1a2b3c4d5e3f7a8b8cad1e2d0a4d5c5b';
 const REFERER = 'https://peachify.top/';
@@ -386,15 +389,73 @@ async function fetchXpass(type, id, season, episode) {
   return { sources, subtitles, stage: 'ok' };
 }
 
+const PROVIDER_RANK = {
+  MovieBox: 0,
+  ...Object.fromEntries(PROVIDERS.map((p, i) => [p.label, i + 1])),
+  Xpass: 99,
+};
+
+async function buildSignedResponse(rawSources, rawSubs, debug) {
+  if (rawSources.length === 0) {
+    return Response.json(
+      { ok: false, error: 'No sources found', debug },
+      { status: 200, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
+
+  rawSources.sort((a, b) => {
+    const ra = PROVIDER_RANK[a.provider] ?? 99;
+    const rb = PROVIDER_RANK[b.provider] ?? 99;
+    if (ra !== rb) return ra - rb;
+    return (b.quality ?? 0) - (a.quality ?? 0);
+  });
+
+  const sources = await Promise.all(
+    rawSources.map(async ({ headers, ...s }) => {
+      const signed = await signedMediaUrl(s.url, headers);
+      return { ...s, url: s.type === 'mp4' ? `${signed}&v=1` : signed };
+    }),
+  );
+  const subtitles = await Promise.all(
+    rawSubs.map(async ({ headers, ...s }) => ({
+      ...s,
+      url: `${await signedMediaUrl(s.url, headers)}&sub=1`,
+    })),
+  );
+
+  return new Response(JSON.stringify({ ok: true, data: { sources, subtitles }, debug }), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 's-maxage=300, stale-while-revalidate=600',
+    },
+  });
+}
+
 export default async (req) => {
   const sp = new URL(req.url).searchParams;
   const type = sp.get('type') === 'tv' ? 'tv' : 'movie';
   const id = sp.get('id');
   const season = sp.get('season');
   const episode = sp.get('episode');
+  const layers = sp.get('layers');
 
   if (!id) {
     return Response.json({ ok: false, error: 'missing id' }, { status: 400 });
+  }
+
+  // Fast path for detail-page prefetch: MovieBox only (~few seconds).
+  if (layers === 'moviebox') {
+    const moviebox = await fetchMoviebox(type, id, season, episode);
+    const debug = { moviebox: moviebox.debug, winner: 'MovieBox', reason: 'moviebox-prefetch' };
+    if (moviebox.sources.length === 0) {
+      return Response.json(
+        { ok: false, error: 'No MovieBox match', debug },
+        { status: 200, headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
+    return buildSignedResponse(moviebox.sources, moviebox.subtitles, debug);
   }
 
   const debug = {};
@@ -405,12 +466,16 @@ export default async (req) => {
   let hlsFallback = null;
   let hlsFallbackScore = -1;
 
+  // 1) MovieBox — start immediately; Peachify + Xpass run in parallel below.
+  const movieboxTask = fetchMoviebox(type, id, season, episode);
+
   const xpassTask = fetchXpass(type, id, season, episode).catch((e) => ({
     sources: [],
     subtitles: [],
     stage: `throw:${e?.message || 'err'}`,
   }));
 
+  // 2) Peachify providers — fallback / additional sources.
   // Walk Iron → Spider → Wolf → Multi → Dark. Collect mp4 from every provider;
   // only fall back to hls (goodstream) when none of them offer mp4.
   for (const p of PROVIDERS) {
@@ -439,68 +504,41 @@ export default async (req) => {
     }
   }
 
+  const peachifySources = [];
   if (mp4Sources.length > 0) {
-    rawSources.push(...mp4Sources);
-    debug.winner = mp4Sources[0].provider;
-    debug.reason = 'mp4';
+    peachifySources.push(...mp4Sources);
     debug.providersWithMp4 = [...new Set(mp4Sources.map((s) => s.provider))];
   } else if (hlsFallback) {
-    rawSources.push(...hlsFallback.sources);
-    rawSubs = hlsFallback.subtitles;
-    debug.winner = hlsFallback.provider;
-    debug.reason = 'hls-fallback';
+    peachifySources.push(...hlsFallback.sources);
+    if (rawSubs.length === 0) rawSubs = hlsFallback.subtitles;
   }
 
+  const peachifyCount = peachifySources.length;
+  rawSources.push(...peachifySources);
+  if (!debug.winner && peachifyCount > 0) {
+    debug.winner = peachifySources[0].provider;
+    debug.reason = mp4Sources.length > 0 ? 'mp4' : 'hls-fallback';
+  }
+
+  const moviebox = await movieboxTask;
+  debug.moviebox = moviebox.debug;
+  if (moviebox.sources.length > 0) {
+    rawSources.push(...moviebox.sources);
+    rawSubs = moviebox.subtitles;
+    debug.winner = 'MovieBox';
+    debug.reason = 'moviebox-match';
+  }
+
+  // 3) Xpass — only when MovieBox and Peachify both found nothing.
   const xpassResult = await xpassTask;
-  const peachifyCount = rawSources.length;
-  rawSources.push(...xpassResult.sources);
-  if (rawSubs.length === 0 && xpassResult.subtitles.length > 0) rawSubs = xpassResult.subtitles;
   debug.xpass =
     xpassResult.stage === 'ok' ? { sources: xpassResult.sources.length } : xpassResult.stage;
-  if (peachifyCount === 0 && xpassResult.sources.length > 0) {
+  if (rawSources.length === 0 && xpassResult.sources.length > 0) {
+    rawSources.push(...xpassResult.sources);
+    if (rawSubs.length === 0 && xpassResult.subtitles.length > 0) rawSubs = xpassResult.subtitles;
     debug.winner = 'Xpass';
     debug.reason = 'xpass-fallback';
   }
 
-  if (rawSources.length === 0) {
-    return Response.json(
-      { ok: false, error: 'No sources found', debug },
-      { status: 200, headers: { 'Cache-Control': 'no-store' } },
-    );
-  }
-
-  const providerRank = { ...Object.fromEntries(PROVIDERS.map((p, i) => [p.label, i])), Xpass: 99 };
-  rawSources.sort((a, b) => {
-    const ra = providerRank[a.provider] ?? 99;
-    const rb = providerRank[b.provider] ?? 99;
-    if (ra !== rb) return ra - rb;
-    return (b.quality ?? 0) - (a.quality ?? 0);
-  });
-
-  // mp4 URLs get &v=1 so the media proxy serves them as fixed-length bounded
-  // chunks (Content-Length set) — required for Chrome to treat progressive mp4
-  // as seekable. HLS is segment-based and doesn't need it.
-  const sources = await Promise.all(
-    rawSources.map(async ({ headers, ...s }) => {
-      const signed = await signedMediaUrl(s.url, headers);
-      return { ...s, url: s.type === 'mp4' ? `${signed}&v=1` : signed };
-    }),
-  );
-  // `&sub=1` tells the media proxy to normalize the body to WebVTT (browsers
-  // ignore SRT in <track>). It's outside the signed payload — just a render hint.
-  const subtitles = await Promise.all(
-    rawSubs.map(async ({ headers, ...s }) => ({
-      ...s,
-      url: `${await signedMediaUrl(s.url, headers)}&sub=1`,
-    })),
-  );
-
-  return new Response(JSON.stringify({ ok: true, data: { sources, subtitles }, debug }), {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Cache-Control': 's-maxage=300',
-    },
-  });
+  return buildSignedResponse(rawSources, rawSubs, debug);
 };

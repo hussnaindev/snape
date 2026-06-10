@@ -45,18 +45,59 @@ interface Props {
   onReady?: () => void;
   /** When set, fullscreen targets this element instead of the player root. */
   fullscreenRootRef?: RefObject<HTMLElement | null>;
-  /** Override the default /api/stream/{type}/{id} extraction endpoint. */
-  extractUrl?: string;
-  /** Cache key when using a custom extractUrl (defaults to streamKey). */
-  extractCacheKey?: string;
 }
 
 const DEFAULT_LABEL = 'Default';
-const PROVIDER_ORDER = ['Iron', 'Spider', 'Wolf', 'Multi', 'Dark', 'Xpass', 'MovieBox'];
+const PROVIDER_ORDER = ['MovieBox', 'Iron', 'Spider', 'Wolf', 'Multi', 'Dark', 'Xpass'];
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const streamCache = new Map<string, StreamResponse>();
 const streamInflight = new Map<string, Promise<StreamResponse>>();
+const movieboxInflight = new Map<string, Promise<StreamResponse>>();
 const IS_DEV = process.env.NODE_ENV === 'development';
+
+const SOURCE_PROVIDER_RANK: Record<string, number> = {
+  MovieBox: 0,
+  Iron: 1,
+  Spider: 2,
+  Wolf: 3,
+  Multi: 4,
+  Dark: 5,
+  Xpass: 99,
+};
+
+function mergeStreamResponses(a: StreamResponse, b: StreamResponse): StreamResponse {
+  if (!a.ok || !a.data) return b;
+  if (!b.ok || !b.data) return a;
+  const byUrl = new Map<string, StreamSource>();
+  for (const s of [...a.data.sources, ...b.data.sources]) byUrl.set(s.url, s);
+  const sources = [...byUrl.values()].sort((x, y) => {
+    const rx = SOURCE_PROVIDER_RANK[x.provider] ?? 50;
+    const ry = SOURCE_PROVIDER_RANK[y.provider] ?? 50;
+    if (rx !== ry) return rx - ry;
+    return (y.quality ?? 0) - (x.quality ?? 0);
+  });
+  const subtitles =
+    b.data.subtitles.length >= a.data.subtitles.length ? b.data.subtitles : a.data.subtitles;
+  return { ok: true, data: { sources, subtitles } };
+}
+
+function isMovieboxOnly(json: StreamResponse): boolean {
+  return (
+    !!json.ok &&
+    !!json.data &&
+    json.data.sources.length > 0 &&
+    json.data.sources.every((s) => s.provider === 'MovieBox')
+  );
+}
+
+function cacheStreamResponse(key: string, json: StreamResponse) {
+  if (!json.ok || !json.data || json.data.sources.length === 0) {
+    streamCache.delete(key);
+    return;
+  }
+  const existing = streamCache.get(key);
+  streamCache.set(key, existing?.ok ? mergeStreamResponses(existing, json) : json);
+}
 
 function streamKey(type: string, tmdbId: number, season?: number, episode?: number) {
   return type === 'tv' ? `tv:${tmdbId}:${season}:${episode}` : `movie:${tmdbId}`;
@@ -87,43 +128,81 @@ function bestSource(list: StreamSource[]): StreamSource | null {
   return [...list].sort((a, b) => sourceRank(a) - sourceRank(b))[0] ?? null;
 }
 
+function startFullStreamFetch(key: string, url: string): Promise<StreamResponse> {
+  const fetchUrl = IS_DEV ? `${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}` : url;
+  return fetch(fetchUrl, { cache: 'no-store' })
+    .then((r) => r.json() as Promise<StreamResponse>)
+    .then((json) => {
+      if (!IS_DEV) cacheStreamResponse(key, json);
+      else if (!json.ok || !json.data?.sources.length) streamCache.delete(key);
+      return json;
+    });
+}
+
 function loadStreamData(key: string, url: string): Promise<StreamResponse> {
   if (!IS_DEV) {
     const cached = streamCache.get(key);
-    if (cached) return Promise.resolve(cached);
+    if (cached?.ok && cached.data?.sources.length) {
+      const fullInflight = streamInflight.get(key);
+      if (fullInflight && isMovieboxOnly(cached)) {
+        void fullInflight.then((full) => {
+          if (full.ok && full.data && full.data.sources.length > cached.data!.sources.length) {
+            cacheStreamResponse(key, full);
+          }
+        });
+      }
+      return Promise.resolve(cached);
+    }
   }
   let inflight = streamInflight.get(key);
   if (!inflight) {
-    const fetchUrl = IS_DEV ? `${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}` : url;
-    inflight = fetch(fetchUrl, { cache: 'no-store' })
-      .then((r) => r.json() as Promise<StreamResponse>)
-      .then((json) => {
-        if (json.ok && json.data && json.data.sources.length > 0) {
-          if (!IS_DEV) streamCache.set(key, json);
-        } else {
-          streamCache.delete(key);
-        }
-        return json;
-      })
-      .finally(() => streamInflight.delete(key));
+    inflight = startFullStreamFetch(key, url).finally(() => streamInflight.delete(key));
     streamInflight.set(key, inflight);
   }
   return inflight;
 }
 
 /**
- * Warm the stream-source cache ahead of playback. Call this from a detail page
- * (e.g. on mount) so extraction runs in parallel while the user reads the page;
- * when they hit Watch, the player's own fetch resolves instantly from this cache
- * or joins the already-in-flight request. No-op in dev (caching disabled there).
+ * Fast MovieBox-only prefetch — runs in parallel on the detail page so Watch
+ * can start from cache while Peachify/Xpass extraction continues in the background.
+ */
+export function prefetchMoviebox(type: 'movie' | 'tv', tmdbId: number, season?: number, episode?: number) {
+  if (IS_DEV) return;
+  if (type === 'tv' && (season == null || episode == null)) return;
+  const key = streamKey(type, tmdbId, season, episode);
+  const cached = streamCache.get(key);
+  if (cached?.ok && cached.data?.sources.some((s) => s.provider === 'MovieBox')) return;
+  if (movieboxInflight.has(key)) return;
+
+  const base = type === 'tv' ? `?season=${season}&episode=${episode}` : '?';
+  const sep = base === '?' ? '' : '&';
+  const url = `/api/stream/${type}/${tmdbId}${base}${sep}layers=moviebox`;
+
+  const task = fetch(url, { cache: 'no-store' })
+    .then((r) => r.json() as Promise<StreamResponse>)
+    .then((json) => {
+      if (json.ok && json.data?.sources.length) cacheStreamResponse(key, json);
+      return json;
+    })
+    .finally(() => movieboxInflight.delete(key));
+  movieboxInflight.set(key, task);
+  void task.catch(() => {});
+}
+
+/**
+ * Warm the full stream-source cache ahead of playback. Call alongside
+ * prefetchMoviebox on the detail page. No-op in dev (caching disabled there).
  */
 export function prefetchStream(type: 'movie' | 'tv', tmdbId: number, season?: number, episode?: number) {
   if (IS_DEV) return;
   if (type === 'tv' && (season == null || episode == null)) return;
   const key = streamKey(type, tmdbId, season, episode);
-  if (streamCache.has(key) || streamInflight.has(key)) return;
+  if (streamInflight.has(key)) return;
   const qs = type === 'tv' ? `?season=${season}&episode=${episode}` : '';
-  void loadStreamData(key, `/api/stream/${type}/${tmdbId}${qs}`).catch(() => {});
+  const inflight = startFullStreamFetch(key, `/api/stream/${type}/${tmdbId}${qs}`)
+    .finally(() => streamInflight.delete(key));
+  streamInflight.set(key, inflight);
+  void inflight.catch(() => {});
 }
 
 const qLabel = (s: StreamSource) => (s.type === 'hls' ? 'Auto' : s.quality ? `${s.quality}p` : 'Auto');
@@ -156,12 +235,7 @@ export function PeachifyPlayer({
   onSelectEpisode,
   onReady,
   fullscreenRootRef,
-  extractUrl,
-  extractCacheKey,
 }: Props) {
-  const streamQs = type === 'tv' ? `?season=${season}&episode=${episode}` : '';
-  const cacheKey = extractCacheKey ?? streamKey(type, tmdbId, season, episode);
-  const sourceFetchUrl = extractUrl ?? `/api/stream/${type}/${tmdbId}${streamQs}`;
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsApiRef = useRef<import('hls.js').default | null>(null);
@@ -279,39 +353,60 @@ export function PeachifyPlayer({
     const startAt = getResumePosition(tmdbId, type === 'tv' ? 'series' : 'movie', season, episode);
     resumeRef.current = startAt > 0 ? { time: startAt, playing: autoPlay } : null;
 
-    loadStreamData(cacheKey, sourceFetchUrl)
-      .then((json) => {
-        if (fetchGenRef.current !== gen) return;
-        if (!json.ok || !json.data || json.data.sources.length === 0) {
-          streamCache.delete(cacheKey);
-          setStatus('error');
-          setErrorType('no-sources');
-          if (IS_DEV) console.error('No sources available', { json, type, tmdbId, season, episode, sourceFetchUrl });
-          return;
-        }
-        setSources(json.data.sources);
-        setSubs(json.data.subtitles);
-      })
+    const qs = type === 'tv' ? `?season=${season}&episode=${episode}` : '';
+    const key = streamKey(type, tmdbId, season, episode);
+    const applyStream = (json: StreamResponse) => {
+      if (fetchGenRef.current !== gen) return;
+      if (!json.ok || !json.data || json.data.sources.length === 0) {
+        invalidateStreamCache(type, tmdbId, season, episode);
+        setStatus('error');
+        setErrorType('no-sources');
+        if (IS_DEV) console.error('No sources available', { json, type, tmdbId, season, episode });
+        return;
+      }
+      setSources(json.data.sources);
+      setSubs(json.data.subtitles);
+    };
+
+    loadStreamData(key, `/api/stream/${type}/${tmdbId}${qs}`).then(applyStream);
+
+    if (!IS_DEV) {
+      const fullInflight = streamInflight.get(key);
+      if (fullInflight) {
+        fullInflight.then((full) => {
+          const cached = streamCache.get(key);
+          if (
+            cached?.ok &&
+            full.ok &&
+            full.data &&
+            full.data.sources.length > (cached.data?.sources.length ?? 0)
+          ) {
+            applyStream(mergeStreamResponses(cached, full));
+          }
+        });
+      }
+    }
       .catch((err) => {
         if (fetchGenRef.current !== gen) return;
-        streamCache.delete(cacheKey);
+        invalidateStreamCache(type, tmdbId, season, episode);
         setStatus('error');
         setErrorType('network');
         console.error('Failed to load sources:', err);
       });
-  }, [type, tmdbId, season, episode, autoPlay, cacheKey, sourceFetchUrl]);
+  }, [type, tmdbId, season, episode, autoPlay]);
 
   useEffect(() => {
     if (sources.length === 0) return;
-    if (sourcesInitKeyRef.current === cacheKey) return;
-    sourcesInitKeyRef.current = cacheKey;
+    const initKey = streamKey(type, tmdbId, season, episode);
+    if (sourcesInitKeyRef.current === initKey) return;
+    sourcesInitKeyRef.current = initKey;
     const first = bestSource(sources)!;
     setLang(dubLabel(first));
     setQuality(qLabel(first));
     setServer(first.provider);
     const en = subs.findIndex((s) => /^en|english/i.test(s.lang ?? '') || /english/i.test(s.label ?? ''));
     setSubIndex(en);
-  }, [sources, subs, cacheKey]);
+  }, [sources, subs, type, tmdbId, season, episode]);
 
   useEffect(() => {
     if (sources.length === 0 || !lang) return;
@@ -394,7 +489,7 @@ export function PeachifyPlayer({
         setServer(next.provider);
         setActive(next);
       } else {
-        streamCache.delete(cacheKey);
+        invalidateStreamCache(type, tmdbId, season, episode);
         setStatus('error');
         setErrorType('playback-failed');
         if (IS_DEV) console.error('All sources failed:', { failedSources: Array.from(failedRef.current) });

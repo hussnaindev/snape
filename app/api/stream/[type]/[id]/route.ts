@@ -33,6 +33,8 @@ export async function GET(
     upstream.searchParams.set('season', sp.get('season') ?? '');
     upstream.searchParams.set('episode', sp.get('episode') ?? '');
   }
+  const layers = sp.get('layers');
+  if (layers) upstream.searchParams.set('layers', layers);
 
   let res: Response;
   try {

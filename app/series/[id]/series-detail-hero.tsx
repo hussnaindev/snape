@@ -20,7 +20,7 @@ import type { PreferredProviderKey } from '@/lib/watch-providers';
 import { tmdbImage } from '@/lib/tmdb-image';
 import type { TMDBSeason, TMDBSeasonSummary } from '@/types/tmdb';
 
-import { PeachifyPlayer, prefetchStream } from '@/components/peachify-player';
+import { PeachifyPlayer, prefetchMoviebox, prefetchStream } from '@/components/peachify-player';
 
 import { EpisodeGuide } from './episode-guide';
 
@@ -246,9 +246,9 @@ export function SeriesDetailHero({
     return () => window.removeEventListener('heroflix:play-episode', onPlayEpisode);
   }, [handleEpisodeSelect]);
 
-  // Extract sources for the currently-selected episode in the background while
-  // the user is on the detail page, so Watch starts (near-)instantly.
+  // MovieBox first (fast), full extract in parallel for the selected episode.
   useEffect(() => {
+    prefetchMoviebox('tv', seriesId, currentSeason, currentEpisode);
     prefetchStream('tv', seriesId, currentSeason, currentEpisode);
   }, [seriesId, currentSeason, currentEpisode]);
 
