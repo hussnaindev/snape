@@ -368,7 +368,15 @@ export function PeachifyPlayer({
       setSubs(json.data.subtitles);
     };
 
-    loadStreamData(key, `/api/stream/${type}/${tmdbId}${qs}`).then(applyStream);
+    loadStreamData(key, `/api/stream/${type}/${tmdbId}${qs}`)
+      .then(applyStream)
+      .catch((err) => {
+        if (fetchGenRef.current !== gen) return;
+        invalidateStreamCache(type, tmdbId, season, episode);
+        setStatus('error');
+        setErrorType('network');
+        console.error('Failed to load sources:', err);
+      });
 
     if (!IS_DEV) {
       const fullInflight = streamInflight.get(key);
@@ -386,13 +394,6 @@ export function PeachifyPlayer({
         });
       }
     }
-      .catch((err) => {
-        if (fetchGenRef.current !== gen) return;
-        invalidateStreamCache(type, tmdbId, season, episode);
-        setStatus('error');
-        setErrorType('network');
-        console.error('Failed to load sources:', err);
-      });
   }, [type, tmdbId, season, episode, autoPlay]);
 
   useEffect(() => {
