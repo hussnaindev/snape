@@ -221,10 +221,22 @@ async function signedMediaUrl(absoluteUrl, headers) {
 }
 
 // ---- provider fetch -----------------------------------------------------
-// Providers are queried sequentially (Iron → Spider → Wolf → Multi → Dark).
-// Per-attempt timeout is kept short so several providers can be tried within
-// Netlify's 10s function limit when earlier ones fail quickly.
-const ATTEMPT_TIMEOUT_MS = 1800;
+// Providers are queried IN PARALLEL (see the loop in the handler). They used to
+// be sequential with a tiny 1800ms per-attempt timeout, but eat-peach has gotten
+// slow: `usa.eat-peach.sbs` (Spider/Wolf/Multi) now takes ~11s to respond while
+// `uwu.eat-peach.sbs` (Iron/Dark) takes ~2s. A short timeout aborted every usa
+// attempt, so titles that only resolve on usa returned "No sources found"; and
+// 3×11s sequential would blow past Netlify's 26s function limit anyway. So we run
+// all providers concurrently and give each attempt enough time to cover the slow
+// host, bounded by a per-provider budget so a hang can't stack two long timeouts.
+const ATTEMPT_TIMEOUT_MS = 20000; // > usa's ~11s response, with headroom
+const PROVIDER_BUDGET_MS = 20000; // total per provider; each attempt is capped to
+//                                   the remaining budget so retries can't overrun it.
+// Overall wall-clock budget for the whole handler. A provider can burn up to its
+// 20s, and vsembed runs sequentially after — so vsembed is given only the time
+// left under this budget (and skipped if there's none), keeping total < Netlify's
+// 26s function limit with margin.
+const HANDLER_BUDGET_MS = 20000;
 
 function hasPlayableSources(raw) {
   return (raw?.sources ?? []).some((s) => typeof s.url === 'string');
@@ -283,12 +295,18 @@ async function fetchProvider(p, type, id, season, episode) {
   let url = `${p.api}/${p.path}/${type}/${id}`;
   if (type === 'tv') url += `/${season}/${episode}`;
 
+  const deadline = Date.now() + PROVIDER_BUDGET_MS;
   let lastStatus = 'fail';
   for (let attempt = 0; attempt < p.attempts; attempt++) {
+    // Cap each attempt to the time left in the budget so retries (after a fast
+    // 403/429/dead-proxy failure) can never stack into an overrun: a slow host
+    // (~11s) gets one full attempt, fast failures get several within the budget.
+    const remaining = deadline - Date.now();
+    if (remaining < 1500) break; // not enough time left for a useful attempt
     // A fresh (random) proxy each attempt so a single bad/slow/blocked proxy
     // can't make a provider that HAS the title look empty.
     const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), ATTEMPT_TIMEOUT_MS);
+    const timer = setTimeout(() => ac.abort(), Math.min(ATTEMPT_TIMEOUT_MS, remaining));
     try {
       const res = await uFetch(url, {
         headers: { Referer: REFERER, 'User-Agent': UA },
@@ -328,9 +346,9 @@ async function fetchProvider(p, type, id, season, episode) {
 const VSEMBED_BASE = 'https://vsembed.ru';
 const VSEMBED_TIMEOUT_MS = 4000;
 // Hard ceiling on the whole vsembed chain. It runs sequentially after the
-// Peachify loop (only when Peachify has no mp4), so this is kept tight to keep
-// total extraction under Netlify's ~10s function limit.
-const VSEMBED_DEADLINE_MS = 5000;
+// Peachify providers (only when none of them produced an mp4), so it's kept tight
+// to keep provider-budget (~20s) + vsembed under Netlify's 26s function limit.
+const VSEMBED_DEADLINE_MS = 4000;
 // cloudnestra's /prorcp endpoint is Cloudflare-protected: it 403s datacenter IPs
 // (so a direct Netlify fetch fails) and serves a small CF challenge page to most
 // proxy IPs — only a fraction of residential-proxy IPs pass. The embed/rcp hops
@@ -416,6 +434,7 @@ async function fetchVsembed(type, id, season, episode) {
 }
 
 export default async (req) => {
+  const startedAt = Date.now();
   const sp = new URL(req.url).searchParams;
   const type = sp.get('type') === 'tv' ? 'tv' : 'movie';
   const id = sp.get('id');
@@ -429,49 +448,88 @@ export default async (req) => {
   const debug = {};
   const rawSources = [];
   let rawSubs = [];
-  const mp4Sources = [];
-  /** @type {{ provider: string, sources: typeof rawSources, subtitles: typeof rawSubs } | null} */
-  let hlsFallback = null;
-  let hlsFallbackScore = -1;
 
-  // Walk Iron → Spider → Wolf → Multi → Dark. Collect mp4 from every provider;
-  // only fall back to hls (goodstream) when none of them offer mp4.
-  for (const p of PROVIDERS) {
-    const r = await fetchProvider(p, type, id, season, episode);
+  // Fire EVERY provider in parallel up front (eat-peach's usa host is ~11s, so
+  // running them concurrently keeps total ≈ the slowest single provider — and the
+  // lower-priority results are already in flight if we end up needing them).
+  const tasks = new Map(
+    PROVIDERS.map((p) => [p.label, fetchProvider(p, type, id, season, episode).then((r) => ({ p, r }))]),
+  );
+
+  // Collect one provider's playable sources (mp4 first — range-seekable and more
+  // reliable — then hls as an auto-advance fallback), or null if it has none.
+  // Records the outcome in `debug` either way.
+  const take = ({ p, r }) => {
     if (!r.raw || !hasPlayableSources(r.raw)) {
       debug[p.label] = r.status;
-      continue;
+      return null;
     }
-
     const { sources, subtitles } = collectProviderSources(r.raw, p.label);
-    const mp4Only = sources.filter((s) => s.type === 'mp4');
-    const hlsOnly = sources.filter((s) => s.type === 'hls');
-    debug[p.label] = { status: r.status, mp4: mp4Only.length, hls: hlsOnly.length };
+    const mp4 = sources.filter((s) => s.type === 'mp4');
+    const hls = sources.filter((s) => s.type === 'hls');
+    debug[p.label] = { status: r.status, mp4: mp4.length, hls: hls.length };
+    return { provider: p.label, sources: [...mp4, ...hls], subtitles };
+  };
 
-    if (mp4Only.length > 0) {
-      mp4Sources.push(...mp4Only);
-      if (rawSubs.length === 0) rawSubs = subtitles;
-    }
-
-    if (hlsOnly.length > 0) {
-      const score = hlsHostScore(hlsOnly);
-      if (score > hlsFallbackScore) {
-        hlsFallback = { provider: p.label, sources: hlsOnly, subtitles };
-        hlsFallbackScore = score;
-      }
-    }
+  // PREFERRED providers, in strict priority order. The first that returns playable
+  // sources wins outright and we STOP — never waiting on anything below it. Because
+  // we await them IN ORDER, Spider finishing first can't beat a still-pending Iron:
+  // we only look at Spider once Iron has SETTLED without sources. If BOTH settle
+  // empty, we fall through to the remaining providers.
+  const PREFERRED = ['Iron', 'Spider'];
+  let chosen = null;
+  for (const label of PREFERRED) {
+    chosen = take(await tasks.get(label));
+    if (chosen) break;
   }
 
-  if (mp4Sources.length > 0) {
-    rawSources.push(...mp4Sources);
-    debug.winner = mp4Sources[0].provider;
-    debug.reason = 'mp4';
-    debug.providersWithMp4 = [...new Set(mp4Sources.map((s) => s.provider))];
-  } else if (hlsFallback) {
-    rawSources.push(...hlsFallback.sources);
-    rawSubs = hlsFallback.subtitles;
-    debug.winner = hlsFallback.provider;
-    debug.reason = 'hls-fallback';
+  if (chosen) {
+    rawSources.push(...chosen.sources);
+    rawSubs = chosen.subtitles;
+    debug.winner = chosen.provider;
+    debug.reason = 'preferred';
+  } else {
+    // Iron & Spider both came back empty → merge the remaining providers
+    // (Wolf/Multi/Dark), preferring mp4 across all of them over hls (goodstream),
+    // matching the original fallback behavior.
+    const mp4Sources = [];
+    /** @type {{ provider: string, sources: typeof rawSources, subtitles: typeof rawSubs } | null} */
+    let hlsFallback = null;
+    let hlsFallbackScore = -1;
+    for (const p of PROVIDERS) {
+      if (PREFERRED.includes(p.label)) continue;
+      const { r } = await tasks.get(p.label);
+      if (!r.raw || !hasPlayableSources(r.raw)) {
+        debug[p.label] = r.status;
+        continue;
+      }
+      const { sources, subtitles } = collectProviderSources(r.raw, p.label);
+      const mp4Only = sources.filter((s) => s.type === 'mp4');
+      const hlsOnly = sources.filter((s) => s.type === 'hls');
+      debug[p.label] = { status: r.status, mp4: mp4Only.length, hls: hlsOnly.length };
+      if (mp4Only.length > 0) {
+        mp4Sources.push(...mp4Only);
+        if (rawSubs.length === 0) rawSubs = subtitles;
+      }
+      if (hlsOnly.length > 0) {
+        const score = hlsHostScore(hlsOnly);
+        if (score > hlsFallbackScore) {
+          hlsFallback = { provider: p.label, sources: hlsOnly, subtitles };
+          hlsFallbackScore = score;
+        }
+      }
+    }
+    if (mp4Sources.length > 0) {
+      rawSources.push(...mp4Sources);
+      debug.winner = mp4Sources[0].provider;
+      debug.reason = 'mp4';
+      debug.providersWithMp4 = [...new Set(mp4Sources.map((s) => s.provider))];
+    } else if (hlsFallback) {
+      rawSources.push(...hlsFallback.sources);
+      rawSubs = hlsFallback.subtitles;
+      debug.winner = hlsFallback.provider;
+      debug.reason = 'hls-fallback';
+    }
   }
 
   // vsembed runs ONLY as a true fallback — when Peachify has no mp4 (dead/weak,
@@ -479,13 +537,21 @@ export default async (req) => {
   // present) skip it entirely, so they're never delayed by the CF-gated, possibly
   // slow vsembed chain. Appended last so the player reaches it only after the
   // Peachify sources, or uses it as the sole source when Peachify found nothing.
-  if (mp4Sources.length === 0) {
-    const vsembedResult = await Promise.race([
-      fetchVsembed(type, id, season, episode).catch((e) => ({ sources: [], stage: `throw:${e?.message || 'err'}` })),
-      new Promise((resolve) => setTimeout(() => resolve({ sources: [], stage: 'deadline' }), VSEMBED_DEADLINE_MS)),
-    ]);
-    rawSources.push(...vsembedResult.sources);
-    debug.vsembed = vsembedResult.stage;
+  // It runs sequentially after the (up-to-20s) providers, so it only gets the time
+  // left under the handler budget — when a slow provider already ate it, vsembed is
+  // skipped so the response can't overrun Netlify's 26s limit.
+  if (!rawSources.some((s) => s.type === 'mp4')) {
+    const vsBudget = Math.min(VSEMBED_DEADLINE_MS, HANDLER_BUDGET_MS - (Date.now() - startedAt));
+    if (vsBudget < 800) {
+      debug.vsembed = 'no-budget';
+    } else {
+      const vsembedResult = await Promise.race([
+        fetchVsembed(type, id, season, episode).catch((e) => ({ sources: [], stage: `throw:${e?.message || 'err'}` })),
+        new Promise((resolve) => setTimeout(() => resolve({ sources: [], stage: 'deadline' }), vsBudget)),
+      ]);
+      rawSources.push(...vsembedResult.sources);
+      debug.vsembed = vsembedResult.stage;
+    }
   } else {
     debug.vsembed = 'skipped(mp4)';
   }
