@@ -373,15 +373,12 @@ export function PeachifyPlayer({
       setBuffering(false);
       startedRef.current = true;
       onReady?.();
-      clearTimeout(attachTimer);
     };
     const fallback = (error?: Error | null) => {
-      if (fallbackUsed || destroyed || attachGenRef.current !== gen) return;
+      if (fallbackUsed || startedRef.current || destroyed || attachGenRef.current !== gen) return;
       fallbackUsed = true;
       stopMedia();
-      clearTimeout(attachTimer);
       failedRef.current.add(s.url);
-      startedRef.current = false;
       if (error) console.error('Source playback failed:', s, error);
       const remaining = sources.filter((c) => !failedRef.current.has(c.url));
       const next = bestSource(remaining);
@@ -397,12 +394,6 @@ export function PeachifyPlayer({
         if (IS_DEV) console.error('All sources failed:', { failedSources: Array.from(failedRef.current) });
       }
     };
-
-    const attachTimer = setTimeout(() => {
-      if (!ready && !destroyed && attachGenRef.current === gen) {
-        fallback(new Error('Source load timeout'));
-      }
-    }, 10_000);
 
     video.addEventListener('loadedmetadata', markReady);
     video.addEventListener('canplay', markReady);
@@ -457,17 +448,16 @@ export function PeachifyPlayer({
       video.src = s.url;
       onError = () => {
         if (destroyed || attachGenRef.current !== gen) return;
-        const error = video.error
-          ? new Error(`MediaError ${video.error.code}: ${video.error.message}`)
-          : new Error('Unknown video error');
-        fallback(error);
+        if (!startedRef.current) {
+          const error = video.error ? new Error(`MediaError ${video.error.code}: ${video.error.message}`) : new Error('Unknown video error');
+          fallback(error);
+        }
       };
       video.addEventListener('error', onError);
     }
 
     return () => {
       destroyed = true;
-      clearTimeout(attachTimer);
       releaseClaim();
       stopMedia();
       video.removeEventListener('loadedmetadata', markReady);
