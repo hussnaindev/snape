@@ -62,7 +62,7 @@ interface Props {
 }
 
 const DEFAULT_LABEL = 'Default';
-const PROVIDER_ORDER = ['Iron', 'Spider', 'Xpass', 'Wolf', 'Multi', 'Dark', 'Bolt'];
+const PROVIDER_ORDER = ['Iron', 'Spider', 'Xpass', 'Wolf', 'Multi', 'Dark'];
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const streamCache = new Map<string, StreamResponse>();
 const streamInflight = new Map<string, Promise<StreamResponse>>();

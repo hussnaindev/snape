@@ -50,17 +50,6 @@ function pickProxyAgent() {
   const url = PROXIES[Math.floor(Math.random() * PROXIES.length)];
   return new ProxyAgent(url);
 }
-// Up to `max` DISTINCT proxy agents in random order — so a one-per-proxy parallel
-// sweep covers the whole pool (and is guaranteed to include any good IP when the
-// pool is small) instead of random draws that can repeat or miss it.
-function distinctProxyAgents(max) {
-  const arr = [...PROXIES];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr.slice(0, max).map((url) => new ProxyAgent(url));
-}
 
 // ---- crypto: decrypt source payloads ------------------------------------
 function b64urlToBytes(input) {
@@ -212,9 +201,6 @@ export async function signedMediaUrl(absoluteUrl, headers) {
 const ATTEMPT_TIMEOUT_MS = 15000;
 const PROVIDER_BUDGET_MS = 15000; // total per provider; each attempt is capped to
 //                                   the remaining budget so retries can't overrun it.
-// vsembed runs CONCURRENTLY with the providers (see handler) — it overlaps the
-// up-to-20s provider wait instead of adding to it, so total stays under Netlify's
-// 26s limit and a slow/hanging provider can never starve the fallback.
 
 function hasPlayableSources(raw) {
   return (raw?.sources ?? []).some((s) => typeof s.url === 'string');
@@ -308,114 +294,6 @@ export async function fetchProvider(p, type, id, season, episode) {
     }
   }
   return { status: lastStatus, raw: null };
-}
-
-// ---- vsembed fallback provider (vidsrc / cloudnestra clone) -------------
-// Independent of eat-peach. Used as a LAST-resort source (appended after every
-// Peachify source) so the player auto-advances to it when a Peachify CDN token
-// is dead (e.g. an expired keymi URL on a Multi-only title). Chain:
-//   1. GET vsembed.ru/embed/{movie/<tmdbId> | tv/<tmdbId>/<s>/<e>}
-//      → the "CloudStream Pro" player_iframe: //<rcpDomain>/rcp/<hash>
-//        (rcpDomain rotates — cloudnestra/cloudorchestranova/… — so read it
-//         from the page, never hardcode it).
-//   2. GET <rcpDomain>/rcp/<hash>      → `src: '/prorcp/<id>'`
-//   3. GET <rcpDomain>/prorcp/<id>     → Playerjs `file: "<m3u8> or <m3u8>"`
-// The resolved m3u8 lives on a rotating `*.space` CDN that sends `ACAO: *` and
-// needs no Referer, so we play it CLIENT-DIRECT (raw URL, no media proxy).
-const VSEMBED_BASE = 'https://vsembed.ru';
-const VSEMBED_TIMEOUT_MS = 4000;
-// Hard ceiling on the whole vsembed chain. It runs CONCURRENTLY with the providers
-// and is only awaited when they yield no mp4, so keep it <= PROVIDER_BUDGET_MS — it
-// then never extends the total beyond the provider wait, while still giving the
-// multi-hop chain (embed → rcp → CF-gated prorcp sweep, ~6-8s) room to finish.
-const VSEMBED_DEADLINE_MS = 13000;
-// cloudnestra's /prorcp endpoint is Cloudflare-protected: it 403s datacenter IPs
-// (so a direct Netlify fetch fails) and serves a small CF challenge page to most
-// proxy IPs — only a fraction of residential-proxy IPs pass. The embed/rcp hops
-// pass on most IPs, and the /prorcp LINK is portable across IPs, so we fetch
-// embed+rcp once, then fire the prorcp fetch through one-per-DISTINCT-proxy in
-// parallel and take the first that returns the real player (failures are tiny
-// ~3KB CF challenge pages, so sweeping the whole pool is cheap).
-const VSEMBED_PRORCP_MAX_PROXIES = 24;
-const VSEMBED_HEADERS = {
-  'User-Agent': UA,
-  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-  'Accept-Language': 'en-US,en;q=0.9',
-};
-
-async function vsFetch(url, referer, dispatcher) {
-  const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), VSEMBED_TIMEOUT_MS);
-  try {
-    const res = await uFetch(url, {
-      headers: { ...VSEMBED_HEADERS, ...(referer ? { Referer: referer } : {}) },
-      ...(dispatcher ? { dispatcher } : {}),
-      signal: ac.signal,
-    });
-    return res.ok ? await res.text() : null;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-// embed/rcp pass on most IPs — try direct (works in dev where there's no proxy),
-// then a couple of random proxy attempts.
-async function vsFetchPage(url, referer) {
-  let r = await vsFetch(url, referer);
-  for (let i = 0; !r && i < 2; i++) r = await vsFetch(url, referer, pickProxyAgent());
-  return r;
-}
-
-// Returns { sources, stage } — `stage` is the last hop reached, surfaced in the
-// response `debug` so a prod failure is diagnosable without guessing.
-export async function fetchVsembed(type, id, season, episode) {
-  const embedUrl =
-    type === 'tv'
-      ? `${VSEMBED_BASE}/embed/tv/${id}/${season}/${episode}`
-      : `${VSEMBED_BASE}/embed/movie/${id}`;
-  const embed = await vsFetchPage(embedUrl, VSEMBED_BASE);
-  if (!embed) return { sources: [], stage: 'embed' };
-  // CloudStream Pro = the iframe's own rcp hash (the other listed servers are
-  // separate, less reliable embed chains we don't follow).
-  const iframe = embed.match(/id="player_iframe"\s+src="\/\/([^/"]+)\/rcp\/([^"]+)"/);
-  if (!iframe) return { sources: [], stage: 'iframe' };
-  const rcpDomain = iframe[1];
-  const rcp = await vsFetchPage(`https://${rcpDomain}/rcp/${iframe[2]}`, `${VSEMBED_BASE}/`);
-  if (!rcp) return { sources: [], stage: 'rcp' };
-  const pro = rcp.match(/src:\s*'(\/prorcp\/[^']+)'/);
-  if (!pro) return { sources: [], stage: 'prorcp-link' };
-  const proUrl = `https://${rcpDomain}${pro[1]}`;
-  const proRef = `https://${rcpDomain}/`;
-  // Sweep the CF-gated prorcp across distinct proxies in parallel; first proxy
-  // that returns a player exposing a `file:` m3u8 wins. (The link is IP-portable,
-  // and trying each proxy once guarantees a small pool's good IP is included.)
-  const attempt = (dispatcher) => async () => {
-    const player = await vsFetch(proUrl, proRef, dispatcher);
-    const file = player?.match(/file:\s*"([^"]+)"/);
-    // `file` can be "<url1> or <url2>" (mirrors) — take the first valid m3u8.
-    const url = file?.[1]
-      .split(/\s+or\s+/)
-      .map((s) => s.trim())
-      .find((u) => /^https?:\/\/\S+\.m3u8/i.test(u));
-    if (!url) throw new Error('no-file');
-    return url;
-  };
-  const agents = distinctProxyAgents(VSEMBED_PRORCP_MAX_PROXIES);
-  const sweep = (agents.length ? agents : [undefined]).map((a) => attempt(a)());
-  let url;
-  try {
-    url = await Promise.any(sweep);
-  } catch {
-    return { sources: [], stage: 'prorcp-cf' };
-  }
-  return {
-    sources: [
-      { type: 'hls', url, headers: {}, quality: null, dub: null, provider: 'Bolt', direct: true },
-    ],
-    stage: 'ok',
-  };
 }
 
 // ---- xpass provider (play.xpass.top) ------------------------------------
@@ -557,7 +435,7 @@ async function fetchXpass(type, id, season, episode) {
 // Hard ceiling on the WHOLE extraction. There's a ~20s gateway in front of this
 // function (Cloudflare returns a non-JSON "error code: 502" page if we exceed it,
 // which the client then can't parse). Every internal step is already bounded
-// (provider budget 15s, vsembed 13s, all parallel) so we normally finish in
+// (provider budget 15s + xpass, all parallel) so we normally finish in
 // ~15s — but this guarantees we ALWAYS return clean JSON before the gateway
 // gives up, so the user sees "no sources" or sources, never a raw 502 timeout.
 const OVERALL_DEADLINE_MS = 18000;
@@ -605,21 +483,6 @@ async function resolveStream(type, id, season, episode) {
       fetchProvider(p, type, id, season, episode).then((r) => ({ p, r })),
     ]),
   );
-
-  // Kick vsembed off NOW, in parallel with the providers, so a slow/hanging
-  // Peachify provider (e.g. usa's holly backend hangs >30s for some titles) can't
-  // starve this last-resort chain. It's bounded by VSEMBED_DEADLINE_MS and overlaps
-  // the provider wait; we only AWAIT/use its result below when the providers yield
-  // no mp4, so healthy titles return immediately and pay no latency for it.
-  const vsembedTask = Promise.race([
-    fetchVsembed(type, id, season, episode).catch((e) => ({
-      sources: [],
-      stage: `throw:${e?.message || 'err'}`,
-    })),
-    new Promise((resolve) =>
-      setTimeout(() => resolve({ sources: [], stage: 'deadline' }), VSEMBED_DEADLINE_MS),
-    ),
-  ]);
 
   // xpass runs CONCURRENTLY with the Peachify providers and is MERGED into the
   // result (not just a fallback) — it's an independent aggregator with broad
@@ -715,19 +578,6 @@ async function resolveStream(type, id, season, episode) {
   debug.xpass =
     xpassResult.stage === 'ok' ? { sources: xpassResult.sources.length } : xpassResult.stage;
 
-  // Use the (already-running) vsembed result ONLY as a true fallback — when NO
-  // provider (Peachify or xpass) produced an mp4. It ran concurrently above, so
-  // awaiting it here adds no latency beyond its own deadline; healthy mp4 titles
-  // ignore its result and return immediately. It's appended last (providerRank 99)
-  // so the player reaches it only after any other sources.
-  if (!rawSources.some((s) => s.type === 'mp4')) {
-    const vsembedResult = await vsembedTask;
-    rawSources.push(...vsembedResult.sources);
-    debug.vsembed = vsembedResult.stage;
-  } else {
-    debug.vsembed = 'skipped(mp4)';
-  }
-
   if (rawSources.length === 0) {
     // HTTP 200 (not 502): a 502 STATUS gets swapped for Cloudflare's non-JSON
     // "error code: 502" page as it passes back through the Pages route, breaking
@@ -741,7 +591,7 @@ async function resolveStream(type, id, season, episode) {
 
   // Server-side ordering (the player re-ranks by source TYPE on top of this).
   // xpass sits just after Spider: a strong, reliable co-primary ahead of the
-  // weaker Peachify fallbacks (Wolf/Multi/Dark) and vsembed (99).
+  // weaker Peachify fallbacks (Wolf/Multi/Dark).
   const providerRank = { Iron: 0, Spider: 1, Xpass: 2, Wolf: 3, Multi: 4, Dark: 5 };
   rawSources.sort((a, b) => {
     const ra = providerRank[a.provider] ?? 99;
@@ -754,10 +604,7 @@ async function resolveStream(type, id, season, episode) {
   // chunks (Content-Length set) — required for Chrome to treat progressive mp4
   // as seekable. HLS is segment-based and doesn't need it.
   const sources = await Promise.all(
-    rawSources.map(async ({ headers, direct, ...s }) => {
-      // vsembed's CDN (pre-marked direct) sends ACAO:* and needs no Referer →
-      // load the raw URL straight from the browser, no media proxy / signing.
-      if (direct) return { ...s, direct: true };
+    rawSources.map(async ({ headers, ...s }) => {
       // CF-blocked CDN (keymi) → play it straight from the browser. Hand over the
       // RAW intake URL and let the BROWSER follow keymi's 302 to the rotating
       // `cdnNNNNN` edge: the browser's request carries a Referer (our origin),

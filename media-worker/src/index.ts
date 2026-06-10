@@ -141,16 +141,22 @@ async function fetchFollow(url: string, init: RequestInit, maxRedirects = 5): Pr
   return fetch(current, { ...init, redirect: 'manual' });
 }
 
-// Fetch with a short backoff on 429 / 5xx. CDNs (esp. goodstream for HLS) can
-// rate-limit Cloudflare's egress under load; a couple of quick retries smooths
-// transient limits.
-async function fetchRetry(url: string, init: RequestInit, attempts = 3): Promise<Response> {
+// Fetch with backoff on 429 / 5xx. Goodstream's HLS CDN (rr-svNN.letsgocdnNN)
+// frequently 503s requests from Cloudflare's egress IPs under load (all our
+// traffic funnels through a few CF IPs, which it rate-limits) — that surfaced as
+// a mid-playback segment 503 → hls.js DEMUXER_ERROR. A few spaced retries ride
+// out the transient window; we discard the failed body between tries so it can't
+// leak. (The deeper fix is provider ranking: xpass is preferred over goodstream.)
+async function fetchRetry(url: string, init: RequestInit, attempts = 4): Promise<Response> {
   let last: Response | null = null;
   for (let i = 0; i < attempts; i++) {
     const res = await fetchFollow(url, init);
     if (res.status !== 429 && res.status < 500) return res;
     last = res;
-    if (i < attempts - 1) await new Promise((r) => setTimeout(r, 250 * (i + 1)));
+    if (i < attempts - 1) {
+      res.body?.cancel().catch(() => {});
+      await new Promise((r) => setTimeout(r, 300 * (i + 1)));
+    }
   }
   return last as Response;
 }
