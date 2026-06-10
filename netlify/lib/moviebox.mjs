@@ -121,7 +121,7 @@ async function play(subjectId, detailPath, a, se, ep) {
     headers: {
       accept: 'application/json',
       cookie: playCookie(a),
-      referer: `${SITE}/movies/${detailPath}?id=${subjectId}&type=/movie/detail&detailSe=${se}&detailEp=${ep}&lang=en`,
+      referer: `${SITE}/movies/${detailPath}?id=${subjectId}&type=/movie/detail&detailSe=&detailEp=&lang=en`,
       'sec-fetch-dest': 'empty',
       'sec-fetch-mode': 'cors',
       'sec-fetch-site': 'same-origin',
@@ -258,11 +258,11 @@ export async function fetchMoviebox(type, id, season, episode) {
       ratingScore,
     };
 
-    // MovieBox uses 0-based se/ep (TMDB S1E1 → se=0, ep=0). Movies always se=0 ep=0.
+    // MovieBox TV play uses 1-based se/ep (TMDB S1E1 → se=1, ep=1). Movies always se=0 ep=0.
     const tmdbSeason = Number.parseInt(String(season ?? '1'), 10) || 1;
     const tmdbEpisode = Number.parseInt(String(episode ?? '1'), 10) || 1;
-    const se = type === 'tv' ? Math.max(0, tmdbSeason - 1) : 0;
-    const ep = type === 'tv' ? Math.max(0, tmdbEpisode - 1) : 0;
+    const se = type === 'tv' ? tmdbSeason : 0;
+    const ep = type === 'tv' ? tmdbEpisode : 0;
     debug.play = { se, ep, tmdbSeason, tmdbEpisode };
 
     const streams = await play(item.subjectId, item.detailPath, a, se, ep);
