@@ -4,7 +4,7 @@
 // adapter in the path. The adapter buffers/streams differently and was the
 // residual cause of Error 1102 a few seconds into playback; a raw Worker streams
 // `res.body` natively with constant memory and minimal CPU.
-//
+
 // See docs/STREAMING-ARCHITECTURE.md. Extraction (Netlify) mints the signed URLs
 // pointing at this Worker (MEDIA_PROXY_BASE); this Worker verifies them.
 
