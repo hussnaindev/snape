@@ -418,6 +418,142 @@ export async function fetchVsembed(type, id, season, episode) {
   };
 }
 
+// ---- xpass provider (play.xpass.top) ------------------------------------
+// A second, independent aggregator (NOT eat-peach). Simpler than Peachify: no
+// encryption, no antibot — a JWPlayer embed that inlines a `backups` array of
+// /playlist.json endpoints, each returning a `file` (HLS master or MP4) on a
+// Referer-gated CDN with NO ACAO (so it must go through our media proxy, which
+// the manifest-rewrite + #EXTM3U body-sniff already handle, incl. the .txt/.woff2
+// segment disguises). Runs CONCURRENTLY with Peachify and its results are merged.
+const XPASS_BASE = 'https://play.xpass.top';
+// The CDN rejects an EMPTY Referer (403); any non-empty one works. The media proxy
+// replays this on every upstream manifest/segment fetch (signed into the URL).
+const XPASS_CDN_HEADERS = { referer: `${XPASS_BASE}/`, 'user-agent': UA };
+const XPASS_TIMEOUT_MS = 7000;
+const XPASS_MAX_BACKENDS = 18; // cap parallel playlist.json fetches / sources
+
+async function xpassFetch(url, referer) {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), XPASS_TIMEOUT_MS);
+  try {
+    const res = await uFetch(url, {
+      headers: { 'User-Agent': UA, ...(referer ? { Referer: referer } : {}) },
+      dispatcher: pickProxyAgent(),
+      signal: ac.signal,
+    });
+    return res.ok ? await res.text() : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Extract an inline `var name=<json>` value from the embed HTML. Each assignment
+// is in its own <script> and is NOT `;`-terminated, so we scan a balanced
+// {..}/[..]/"..." span (string-aware) rather than regex to a delimiter.
+function xpassInlineVar(html, name) {
+  const at = html.search(new RegExp(`var\\s+${name}\\s*=\\s*`));
+  if (at < 0) return null;
+  let i = html.indexOf('=', at) + 1;
+  while (i < html.length && /\s/.test(html[i])) i++;
+  const open = html[i];
+  if (open === '"') {
+    const end = html.indexOf('"', i + 1);
+    return end < 0 ? null : html.slice(i + 1, end);
+  }
+  const close = open === '{' ? '}' : open === '[' ? ']' : null;
+  if (!close) return null;
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+  for (let j = i; j < html.length; j++) {
+    const c = html[j];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === '\\') esc = true;
+      else if (c === '"') inStr = false;
+    } else if (c === '"') inStr = true;
+    else if (c === open) depth++;
+    else if (c === close) {
+      depth--;
+      if (depth === 0) {
+        try {
+          return JSON.parse(html.slice(i, j + 1));
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+// Returns { sources, subtitles } with RAW CDN urls + headers (unsigned) — the
+// shared signing loop below signs them exactly like Peachify sources.
+async function fetchXpass(type, id, season, episode) {
+  const path = type === 'tv' ? `/e/tv/${id}/${season}/${episode}` : `/e/movie/${id}`;
+  const html = await xpassFetch(`${XPASS_BASE}${path}`, `${XPASS_BASE}/`);
+  if (!html) return { sources: [], subtitles: [], stage: 'embed' };
+
+  const data = xpassInlineVar(html, 'data');
+  const backups = xpassInlineVar(html, 'backups') ?? [];
+  const suburl = xpassInlineVar(html, 'suburl');
+  const entries = [];
+  if (data?.playlist) entries.push(data.playlist);
+  for (const b of backups) if (b?.url) entries.push(b.url);
+  const seen = new Set();
+  const urls = entries
+    .filter((u) => typeof u === 'string' && !seen.has(u) && seen.add(u))
+    .slice(0, XPASS_MAX_BACKENDS);
+
+  const resolved = await Promise.all(
+    urls.map(async (u) => {
+      const abs = u.startsWith('http') ? u : `${XPASS_BASE}${u}`;
+      const txt = await xpassFetch(abs, `${XPASS_BASE}${path}`);
+      if (!txt) return null;
+      try {
+        const src = JSON.parse(txt)?.playlist?.[0]?.sources?.[0];
+        if (src && typeof src.file === 'string' && /^https?:\/\//.test(src.file)) {
+          return {
+            type: src.type === 'hls' ? 'hls' : 'mp4',
+            url: src.file,
+            headers: XPASS_CDN_HEADERS,
+            quality: null,
+            // `label` is a backend name ("VID 1"/"VIP 1"), NOT an audio language —
+            // leave dub null so it doesn't pollute the player's language menu. All
+            // xpass sources collapse to one Xpass/Default/Auto entry; the player
+            // still fails over across every backend by URL.
+            dub: null,
+            provider: 'Xpass',
+          };
+        }
+      } catch {}
+      return null;
+    }),
+  );
+  const sources = resolved.filter(Boolean);
+
+  let subtitles = [];
+  if (typeof suburl === 'string') {
+    const subTxt = await xpassFetch(suburl, `${XPASS_BASE}/`);
+    if (subTxt) {
+      try {
+        const subOrigin = new URL(suburl).origin;
+        subtitles = (JSON.parse(subTxt) || [])
+          .filter((s) => typeof s?.url === 'string')
+          .map((s) => ({
+            url: s.url.startsWith('http') ? s.url : `${subOrigin}${s.url}`,
+            headers: XPASS_CDN_HEADERS,
+            label: s.label ?? s.language ?? null,
+            lang: s.language ?? s.lang ?? null,
+          }));
+      } catch {}
+    }
+  }
+  return { sources, subtitles, stage: 'ok' };
+}
+
 // Hard ceiling on the WHOLE extraction. There's a ~20s gateway in front of this
 // function (Cloudflare returns a non-JSON "error code: 502" page if we exceed it,
 // which the client then can't parse). Every internal step is already bounded
@@ -484,6 +620,15 @@ async function resolveStream(type, id, season, episode) {
       setTimeout(() => resolve({ sources: [], stage: 'deadline' }), VSEMBED_DEADLINE_MS),
     ),
   ]);
+
+  // xpass runs CONCURRENTLY with the Peachify providers and is MERGED into the
+  // result (not just a fallback) — it's an independent aggregator with broad
+  // coverage. Bounded by its own per-fetch timeouts; fail-open to empty.
+  const xpassTask = fetchXpass(type, id, season, episode).catch((e) => ({
+    sources: [],
+    subtitles: [],
+    stage: `throw:${e?.message || 'err'}`,
+  }));
 
   // Collect one provider's playable sources (mp4 first — range-seekable and more
   // reliable — then hls as an auto-advance fallback), or null if it has none.
@@ -561,12 +706,20 @@ async function resolveStream(type, id, season, episode) {
     }
   }
 
-  // Use the (already-running) vsembed result ONLY as a true fallback — when the
-  // Peachify providers produced no mp4 (dead/weak, or all timed out/hung). It ran
-  // concurrently above, so awaiting it here adds no latency beyond its own
-  // deadline; healthy mp4 titles ignore its result and return immediately. It's
-  // appended last (providerRank 99) so the player reaches it only after any
-  // Peachify sources, or uses it as the sole source when Peachify found nothing.
+  // Merge the (already-running) xpass sources alongside Peachify's. Independent
+  // aggregator, broad coverage — appended so the player has both to fail over
+  // across; the player ranks by type (mp4 / proxied-hls) so the best plays first.
+  const xpassResult = await xpassTask;
+  rawSources.push(...xpassResult.sources);
+  if (rawSubs.length === 0 && xpassResult.subtitles.length > 0) rawSubs = xpassResult.subtitles;
+  debug.xpass =
+    xpassResult.stage === 'ok' ? { sources: xpassResult.sources.length } : xpassResult.stage;
+
+  // Use the (already-running) vsembed result ONLY as a true fallback — when NO
+  // provider (Peachify or xpass) produced an mp4. It ran concurrently above, so
+  // awaiting it here adds no latency beyond its own deadline; healthy mp4 titles
+  // ignore its result and return immediately. It's appended last (providerRank 99)
+  // so the player reaches it only after any other sources.
   if (!rawSources.some((s) => s.type === 'mp4')) {
     const vsembedResult = await vsembedTask;
     rawSources.push(...vsembedResult.sources);
@@ -586,7 +739,10 @@ async function resolveStream(type, id, season, episode) {
     );
   }
 
-  const providerRank = Object.fromEntries(PROVIDERS.map((p, i) => [p.label, i]));
+  // Server-side ordering (the player re-ranks by source TYPE on top of this).
+  // xpass sits just after Spider: a strong, reliable co-primary ahead of the
+  // weaker Peachify fallbacks (Wolf/Multi/Dark) and vsembed (99).
+  const providerRank = { Iron: 0, Spider: 1, Xpass: 2, Wolf: 3, Multi: 4, Dark: 5 };
   rawSources.sort((a, b) => {
     const ra = providerRank[a.provider] ?? 99;
     const rb = providerRank[b.provider] ?? 99;
