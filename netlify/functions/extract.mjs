@@ -238,6 +238,131 @@ async function fetchProvider(p, type, id, season, episode) {
   return { status: lastStatus, raw: null };
 }
 
+// ---- xpass provider (play.xpass.top) ------------------------------------
+// Independent aggregator (NOT eat-peach). Simpler than Peachify: no encryption,
+// no antibot — a JWPlayer embed that inlines a `backups` array of /playlist.json
+// endpoints, each returning a `file` (HLS master or MP4) on a Referer-gated CDN
+// with NO ACAO (must go through our media proxy). Fetched concurrently with
+// Peachify and appended after Peachify sources — used when Peachify finds nothing,
+// and as playback fallback when Peachify URLs fail in the player.
+const XPASS_BASE = 'https://play.xpass.top';
+const XPASS_CDN_HEADERS = { referer: `${XPASS_BASE}/`, 'user-agent': UA };
+const XPASS_TIMEOUT_MS = 7000;
+const XPASS_MAX_BACKENDS = 18;
+
+async function xpassFetch(url, referer) {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), XPASS_TIMEOUT_MS);
+  try {
+    const res = await uFetch(url, {
+      headers: { 'User-Agent': UA, ...(referer ? { Referer: referer } : {}) },
+      dispatcher: pickProxyAgent(),
+      signal: ac.signal,
+    });
+    return res.ok ? await res.text() : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function xpassInlineVar(html, name) {
+  const at = html.search(new RegExp(`var\\s+${name}\\s*=\\s*`));
+  if (at < 0) return null;
+  let i = html.indexOf('=', at) + 1;
+  while (i < html.length && /\s/.test(html[i])) i++;
+  const open = html[i];
+  if (open === '"') {
+    const end = html.indexOf('"', i + 1);
+    return end < 0 ? null : html.slice(i + 1, end);
+  }
+  const close = open === '{' ? '}' : open === '[' ? ']' : null;
+  if (!close) return null;
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+  for (let j = i; j < html.length; j++) {
+    const c = html[j];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === '\\') esc = true;
+      else if (c === '"') inStr = false;
+    } else if (c === '"') inStr = true;
+    else if (c === open) depth++;
+    else if (c === close) {
+      depth--;
+      if (depth === 0) {
+        try {
+          return JSON.parse(html.slice(i, j + 1));
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+async function fetchXpass(type, id, season, episode) {
+  const path = type === 'tv' ? `/e/tv/${id}/${season}/${episode}` : `/e/movie/${id}`;
+  const html = await xpassFetch(`${XPASS_BASE}${path}`, `${XPASS_BASE}/`);
+  if (!html) return { sources: [], subtitles: [], stage: 'embed' };
+
+  const data = xpassInlineVar(html, 'data');
+  const backups = xpassInlineVar(html, 'backups') ?? [];
+  const suburl = xpassInlineVar(html, 'suburl');
+  const entries = [];
+  if (data?.playlist) entries.push(data.playlist);
+  for (const b of backups) if (b?.url) entries.push(b.url);
+  const seen = new Set();
+  const urls = entries
+    .filter((u) => typeof u === 'string' && !seen.has(u) && seen.add(u))
+    .slice(0, XPASS_MAX_BACKENDS);
+
+  const resolved = await Promise.all(
+    urls.map(async (u) => {
+      const abs = u.startsWith('http') ? u : `${XPASS_BASE}${u}`;
+      const txt = await xpassFetch(abs, `${XPASS_BASE}${path}`);
+      if (!txt) return null;
+      try {
+        const src = JSON.parse(txt)?.playlist?.[0]?.sources?.[0];
+        if (src && typeof src.file === 'string' && /^https?:\/\//.test(src.file)) {
+          return {
+            type: src.type === 'hls' ? 'hls' : 'mp4',
+            url: src.file,
+            headers: XPASS_CDN_HEADERS,
+            quality: null,
+            dub: null,
+            provider: 'Xpass',
+          };
+        }
+      } catch {}
+      return null;
+    }),
+  );
+  const sources = resolved.filter(Boolean);
+
+  let subtitles = [];
+  if (typeof suburl === 'string') {
+    const subTxt = await xpassFetch(suburl, `${XPASS_BASE}/`);
+    if (subTxt) {
+      try {
+        const subOrigin = new URL(suburl).origin;
+        subtitles = (JSON.parse(subTxt) || [])
+          .filter((s) => typeof s?.url === 'string')
+          .map((s) => ({
+            url: s.url.startsWith('http') ? s.url : `${subOrigin}${s.url}`,
+            headers: XPASS_CDN_HEADERS,
+            label: s.label ?? s.language ?? null,
+            lang: s.language ?? s.lang ?? null,
+          }));
+      } catch {}
+    }
+  }
+  return { sources, subtitles, stage: 'ok' };
+}
+
 export default async (req) => {
   const sp = new URL(req.url).searchParams;
   const type = sp.get('type') === 'tv' ? 'tv' : 'movie';
@@ -256,6 +381,12 @@ export default async (req) => {
   /** @type {{ provider: string, sources: typeof rawSources, subtitles: typeof rawSubs } | null} */
   let hlsFallback = null;
   let hlsFallbackScore = -1;
+
+  const xpassTask = fetchXpass(type, id, season, episode).catch((e) => ({
+    sources: [],
+    subtitles: [],
+    stage: `throw:${e?.message || 'err'}`,
+  }));
 
   // Walk Iron → Spider → Wolf → Multi → Dark. Collect mp4 from every provider;
   // only fall back to hls (goodstream) when none of them offer mp4.
@@ -297,11 +428,22 @@ export default async (req) => {
     debug.reason = 'hls-fallback';
   }
 
+  const xpassResult = await xpassTask;
+  const peachifyCount = rawSources.length;
+  rawSources.push(...xpassResult.sources);
+  if (rawSubs.length === 0 && xpassResult.subtitles.length > 0) rawSubs = xpassResult.subtitles;
+  debug.xpass =
+    xpassResult.stage === 'ok' ? { sources: xpassResult.sources.length } : xpassResult.stage;
+  if (peachifyCount === 0 && xpassResult.sources.length > 0) {
+    debug.winner = 'Xpass';
+    debug.reason = 'xpass-fallback';
+  }
+
   if (rawSources.length === 0) {
     return Response.json({ ok: false, error: 'No sources found', debug }, { status: 502 });
   }
 
-  const providerRank = Object.fromEntries(PROVIDERS.map((p, i) => [p.label, i]));
+  const providerRank = { ...Object.fromEntries(PROVIDERS.map((p, i) => [p.label, i])), Xpass: 99 };
   rawSources.sort((a, b) => {
     const ra = providerRank[a.provider] ?? 99;
     const rb = providerRank[b.provider] ?? 99;
