@@ -232,11 +232,9 @@ async function signedMediaUrl(absoluteUrl, headers) {
 const ATTEMPT_TIMEOUT_MS = 20000; // > usa's ~11s response, with headroom
 const PROVIDER_BUDGET_MS = 20000; // total per provider; each attempt is capped to
 //                                   the remaining budget so retries can't overrun it.
-// Overall wall-clock budget for the whole handler. A provider can burn up to its
-// 20s, and vsembed runs sequentially after — so vsembed is given only the time
-// left under this budget (and skipped if there's none), keeping total < Netlify's
-// 26s function limit with margin.
-const HANDLER_BUDGET_MS = 20000;
+// vsembed runs CONCURRENTLY with the providers (see handler) — it overlaps the
+// up-to-20s provider wait instead of adding to it, so total stays under Netlify's
+// 26s limit and a slow/hanging provider can never starve the fallback.
 
 function hasPlayableSources(raw) {
   return (raw?.sources ?? []).some((s) => typeof s.url === 'string');
@@ -345,10 +343,11 @@ async function fetchProvider(p, type, id, season, episode) {
 // needs no Referer, so we play it CLIENT-DIRECT (raw URL, no media proxy).
 const VSEMBED_BASE = 'https://vsembed.ru';
 const VSEMBED_TIMEOUT_MS = 4000;
-// Hard ceiling on the whole vsembed chain. It runs sequentially after the
-// Peachify providers (only when none of them produced an mp4), so it's kept tight
-// to keep provider-budget (~20s) + vsembed under Netlify's 26s function limit.
-const VSEMBED_DEADLINE_MS = 4000;
+// Hard ceiling on the whole vsembed chain. It now runs CONCURRENTLY with the
+// providers (which take up to PROVIDER_BUDGET_MS), so this can be generous without
+// adding to the total — give the multi-hop chain (embed → rcp → CF-gated prorcp
+// sweep, ~6-8s when it succeeds) real room, while staying under the providers' 20s.
+const VSEMBED_DEADLINE_MS = 16000;
 // cloudnestra's /prorcp endpoint is Cloudflare-protected: it 403s datacenter IPs
 // (so a direct Netlify fetch fails) and serves a small CF challenge page to most
 // proxy IPs — only a fraction of residential-proxy IPs pass. The embed/rcp hops
@@ -434,7 +433,6 @@ async function fetchVsembed(type, id, season, episode) {
 }
 
 export default async (req) => {
-  const startedAt = Date.now();
   const sp = new URL(req.url).searchParams;
   const type = sp.get('type') === 'tv' ? 'tv' : 'movie';
   const id = sp.get('id');
@@ -455,6 +453,16 @@ export default async (req) => {
   const tasks = new Map(
     PROVIDERS.map((p) => [p.label, fetchProvider(p, type, id, season, episode).then((r) => ({ p, r }))]),
   );
+
+  // Kick vsembed off NOW, in parallel with the providers, so a slow/hanging
+  // Peachify provider (e.g. usa's holly backend hangs >30s for some titles) can't
+  // starve this last-resort chain. It's bounded by VSEMBED_DEADLINE_MS and overlaps
+  // the provider wait; we only AWAIT/use its result below when the providers yield
+  // no mp4, so healthy titles return immediately and pay no latency for it.
+  const vsembedTask = Promise.race([
+    fetchVsembed(type, id, season, episode).catch((e) => ({ sources: [], stage: `throw:${e?.message || 'err'}` })),
+    new Promise((resolve) => setTimeout(() => resolve({ sources: [], stage: 'deadline' }), VSEMBED_DEADLINE_MS)),
+  ]);
 
   // Collect one provider's playable sources (mp4 first — range-seekable and more
   // reliable — then hls as an auto-advance fallback), or null if it has none.
@@ -532,26 +540,16 @@ export default async (req) => {
     }
   }
 
-  // vsembed runs ONLY as a true fallback — when Peachify has no mp4 (dead/weak,
-  // e.g. a Multi-only title whose keymi token is dead). Healthy titles (mp4
-  // present) skip it entirely, so they're never delayed by the CF-gated, possibly
-  // slow vsembed chain. Appended last so the player reaches it only after the
+  // Use the (already-running) vsembed result ONLY as a true fallback — when the
+  // Peachify providers produced no mp4 (dead/weak, or all timed out/hung). It ran
+  // concurrently above, so awaiting it here adds no latency beyond its own
+  // deadline; healthy mp4 titles ignore its result and return immediately. It's
+  // appended last (providerRank 99) so the player reaches it only after any
   // Peachify sources, or uses it as the sole source when Peachify found nothing.
-  // It runs sequentially after the (up-to-20s) providers, so it only gets the time
-  // left under the handler budget — when a slow provider already ate it, vsembed is
-  // skipped so the response can't overrun Netlify's 26s limit.
   if (!rawSources.some((s) => s.type === 'mp4')) {
-    const vsBudget = Math.min(VSEMBED_DEADLINE_MS, HANDLER_BUDGET_MS - (Date.now() - startedAt));
-    if (vsBudget < 800) {
-      debug.vsembed = 'no-budget';
-    } else {
-      const vsembedResult = await Promise.race([
-        fetchVsembed(type, id, season, episode).catch((e) => ({ sources: [], stage: `throw:${e?.message || 'err'}` })),
-        new Promise((resolve) => setTimeout(() => resolve({ sources: [], stage: 'deadline' }), vsBudget)),
-      ]);
-      rawSources.push(...vsembedResult.sources);
-      debug.vsembed = vsembedResult.stage;
-    }
+    const vsembedResult = await vsembedTask;
+    rawSources.push(...vsembedResult.sources);
+    debug.vsembed = vsembedResult.stage;
   } else {
     debug.vsembed = 'skipped(mp4)';
   }
