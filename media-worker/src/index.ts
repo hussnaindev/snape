@@ -109,14 +109,13 @@ function parseRange(h: string | null): { start: number; end: number | null } {
   return { start: Number(m[1]), end: m[2] ? Number(m[2]) : null };
 }
 
-async function serveAcceleratedMp4(
-  target: string,
-  baseHeaders: Record<string, string>,
-  rangeHeader: string,
-): Promise<Response> {
+async function serveAcceleratedMp4(selfUrl: string, rangeHeader: string): Promise<Response> {
   const { start, end: reqEnd } = parseRange(rangeHeader);
+  // Each sub-range is fetched from our OWN endpoint (v stripped → plain path), so
+  // it runs as a separate Worker invocation with its own CDN connection. The
+  // signed u/h/s still verify (signature is over u+h only, not the range or v).
   const fetchChunk = (s: number, e: number) =>
-    fetchRetry(target, { headers: { ...baseHeaders, Range: `bytes=${s}-${e}` } }, 2);
+    fetchRetry(selfUrl, { headers: { Range: `bytes=${s}-${e}` } }, 2);
 
   // First sub-chunk also reveals the total size + whether ranges are honored.
   const firstEnd = reqEnd != null ? Math.min(reqEnd, start + ACCEL_CHUNK - 1) : start + ACCEL_CHUNK - 1;
@@ -319,12 +318,18 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
 
   const range = req.headers.get('range');
 
-  // Progressive MP4 (Iron/MovieBox): the CDN throttles each connection to
-  // ~6 Mbps, below the 1080p bitrate, so a single-connection download buffers.
-  // Serve it via parallel sub-ranges to multiply throughput. Only mp4 sources
-  // carry v=1 (HLS segments/manifests don't), so this never touches HLS.
+  // Progressive MP4 (MovieBox): the CDN throttles each TCP connection well below
+  // the video bitrate. Cloudflare coalesces same-host subrequests within ONE
+  // invocation onto a single connection, so internal parallelism can't beat the
+  // throttle — but SEPARATE invocations each get their own connection and
+  // aggregate (measured ~8x). So we fan the window out across self-calls: each
+  // sub-range is fetched from our own endpoint with v stripped, which re-enters
+  // as a fresh invocation taking the plain single-fetch path (no recursion).
+  // Only mp4 sources carry v=1 (HLS segments/manifests don't) → never HLS.
   if (sp.get('v') === '1' && range) {
-    return serveAcceleratedMp4(target.toString(), upstreamHeaders, range);
+    const selfUrl = new URL(url);
+    selfUrl.searchParams.delete('v');
+    return serveAcceleratedMp4(selfUrl.toString(), range);
   }
 
   // ts segments + mp4 without a Range: forward Range verbatim and stream through.
