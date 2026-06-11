@@ -21,6 +21,10 @@ import {
 
 interface Env {
   MEDIA_PROXY_SECRET: string;
+  // Service binding to this same Worker (declared in wrangler.toml). Used by the
+  // MP4 accelerator to fan sub-ranges across separate invocations — a Worker
+  // can't fetch its own workers.dev URL (it 404s), but a service binding can.
+  SELF?: Fetcher;
 }
 
 // Default upstream headers when a signed URL carries none of its own.
@@ -109,13 +113,20 @@ function parseRange(h: string | null): { start: number; end: number | null } {
   return { start: Number(m[1]), end: m[2] ? Number(m[2]) : null };
 }
 
-async function serveAcceleratedMp4(selfUrl: string, rangeHeader: string): Promise<Response> {
+async function serveAcceleratedMp4(
+  self: Fetcher,
+  selfUrl: string,
+  rangeHeader: string,
+): Promise<Response> {
   const { start, end: reqEnd } = parseRange(rangeHeader);
-  // Each sub-range is fetched from our OWN endpoint (v stripped → plain path), so
-  // it runs as a separate Worker invocation with its own CDN connection. The
-  // signed u/h/s still verify (signature is over u+h only, not the range or v).
+  // Each sub-range is fetched via the SELF service binding (v stripped → plain
+  // path), so it runs as a separate Worker invocation with its own CDN
+  // connection — Cloudflare coalesces same-host subrequests within one
+  // invocation, so this is the only way to actually parallelize. The inner
+  // invocation retries the CDN itself; the signed u/h/s still verify (signature
+  // is over u+h only, not the range or v).
   const fetchChunk = (s: number, e: number) =>
-    fetchRetry(selfUrl, { headers: { Range: `bytes=${s}-${e}` } }, 2);
+    self.fetch(selfUrl, { headers: { Range: `bytes=${s}-${e}` } });
 
   // First sub-chunk also reveals the total size + whether ranges are honored.
   const firstEnd = reqEnd != null ? Math.min(reqEnd, start + ACCEL_CHUNK - 1) : start + ACCEL_CHUNK - 1;
@@ -326,10 +337,12 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
   // sub-range is fetched from our own endpoint with v stripped, which re-enters
   // as a fresh invocation taking the plain single-fetch path (no recursion).
   // Only mp4 sources carry v=1 (HLS segments/manifests don't) → never HLS.
-  if (sp.get('v') === '1' && range) {
+  // Falls through to the plain single-fetch path if the SELF binding is absent,
+  // so a missing binding degrades to single-connection rather than failing.
+  if (sp.get('v') === '1' && range && env.SELF) {
     const selfUrl = new URL(url);
     selfUrl.searchParams.delete('v');
-    return serveAcceleratedMp4(selfUrl.toString(), range);
+    return serveAcceleratedMp4(env.SELF, selfUrl.toString(), range);
   }
 
   // ts segments + mp4 without a Range: forward Range verbatim and stream through.
