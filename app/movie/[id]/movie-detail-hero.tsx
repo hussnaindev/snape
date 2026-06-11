@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { usePlayerControls } from '@/lib/player-controls-context';
 
-import { PeachifyPlayer, prefetchMoviebox, prefetchStream } from '@/components/peachify-player';
+import { VideoPlayer, prefetchStream } from '@/components/video-player';
 import { ExpandableText } from '@/components/ui/expandable-text';
 import { RatingBadge } from '@/components/ui/rating-badge';
 import { TagChip } from '@/components/ui/tag-chip';
@@ -154,7 +154,7 @@ export function MovieDetailHero({
     };
   }, [showVideo, trailerKey, playerActive]);
 
-  // peachify player: fade in after mount
+  // video player: fade in after mount
   useEffect(() => {
     if (!playerActive) {
       setPlayerVisible(false);
@@ -197,9 +197,8 @@ export function MovieDetailHero({
     setMuted((m) => !m);
   }
 
-  // MovieBox first (fast), full extract in parallel — Watch reuses warmed cache.
+  // Warm the MovieBox source cache so Watch starts instantly from cache.
   useEffect(() => {
-    prefetchMoviebox('movie', movieId);
     prefetchStream('movie', movieId);
   }, [movieId]);
 
@@ -281,7 +280,7 @@ export function MovieDetailHero({
 
         {/* extracted-source player */}
         {playerActive && (
-          <PeachifyPlayer
+          <VideoPlayer
             type="movie"
             tmdbId={movieId}
             title={title}

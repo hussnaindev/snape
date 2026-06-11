@@ -13,9 +13,9 @@ import {
 export const runtime = 'edge';
 
 // Default upstream headers when a signed URL carries none of its own.
-const PEACHIFY_REFERER = 'https://peachify.top/';
-const PEACHIFY_UA =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
+const DEFAULT_REFERER = 'https://movie-box.co/';
+const DEFAULT_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -173,11 +173,11 @@ export async function GET(req: NextRequest) {
   }
 
   // Apply the per-source upstream headers the CDN requires (referer/origin/UA),
-  // falling back to the Peachify defaults.
+  // falling back to the MovieBox defaults.
   const cdnHeaders = decodeHeaders(headersBlob);
   const upstreamHeaders: Record<string, string> = {
-    Referer: cdnHeaders.referer ?? PEACHIFY_REFERER,
-    'User-Agent': cdnHeaders['user-agent'] ?? PEACHIFY_UA,
+    Referer: cdnHeaders.referer ?? DEFAULT_REFERER,
+    'User-Agent': cdnHeaders['user-agent'] ?? DEFAULT_UA,
   };
   if (cdnHeaders.origin) upstreamHeaders.Origin = cdnHeaders.origin;
   const range = req.headers.get('range');

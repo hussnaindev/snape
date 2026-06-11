@@ -1,4 +1,4 @@
-// Ensures only one PeachifyPlayer instance plays media at a time app-wide.
+// Ensures only one VideoPlayer instance plays media at a time app-wide.
 let stopActive: (() => void) | null = null;
 
 function pauseOtherVideos(keep?: HTMLVideoElement | null): void {

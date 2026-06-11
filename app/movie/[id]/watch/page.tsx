@@ -1,4 +1,4 @@
-import { PeachifyPlayer } from '@/components/peachify-player';
+import { VideoPlayer } from '@/components/video-player';
 import { WatchHistoryRecorder } from '@/components/watch-history-recorder';
 import { getMovieDetail } from '@/lib/tmdb';
 import type { Viewport } from 'next';
@@ -29,7 +29,7 @@ export default async function WatchPage({ params }: Props) {
   return (
     <div className="fixed inset-0 bg-black">
       <div className="absolute inset-0 player-safe-area">
-        <PeachifyPlayer
+        <VideoPlayer
           type="movie"
           tmdbId={movieId}
           {...(movie?.title ? { title: movie.title } : {})}

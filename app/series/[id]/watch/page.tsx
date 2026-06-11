@@ -1,7 +1,7 @@
 import type { Viewport } from 'next';
 import { notFound } from 'next/navigation';
 
-import { PeachifyPlayer } from '@/components/peachify-player';
+import { VideoPlayer } from '@/components/video-player';
 import { WatchHistoryRecorder } from '@/components/watch-history-recorder';
 import { getSeriesDetail, getSeriesSeason } from '@/lib/tmdb';
 
@@ -49,7 +49,7 @@ export default async function SeriesWatchPage({ params, searchParams }: Props) {
   return (
     <div className="fixed inset-0 bg-black">
       <div className="absolute inset-0 player-safe-area">
-        <PeachifyPlayer
+        <VideoPlayer
           key={`${resolvedSeasonNum}-${resolvedEpisodeNum}`}
           type="tv"
           tmdbId={seriesId}

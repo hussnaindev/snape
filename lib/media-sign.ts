@@ -4,10 +4,10 @@
 const MEDIA_PROXY_SECRET = process.env.MEDIA_PROXY_SECRET ?? 'snape-media-proxy-dev-secret';
 
 // HMAC-SHA256 signing for media-proxy URLs. The proxy forwards to arbitrary
-// upstream CDN hosts (after unwrapping Peachify's proxy layers), so instead of
-// a host allowlist we sign every URL we mint — plus the per-source upstream
-// headers it must send — and verify on the way in. This keeps the endpoint
-// from being usable as an open proxy.
+// upstream CDN hosts (MovieBox's referer-gated CDNs), so instead of a host
+// allowlist we sign every URL we mint — plus the per-source upstream headers
+// it must send — and verify on the way in. This keeps the endpoint from being
+// usable as an open proxy.
 
 export type UpstreamHeaders = Record<string, string>;
 

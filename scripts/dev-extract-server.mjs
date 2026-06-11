@@ -1,5 +1,5 @@
 // Local-only extract server for `bun run dev`. Cloudflare Pages can't run
-// eat-peach extraction (needs Node + residential HTTP proxy), so this stays
+// MovieBox extraction (needs Node + residential HTTP proxy), so this stays
 // out of the Next.js app bundle.
 //
 // Listens on EXTRACT_PORT (default 8787). Point NETLIFY_EXTRACT_URL at:
@@ -14,7 +14,7 @@ const PORT = Number(process.env.EXTRACT_PORT ?? 8787);
 const proxies = proxyCount();
 if (proxies === 0) {
   console.warn(
-    '[dev-extract] PROXY_LIST is empty — eat-peach will 403. Copy the value from Netlify into .env.local, or point NETLIFY_EXTRACT_URL at your deployed Netlify function.',
+    '[dev-extract] PROXY_LIST is empty — MovieBox will 403. Copy the value from Netlify into .env.local, or point NETLIFY_EXTRACT_URL at your deployed Netlify function.',
   );
 } else {
   console.log(`[dev-extract] ${proxies} proxies loaded`);

@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePlayerControls } from '@/lib/player-controls-context';
 
 import { AddCollectionToWatchlistButton } from '@/components/add-collection-to-watchlist-button';
-import { PeachifyPlayer } from '@/components/peachify-player';
+import { VideoPlayer } from '@/components/video-player';
 import { ExpandableText } from '@/components/ui/expandable-text';
 import { TagChip } from '@/components/ui/tag-chip';
 import { WatchHistoryRecorder } from '@/components/watch-history-recorder';
@@ -159,7 +159,7 @@ export function CollectionDetailHero({
         </div>
 
         {playerActive && firstMovieId && (
-          <PeachifyPlayer
+          <VideoPlayer
             type="movie"
             tmdbId={firstMovieId}
             title={collection.name}
