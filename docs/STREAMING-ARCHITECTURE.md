@@ -61,6 +61,12 @@ Players are wired into: `app/movie/[id]/movie-detail-hero.tsx`,
 `app/series/[id]/series-detail-hero.tsx`, `app/movie/[id]/watch/page.tsx`,
 `app/series/[id]/watch/page.tsx`, `app/collection/[id]/collection-detail-hero.tsx`.
 
+> **MovieBox is a separate, primary source** resolved by `netlify/lib/moviebox.mjs`
+> (called from `extract.mjs`), talking **directly** to MovieBox's own backends —
+> not the same as the Peachify `moviebox` provider label below (which goes through
+> `eat-peach.sbs`). For debugging the direct MovieBox source — search/match/play,
+> the signed mobile BFF, and failure modes — see **`docs/MOVIEBOX.md`**.
+
 ---
 
 ## The Peachify backend (reverse-engineered)

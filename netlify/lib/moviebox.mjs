@@ -227,6 +227,42 @@ async function search(keyword, a, subjectType, debug) {
   return webSearch(keyword, a, subjectType);
 }
 
+/**
+ * The mobile BFF returns detailUrl == "" for every hit, so mobile-sourced items
+ * carry no detailPath. The web play endpoint REQUIRES detailPath to resolve a TV
+ * episode (movies tolerate an empty detailPath and resolve on subjectId alone, so
+ * they play regardless — but series return code:0 with zero streams without it).
+ * Backfill the missing detailPath from the web index, keyed by the subjectId that
+ * both backends share. Titles the web index delists won't be found here; those are
+ * almost always movies, which don't need detailPath anyway.
+ * @param {Array<{ item: { subjectId?: string, detailPath?: string } }>} variants
+ * @param {1 | 2} subjectType
+ */
+async function backfillDetailPaths(variants, keyword, a, subjectType, debug) {
+  const missing = variants.filter((v) => v.item.subjectId && !v.item.detailPath);
+  if (missing.length === 0) return;
+  let webItems = [];
+  try {
+    webItems = await webSearch(keyword, a, subjectType);
+  } catch (e) {
+    if (debug) debug.detailPathBackfillError = e instanceof Error ? e.message : String(e);
+    return;
+  }
+  const byId = new Map();
+  for (const w of webItems) {
+    if (w.subjectId && w.detailPath) byId.set(String(w.subjectId), w.detailPath);
+  }
+  let filled = 0;
+  for (const v of missing) {
+    const dp = byId.get(String(v.item.subjectId));
+    if (dp) {
+      v.item.detailPath = dp;
+      filled++;
+    }
+  }
+  if (debug) debug.detailPathBackfill = { missing: missing.length, filled };
+}
+
 async function play(subjectId, detailPath, a, se, ep) {
   const url = new URL(`${SITE}/wefeed-h5api-bff/subject/play`);
   url.searchParams.set('subjectId', subjectId);
@@ -353,12 +389,16 @@ export async function fetchMoviebox(type, id, season, episode) {
     debug.searchHits = items.length;
     debug.subjectType = subjectType;
 
+    let matchedKeyword = tmdb.title;
     let match = pickBestMovieboxMatch(tmdb, items);
     if (!match && tmdb.originalTitle) {
       const altItems = await search(tmdb.originalTitle, a, subjectType, debug);
       debug.altSearchHits = altItems.length;
       match = pickBestMovieboxMatch(tmdb, altItems);
-      if (match) items = altItems;
+      if (match) {
+        items = altItems;
+        matchedKeyword = tmdb.originalTitle;
+      }
     }
     if (!match) {
       debug.stage = 'no-match';
@@ -375,6 +415,9 @@ export async function fetchMoviebox(type, id, season, episode) {
       title: v.item.title,
       score: v.score,
     }));
+
+    // Mobile-sourced variants lack detailPath; fill it from the web index (needed for TV play).
+    await backfillDetailPaths(variants, matchedKeyword, a, subjectType, debug);
 
     // MovieBox TV play uses 1-based se/ep (TMDB S1E1 → se=1, ep=1). Movies always se=0 ep=0.
     const tmdbSeason = Number.parseInt(String(season ?? '1'), 10) || 1;
