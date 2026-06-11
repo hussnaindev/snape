@@ -401,13 +401,19 @@ export function PeachifyPlayer({
     const initKey = streamKey(type, tmdbId, season, episode);
     if (sourcesInitKeyRef.current === initKey) return;
     sourcesInitKeyRef.current = initKey;
-    const first = bestSource(sources)!;
+    const best = bestSource(sources);
+    if (!best) return;
+    // Default to the original-audio track when one is present; otherwise the
+    // best overall source. Other audio tracks stay switchable via the menu.
+    const origLang = languages.find((l) => /original|orig/i.test(l));
+    const preferLang = origLang ?? dubLabel(best);
+    const first = bestSource(sources.filter((s) => dubLabel(s) === preferLang)) ?? best;
     setLang(dubLabel(first));
     setQuality(qLabel(first));
     setServer(first.provider);
     const en = subs.findIndex((s) => /^en|english/i.test(s.lang ?? '') || /english/i.test(s.label ?? ''));
     setSubIndex(en);
-  }, [sources, subs, type, tmdbId, season, episode]);
+  }, [sources, subs, type, tmdbId, season, episode, languages]);
 
   useEffect(() => {
     if (sources.length === 0 || !lang) return;
