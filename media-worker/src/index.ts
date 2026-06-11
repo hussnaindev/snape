@@ -24,9 +24,9 @@ interface Env {
 }
 
 // Default upstream headers when a signed URL carries none of its own.
-const PEACHIFY_REFERER = 'https://peachify.top/';
-const PEACHIFY_UA =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
+const DEFAULT_REFERER = 'https://movie-box.co/';
+const DEFAULT_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36';
 
 const CORS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
@@ -90,27 +90,23 @@ async function fetchRetry(url: string, init: RequestInit, attempts = 3): Promise
 }
 
 // --- Parallel range accelerator for progressive MP4 -----------------------
-// The MovieBox/Iron CDN throttles each TCP connection to ~6 Mbps — below the
-// 1080p bitrate (~9 Mbps) — so a single-connection progressive download stalls.
-// The CDN *does* allow parallel connections (measured ~3-4x aggregate). So we
-// serve each window as several parallel sub-ranges, read them concurrently, and
-// emit them in order — feeding the browser's one connection at the aggregate
-// rate. Window is bounded so per-response memory/subrequests stay small; the
-// browser requests the next window as it plays (standard 206 byte-serving).
+// MovieBox's CDN throttles each TCP connection to ~130 KB/s — far below the
+// video bitrate — but allows many parallel connections from the same egress IP,
+// and they aggregate ~linearly (measured: 8 conns ≈ 10 Mbps, 12 ≈ 14 Mbps). So
+// we serve each window as a sliding pipeline of small sub-ranges fetched
+// concurrently and emitted in strict byte order, feeding the browser's single
+// connection at the aggregate rate. Small chunks keep head-of-line latency low:
+// the old 4 MB lead chunk streamed at one connection's rate (~1 Mbps) and timed
+// out the whole window. The window is bounded so per-response memory + subrequest
+// count stay small; the browser requests the next window as it plays.
 const ACCEL_WINDOW = 16 * 1024 * 1024; // bytes served per response
-const ACCEL_SUBCHUNK = 4 * 1024 * 1024; // size of each parallel sub-range (→ 4 in flight)
+const ACCEL_CHUNK = 1 * 1024 * 1024; // size of each parallel sub-range
+const ACCEL_CONCURRENCY = 8; // sub-ranges in flight at once (→ ~8x throughput)
 
 function parseRange(h: string | null): { start: number; end: number | null } {
   const m = /bytes=(\d+)-(\d*)/.exec(h ?? '');
   if (!m) return { start: 0, end: null };
   return { start: Number(m[1]), end: m[2] ? Number(m[2]) : null };
-}
-
-interface Part {
-  chunks: Uint8Array[];
-  done: boolean;
-  err: unknown;
-  wake: (() => void) | null;
 }
 
 async function serveAcceleratedMp4(
@@ -119,14 +115,14 @@ async function serveAcceleratedMp4(
   rangeHeader: string,
 ): Promise<Response> {
   const { start, end: reqEnd } = parseRange(rangeHeader);
-  const fetchRange = (s: number, e: number) =>
-    fetchRetry(target, { headers: { ...baseHeaders, Range: `bytes=${s}-${e}` }, redirect: 'follow' }, 2);
+  const fetchChunk = (s: number, e: number) =>
+    fetchRetry(target, { headers: { ...baseHeaders, Range: `bytes=${s}-${e}` } }, 2);
 
   // First sub-chunk also reveals the total size + whether ranges are honored.
-  const firstReqEnd = reqEnd != null ? Math.min(reqEnd, start + ACCEL_SUBCHUNK - 1) : start + ACCEL_SUBCHUNK - 1;
+  const firstEnd = reqEnd != null ? Math.min(reqEnd, start + ACCEL_CHUNK - 1) : start + ACCEL_CHUNK - 1;
   let first: Response;
   try {
-    first = await fetchRange(start, firstReqEnd);
+    first = await fetchChunk(start, firstEnd);
   } catch {
     return new Response('Bad gateway', { status: 502, headers: CORS });
   }
@@ -148,85 +144,59 @@ async function serveAcceleratedMp4(
     const m = /\/(\d+)\s*$/.exec(cr);
     return m ? Number(m[1]) : null;
   })();
-  const firstEnd = (() => {
-    const m = /bytes\s+\d+-(\d+)\//.exec(cr);
-    return m ? Number(m[1]) : firstReqEnd;
-  })();
 
   // End of the window this response serves.
   let end = reqEnd != null ? reqEnd : total != null ? total - 1 : firstEnd;
   if (total != null) end = Math.min(end, total - 1);
   end = Math.min(end, start + ACCEL_WINDOW - 1);
 
-  // Build the list of bodies: the first (already fetched) plus parallel fetches
-  // for the rest of the window.
-  const bodies: Array<Promise<ReadableStream<Uint8Array> | null>> = [
-    Promise.resolve(first.body),
-  ];
-  for (let s = firstEnd + 1; s <= end; s = s + ACCEL_SUBCHUNK) {
-    const e = Math.min(s + ACCEL_SUBCHUNK - 1, end);
-    bodies.push(fetchRange(s, e).then((r) => r.body));
+  // Sub-range boundaries across [start, end]; chunk 0 is the response in hand.
+  const ranges: Array<[number, number]> = [];
+  for (let s = start; s <= end; s += ACCEL_CHUNK) {
+    ranges.push([s, Math.min(s + ACCEL_CHUNK - 1, end)]);
   }
 
-  // Pump every sub-range concurrently into its own buffer; emit them in order.
-  const parts: Part[] = bodies.map(() => ({ chunks: [], done: false, err: null, wake: null }));
-  const wake = (p: Part) => {
-    const w = p.wake;
-    p.wake = null;
-    if (w) w();
+  // Each chunk resolves to its full bytes. A sliding window keeps at most
+  // ACCEL_CONCURRENCY fetches in flight: a chunk is only started once the emit
+  // pointer is within CONCURRENCY of it, bounding open connections + memory.
+  const bodies: Array<Promise<Uint8Array> | null> = new Array(ranges.length).fill(null);
+  bodies[0] = first.arrayBuffer().then((b) => new Uint8Array(b));
+  let started = 1;
+  const startUpTo = (emitIdx: number) => {
+    const limit = Math.min(ranges.length, emitIdx + ACCEL_CONCURRENCY);
+    for (; started < limit; started++) {
+      const [s, e] = ranges[started] as [number, number];
+      bodies[started] = fetchChunk(s, e)
+        .then((r) => {
+          // A stray 200 mid-window would make arrayBuffer() pull the whole file
+          // (and misalign the bytes) — fail this chunk cleanly so the player
+          // fails over instead.
+          if (r.status !== 206) throw new Error(`range not honored: ${r.status}`);
+          return r.arrayBuffer();
+        })
+        .then((b) => new Uint8Array(b));
+    }
   };
-  bodies.forEach((bodyPromise, i) => {
-    const p = parts[i] as Part;
-    (async () => {
-      try {
-        const body = await bodyPromise;
-        if (!body) {
-          p.done = true;
-          wake(p);
-          return;
-        }
-        const reader = body.getReader();
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (value) p.chunks.push(value);
-          wake(p);
-        }
-        p.done = true;
-        wake(p);
-      } catch (err) {
-        p.err = err;
-        wake(p);
-      }
-    })();
-  });
+  startUpTo(0);
 
-  let pi = 0;
+  // Emit chunks in strict byte order; refill the window after each so the next
+  // sub-ranges are already downloading by the time the browser reaches them.
+  let emit = 0;
   const stream = new ReadableStream<Uint8Array>({
     async pull(controller) {
-      for (;;) {
-        const p = parts[pi];
-        if (!p) {
-          controller.close();
-          return;
-        }
-        if (p.chunks.length > 0) {
-          controller.enqueue(p.chunks.shift() as Uint8Array);
-          return;
-        }
-        if (p.err) {
-          controller.error(p.err);
-          return;
-        }
-        if (p.done) {
-          pi++;
-          continue;
-        }
-        // Wait for more data. Safe against races: the check above and this
-        // assignment are synchronous, so a pump can't slip a chunk in between.
-        await new Promise<void>((r) => {
-          p.wake = r;
-        });
+      if (emit >= ranges.length) {
+        controller.close();
+        return;
+      }
+      try {
+        const bytes = await (bodies[emit] as Promise<Uint8Array>);
+        bodies[emit] = null; // release for GC
+        controller.enqueue(bytes);
+        emit++;
+        startUpTo(emit);
+        if (emit >= ranges.length) controller.close();
+      } catch (err) {
+        controller.error(err);
       }
     },
   });
@@ -339,11 +309,11 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
   }
 
   // Apply the per-source upstream headers the CDN requires (referer/origin/UA),
-  // falling back to the Peachify defaults.
+  // falling back to the MovieBox defaults.
   const cdnHeaders = decodeHeaders(headersBlob);
   const upstreamHeaders: Record<string, string> = {
-    Referer: cdnHeaders.referer ?? PEACHIFY_REFERER,
-    'User-Agent': cdnHeaders['user-agent'] ?? PEACHIFY_UA,
+    Referer: cdnHeaders.referer ?? DEFAULT_REFERER,
+    'User-Agent': cdnHeaders['user-agent'] ?? DEFAULT_UA,
   };
   if (cdnHeaders.origin) upstreamHeaders.Origin = cdnHeaders.origin;
 
