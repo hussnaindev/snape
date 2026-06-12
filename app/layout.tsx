@@ -1,13 +1,14 @@
 import { AuthProvider } from '@/components/auth/auth-provider';
-import { Topbar } from '@/components/topbar';
-import { PlayerControlsProvider } from '@/lib/player-controls-context';
 import { FullStoryInit } from '@/components/fullstory-init';
 import { PwaInstallPrompt } from '@/components/pwa-install-prompt';
+import { Toaster } from '@/components/toaster';
+import { Topbar } from '@/components/topbar';
 import { APP_NAME } from '@/lib/config';
+import { PlayerControlsProvider } from '@/lib/player-controls-context';
 import type { Metadata, Viewport } from 'next';
 import { DM_Sans } from 'next/font/google';
-import { Suspense } from 'react';
 import NextTopLoader from 'nextjs-toploader';
+import { Suspense } from 'react';
 import './globals.css';
 import { GoogleAnalytics } from '@next/third-parties/google';
 
@@ -57,6 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Suspense>
             {children}
           </AuthProvider>
+          <Toaster />
         </PlayerControlsProvider>
       </body>
       <GoogleAnalytics gaId="G-J9LY8F7YKQ" />

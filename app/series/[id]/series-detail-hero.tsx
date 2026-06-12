@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { usePlayerControls } from '@/lib/player-controls-context';
 
+import { DownloadButton } from '@/components/download-button';
 import { ExpandableText } from '@/components/ui/expandable-text';
 import { RatingBadge } from '@/components/ui/rating-badge';
 import { TagChip } from '@/components/ui/tag-chip';
@@ -15,9 +16,9 @@ import { WatchProvidersRow } from '@/components/watch-providers-row';
 import { WatchlistButton } from '@/components/watchlist-button';
 import { exitFullscreenIfRoot, isFullscreenRoot } from '@/lib/active-media';
 import { registerParallax } from '@/lib/parallax-controller';
+import { tmdbImage } from '@/lib/tmdb-image';
 import { cn } from '@/lib/utils';
 import type { PreferredProviderKey } from '@/lib/watch-providers';
-import { tmdbImage } from '@/lib/tmdb-image';
 import type { TMDBSeason, TMDBSeasonSummary } from '@/types/tmdb';
 
 import { VideoPlayer, prefetchStream } from '@/components/video-player';
@@ -108,9 +109,9 @@ export function SeriesDetailHero({
         playerContainerRef.current
           ?.requestFullscreen()
           .then(() =>
-            (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock?.(
-              'landscape',
-            )?.catch(() => {}),
+            (screen.orientation as unknown as { lock?: (o: string) => Promise<void> })
+              .lock?.('landscape')
+              ?.catch(() => {}),
           )
           .catch(() => {});
       }, 300);
@@ -227,15 +228,12 @@ export function SeriesDetailHero({
     setEpisodePanelOpen((v) => !v);
   }, []);
 
-  const handleEpisodeSelect = useCallback(
-    (season: number, episode: number) => {
-      setCurrentSeason(season);
-      setCurrentEpisode(episode);
-      setPlayerActive(true);
-      setEpisodePanelOpen(false);
-    },
-    [],
-  );
+  const handleEpisodeSelect = useCallback((season: number, episode: number) => {
+    setCurrentSeason(season);
+    setCurrentEpisode(episode);
+    setPlayerActive(true);
+    setEpisodePanelOpen(false);
+  }, []);
 
   useEffect(() => {
     function onPlayEpisode(e: Event) {
@@ -403,7 +401,6 @@ export function SeriesDetailHero({
           </button>
         )}
 
-
         {playerActive && (
           <WatchHistoryRecorder
             id={seriesId}
@@ -435,7 +432,16 @@ export function SeriesDetailHero({
                   aria-label="Close episodes panel"
                   className="text-white/50 hover:text-white transition-colors p-1 cursor-pointer"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    aria-hidden="true"
+                  >
                     <line x1="18" y1="6" x2="6" y2="18" />
                     <line x1="6" y1="6" x2="18" y2="18" />
                   </svg>
@@ -523,7 +529,7 @@ export function SeriesDetailHero({
                 )}
               </div>
 
-                  <div className="flex flex-nowrap items-center gap-1 md:gap-2 mt-2 overflow-x-auto no-scrollbar">
+              <div className="flex flex-nowrap items-center gap-1 md:gap-2 mt-2 overflow-x-auto no-scrollbar">
                 {status && (
                   <span
                     className={cn(
@@ -561,11 +567,30 @@ export function SeriesDetailHero({
                 <span className="px-2">Watch</span>
               </button>
 
+              <DownloadButton
+                type="series"
+                tmdbId={seriesId}
+                title={name}
+                posterPath={posterPath}
+                season={currentSeason}
+                episode={currentEpisode}
+                iconOnly
+                className="md:hidden"
+              />
               <WatchlistButton
                 tmdbId={seriesId}
                 mediaType="series"
                 iconOnly
                 className="md:hidden"
+              />
+              <DownloadButton
+                type="series"
+                tmdbId={seriesId}
+                title={name}
+                posterPath={posterPath}
+                season={currentSeason}
+                episode={currentEpisode}
+                className="hidden md:inline-flex"
               />
               <WatchlistButton
                 tmdbId={seriesId}

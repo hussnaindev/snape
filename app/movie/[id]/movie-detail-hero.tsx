@@ -7,10 +7,11 @@ import { useEffect, useRef, useState } from 'react';
 
 import { usePlayerControls } from '@/lib/player-controls-context';
 
-import { VideoPlayer, prefetchStream } from '@/components/video-player';
+import { DownloadButton } from '@/components/download-button';
 import { ExpandableText } from '@/components/ui/expandable-text';
 import { RatingBadge } from '@/components/ui/rating-badge';
 import { TagChip } from '@/components/ui/tag-chip';
+import { VideoPlayer, prefetchStream } from '@/components/video-player';
 import { WatchHistoryRecorder } from '@/components/watch-history-recorder';
 import { WatchProvidersRow } from '@/components/watch-providers-row';
 import { WatchlistButton } from '@/components/watchlist-button';
@@ -78,9 +79,9 @@ export function MovieDetailHero({
         playerContainerRef.current
           ?.requestFullscreen()
           .then(() =>
-            (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock?.(
-              'landscape',
-            )?.catch(() => {}),
+            (screen.orientation as unknown as { lock?: (o: string) => Promise<void> })
+              .lock?.('landscape')
+              ?.catch(() => {}),
           )
           .catch(() => {});
       }, 300);
@@ -348,7 +349,6 @@ export function MovieDetailHero({
           </button>
         )}
 
-
         {/* Watch history */}
         {playerActive && (
           <WatchHistoryRecorder
@@ -463,7 +463,22 @@ export function MovieDetailHero({
                 <span className="px-2">Watch</span>
               </button>
 
+              <DownloadButton
+                type="movie"
+                tmdbId={movieId}
+                title={title}
+                posterPath={posterPath}
+                iconOnly
+                className="md:hidden"
+              />
               <WatchlistButton tmdbId={movieId} mediaType="movie" iconOnly className="md:hidden" />
+              <DownloadButton
+                type="movie"
+                tmdbId={movieId}
+                title={title}
+                posterPath={posterPath}
+                className="hidden md:inline-flex"
+              />
               <WatchlistButton
                 tmdbId={movieId}
                 mediaType="movie"
