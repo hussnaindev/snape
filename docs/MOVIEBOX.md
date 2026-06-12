@@ -40,7 +40,7 @@ stage and is surfaced in the extract response** — always read it first. The
 | `no-proxy` | `PROXY_LIST` empty → bailed before any request | env: `PROXY_LIST` must be set (web play & mobile search are IP-blocked from datacenters; everything routes through proxies) |
 | `no-tmdb` | TMDB lookup failed / returned no title | env: `TMDB_API_KEY`; TMDB API up? `fetchTmdbRef` |
 | `no-match` | Search returned hits but none matched the TMDB ref confidently | matcher too strict, or title genuinely absent — see **Matching** |
-| `no-streams` | Matched + variants picked, but `play` returned 0 streams for all of them | **almost always a missing `detailPath` on a TV series** — see Gotcha #1 |
+| `no-streams` | Matched + variants picked, but `play` returned 0 streams for all of them | missing `detailPath` on a TV series (Gotcha #1), **or the account free-play quota is exhausted** (Gotcha #6) |
 | `error` | An exception was thrown (HTTP non-2xx, API `code != 0`, signing) | `debug.error` has the message; check signing / key rotation |
 | `matched` | Success — `debug.streams` = source count | — |
 
@@ -180,6 +180,28 @@ MovieBox TV play uses **1-based** `se`/`ep` (TMDB S1E1 → `se=1, ep=1`). Movies
 are always `se=0, ep=0`. If episodes resolve to the wrong content, check
 `debug.play`.
 
+### 6. Per-account free-play quota → `no-streams` with `limited:true` (play is ANONYMOUS)
+MovieBox added a **per-account free-play quota** on the web `play` endpoint. An
+authenticated account (our bearer/`mb_token` cookie) that exhausts it gets:
+```
+{ "code":0, "message":"ok",
+  "data": { "streams":[], "dash":[], "hls":[], "hasResource":true,
+            "limited":true, "freeNum":6,
+            "limitedCode":"<base64 {uid,timestamp,ip,timezone}>" } }
+```
+`hasResource:true` proves the title exists — the streams are purely gated. `freeNum`
+is the remaining quota for that `uid`; ours sat at 6 and `limited` flipped true. The
+**same `play` request sent anonymously** (no cookie) comes back with `freeNum:999`,
+`limited:false` and the real `streams`.
+
+**Fix (in place):** `play()` sends **no account cookie** — it always plays as an
+anonymous guest. Search still uses the bearer (mobile signed search is primary; web
+search/backfill carries the bearer); captions never sent a cookie. Symptom if this
+regresses: every title (movies included, not just TV) returns `no-streams`, and a raw
+`play` dump shows `limited:true` / low `freeNum`. Do **not** "fix" it by rotating to a
+fresh bearer — a new account just burns its own `freeNum` and breaks again; anonymous
+play is the durable path.
+
 ### 5. Datacenter IP block
 Both backends block datacenter IPs. Everything goes through `PROXY_LIST`. Empty
 list → `stage: no-proxy`. Flaky proxies → intermittent `error`/`no-streams`
@@ -207,6 +229,10 @@ list → `stage: no-proxy`. Flaky proxies → intermittent `error`/`no-streams`
 - **Multi-language audio:** `pickMovieboxVariants` groups Original + dubs by
   exact normalized title; player defaults to Original, switchable via the audio
   track selector.
+- **`limited:true` / `freeNum` quota (2026-06):** web `play` started returning
+  `code:0 "ok"` with empty `streams` + `limited:true` for our authenticated account
+  on **every** title (movies too) — a new per-account free-play cap. Fixed by sending
+  the `play` request anonymously (dropped the `mb_token`/`token` cookie). See Gotcha #6.
 - **Squid Game (TV) `no-streams`:** mobile items have no `detailPath`, which web
   TV play requires. Fixed with `backfillDetailPaths` (web index by subjectId).
   Movies were unaffected (resolve on subjectId alone).
