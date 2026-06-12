@@ -141,10 +141,6 @@ async function proxyFetch(url, init = {}) {
   throw new Error('MovieBox upstream fetch failed');
 }
 
-function playCookie(a) {
-  return `mb_token=%22${encodeURIComponent(a.mbToken)}%22; i18n_lang=en; token=${a.token}`;
-}
-
 /** @param {1 | 2} subjectType — 1 movie, 2 TV series */
 async function webSearch(keyword, a, subjectType) {
   const res = await proxyFetch(`${H5_API}/subject/search`, {
@@ -263,17 +259,22 @@ async function backfillDetailPaths(variants, keyword, a, subjectType, debug) {
   if (debug) debug.detailPathBackfill = { missing: missing.length, filled };
 }
 
-async function play(subjectId, detailPath, a, se, ep) {
+async function play(subjectId, detailPath, se, ep) {
   const url = new URL(`${SITE}/wefeed-h5api-bff/subject/play`);
   url.searchParams.set('subjectId', subjectId);
   url.searchParams.set('se', String(se));
   url.searchParams.set('ep', String(ep));
   url.searchParams.set('detailPath', detailPath);
 
+  // NOTE: sent ANONYMOUSLY (no account cookie). MovieBox added a per-account
+  // free-play quota: an authenticated account that exhausts it gets
+  // `code:0 "ok"` with `limited:true`, `freeNum` near 0 and an EMPTY `streams`
+  // array (hasResource:true proves the title exists — it's purely gated). An
+  // anonymous guest gets `freeNum:999` and the real streams. So we never send
+  // the bearer/mb_token cookie here. (Search still uses it; captions never did.)
   const res = await proxyFetch(url.toString(), {
     headers: {
       accept: 'application/json',
-      cookie: playCookie(a),
       referer: `${SITE}/movies/${detailPath}?id=${subjectId}&type=/movie/detail&detailSe=&detailEp=&lang=en`,
       'sec-fetch-dest': 'empty',
       'sec-fetch-mode': 'cors',
@@ -428,7 +429,7 @@ export async function fetchMoviebox(type, id, season, episode) {
 
     // Resolve every language variant in parallel; a failed dub just drops out.
     const played = await Promise.allSettled(
-      variants.map((v) => play(v.item.subjectId, v.item.detailPath, a, se, ep)),
+      variants.map((v) => play(v.item.subjectId, v.item.detailPath, se, ep)),
     );
 
     const sources = [];
