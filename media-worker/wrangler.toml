@@ -3,14 +3,6 @@ main = "src/index.ts"
 compatibility_date = "2024-09-23"
 workers_dev = true
 
-# Self service binding: the MP4 accelerator fans sub-ranges across separate
-# invocations of this same Worker (each gets its own CDN connection, which is
-# the only way to beat the CDN's per-connection throttle). A Worker can't fetch
-# its own workers.dev URL, but it can call itself through a service binding.
-[[services]]
-binding = "SELF"
-service = "snape-media"
-
 # Secret (set once, not committed):
 #   cd media-worker && bunx wrangler secret put MEDIA_PROXY_SECRET
 # Must equal MEDIA_PROXY_SECRET on Netlify (which mints the signed URLs).

@@ -21,10 +21,6 @@ import {
 
 interface Env {
   MEDIA_PROXY_SECRET: string;
-  // Service binding to this same Worker (declared in wrangler.toml). Used by the
-  // MP4 accelerator to fan sub-ranges across separate invocations — a Worker
-  // can't fetch its own workers.dev URL (it 404s), but a service binding can.
-  SELF?: Fetcher;
 }
 
 // Default upstream headers when a signed URL carries none of its own.
@@ -93,132 +89,7 @@ async function fetchRetry(url: string, init: RequestInit, attempts = 3): Promise
   return last as Response;
 }
 
-// --- Parallel range accelerator for progressive MP4 -----------------------
-// MovieBox's CDN throttles each TCP connection to ~130 KB/s — far below the
-// video bitrate — but allows many parallel connections from the same egress IP,
-// and they aggregate ~linearly (measured: 8 conns ≈ 10 Mbps, 12 ≈ 14 Mbps). So
-// we serve each window as a sliding pipeline of small sub-ranges fetched
-// concurrently and emitted in strict byte order, feeding the browser's single
-// connection at the aggregate rate. Small chunks keep head-of-line latency low:
-// the old 4 MB lead chunk streamed at one connection's rate (~1 Mbps) and timed
-// out the whole window. The window is bounded so per-response memory + subrequest
-// count stay small; the browser requests the next window as it plays.
-const ACCEL_WINDOW = 16 * 1024 * 1024; // bytes served per response
-const ACCEL_CHUNK = 1 * 1024 * 1024; // size of each parallel sub-range
-const ACCEL_CONCURRENCY = 8; // sub-ranges in flight at once (→ ~8x throughput)
 
-function parseRange(h: string | null): { start: number; end: number | null } {
-  const m = /bytes=(\d+)-(\d*)/.exec(h ?? '');
-  if (!m) return { start: 0, end: null };
-  return { start: Number(m[1]), end: m[2] ? Number(m[2]) : null };
-}
-
-async function serveAcceleratedMp4(
-  self: Fetcher,
-  selfUrl: string,
-  rangeHeader: string,
-): Promise<Response> {
-  const { start, end: reqEnd } = parseRange(rangeHeader);
-  // Each sub-range is fetched via the SELF service binding (v stripped → plain
-  // path), so it runs as a separate Worker invocation with its own CDN
-  // connection — Cloudflare coalesces same-host subrequests within one
-  // invocation, so this is the only way to actually parallelize. The inner
-  // invocation retries the CDN itself; the signed u/h/s still verify (signature
-  // is over u+h only, not the range or v).
-  const fetchChunk = (s: number, e: number) =>
-    self.fetch(selfUrl, { headers: { Range: `bytes=${s}-${e}` } });
-
-  // First sub-chunk also reveals the total size + whether ranges are honored.
-  const firstEnd = reqEnd != null ? Math.min(reqEnd, start + ACCEL_CHUNK - 1) : start + ACCEL_CHUNK - 1;
-  let first: Response;
-  try {
-    first = await fetchChunk(start, firstEnd);
-  } catch {
-    return new Response('Bad gateway', { status: 502, headers: CORS });
-  }
-  const contentType = first.headers.get('content-type') ?? 'video/mp4';
-
-  // CDN ignored the range (200) → no acceleration possible; stream straight through.
-  if (first.status !== 206) {
-    const h = new Headers(CORS);
-    h.set('Content-Type', contentType);
-    h.set('Accept-Ranges', 'bytes');
-    const cl = first.headers.get('content-length');
-    if (cl) h.set('Content-Length', cl);
-    h.set('Cache-Control', 'no-store');
-    return new Response(first.body, { status: first.status, headers: h });
-  }
-
-  const cr = first.headers.get('content-range') ?? '';
-  const total = (() => {
-    const m = /\/(\d+)\s*$/.exec(cr);
-    return m ? Number(m[1]) : null;
-  })();
-
-  // End of the window this response serves.
-  let end = reqEnd != null ? reqEnd : total != null ? total - 1 : firstEnd;
-  if (total != null) end = Math.min(end, total - 1);
-  end = Math.min(end, start + ACCEL_WINDOW - 1);
-
-  // Sub-range boundaries across [start, end]; chunk 0 is the response in hand.
-  const ranges: Array<[number, number]> = [];
-  for (let s = start; s <= end; s += ACCEL_CHUNK) {
-    ranges.push([s, Math.min(s + ACCEL_CHUNK - 1, end)]);
-  }
-
-  // Each chunk resolves to its full bytes. A sliding window keeps at most
-  // ACCEL_CONCURRENCY fetches in flight: a chunk is only started once the emit
-  // pointer is within CONCURRENCY of it, bounding open connections + memory.
-  const bodies: Array<Promise<Uint8Array> | null> = new Array(ranges.length).fill(null);
-  bodies[0] = first.arrayBuffer().then((b) => new Uint8Array(b));
-  let started = 1;
-  const startUpTo = (emitIdx: number) => {
-    const limit = Math.min(ranges.length, emitIdx + ACCEL_CONCURRENCY);
-    for (; started < limit; started++) {
-      const [s, e] = ranges[started] as [number, number];
-      bodies[started] = fetchChunk(s, e)
-        .then((r) => {
-          // A stray 200 mid-window would make arrayBuffer() pull the whole file
-          // (and misalign the bytes) — fail this chunk cleanly so the player
-          // fails over instead.
-          if (r.status !== 206) throw new Error(`range not honored: ${r.status}`);
-          return r.arrayBuffer();
-        })
-        .then((b) => new Uint8Array(b));
-    }
-  };
-  startUpTo(0);
-
-  // Emit chunks in strict byte order; refill the window after each so the next
-  // sub-ranges are already downloading by the time the browser reaches them.
-  let emit = 0;
-  const stream = new ReadableStream<Uint8Array>({
-    async pull(controller) {
-      if (emit >= ranges.length) {
-        controller.close();
-        return;
-      }
-      try {
-        const bytes = await (bodies[emit] as Promise<Uint8Array>);
-        bodies[emit] = null; // release for GC
-        controller.enqueue(bytes);
-        emit++;
-        startUpTo(emit);
-        if (emit >= ranges.length) controller.close();
-      } catch (err) {
-        controller.error(err);
-      }
-    },
-  });
-
-  const h = new Headers(CORS);
-  h.set('Content-Type', contentType);
-  h.set('Accept-Ranges', 'bytes');
-  h.set('Content-Range', total != null ? `bytes ${start}-${end}/${total}` : `bytes ${start}-${end}/*`);
-  h.set('Content-Length', String(end - start + 1));
-  h.set('Cache-Control', 'no-store');
-  return new Response(stream, { status: 206, headers: h });
-}
 
 // Convert SubRip (SRT) to WebVTT — browsers only render VTT in <track>.
 function srtToVtt(input: string): string {
@@ -328,24 +199,6 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
   if (cdnHeaders.origin) upstreamHeaders.Origin = cdnHeaders.origin;
 
   const range = req.headers.get('range');
-
-  // Progressive MP4 (MovieBox): the CDN throttles each TCP connection well below
-  // the video bitrate. Cloudflare coalesces same-host subrequests within ONE
-  // invocation onto a single connection, so internal parallelism can't beat the
-  // throttle — but SEPARATE invocations each get their own connection and
-  // aggregate (measured ~8x). So we fan the window out across self-calls: each
-  // sub-range is fetched from our own endpoint with v stripped, which re-enters
-  // as a fresh invocation taking the plain single-fetch path (no recursion).
-  // Only mp4 sources carry v=1 (HLS segments/manifests don't) → never HLS.
-  // Falls through to the plain single-fetch path if the SELF binding is absent,
-  // so a missing binding degrades to single-connection rather than failing.
-  if (sp.get('v') === '1' && range && env.SELF) {
-    const selfUrl = new URL(url);
-    selfUrl.searchParams.delete('v');
-    return serveAcceleratedMp4(env.SELF, selfUrl.toString(), range);
-  }
-
-  // ts segments + mp4 without a Range: forward Range verbatim and stream through.
   if (range) upstreamHeaders.Range = range;
 
   // Serve a cached, already-rewritten HLS manifest if we have one.

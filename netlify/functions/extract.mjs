@@ -73,7 +73,7 @@ async function buildSignedResponse(rawSources, rawSubs, debug) {
   const sources = await Promise.all(
     rawSources.map(async ({ headers, ...s }) => {
       const signed = await signedMediaUrl(s.url, headers);
-      return { ...s, url: s.type === 'mp4' ? `${signed}&v=1` : signed };
+      return { ...s, url: signed };
     }),
   );
   const subtitles = await Promise.all(
