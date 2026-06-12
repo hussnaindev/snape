@@ -199,7 +199,14 @@ export async function GET(req: NextRequest) {
 
   let res: Response;
   try {
-    res = await fetchRetry(target.toString(), { headers: upstreamHeaders, redirect: 'follow' });
+    // Video byte-range requests: skip retries — CDN throttles per-IP, so retrying
+    // the same Cloudflare IP just adds latency. Non-Range requests (manifests,
+    // subtitles, HLS segments) still get short retries for transient rate-limits.
+    if (range) {
+      res = await fetchFollow(target.toString(), { headers: upstreamHeaders });
+    } else {
+      res = await fetchRetry(target.toString(), { headers: upstreamHeaders });
+    }
   } catch {
     return new NextResponse('Bad gateway', { status: 502, headers: CORS });
   }

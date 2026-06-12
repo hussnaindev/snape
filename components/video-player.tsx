@@ -304,7 +304,17 @@ export function VideoPlayer({
     // best overall source. Other audio tracks stay switchable via the menu.
     const origLang = languages.find((l) => /original|orig/i.test(l));
     const preferLang = origLang ?? dubLabel(best);
-    const first = bestSource(sources.filter((s) => dubLabel(s) === preferLang)) ?? best;
+    // Default quality: prefer 720p → 480p → 360p over 1080p so the video
+    // starts smoother when the CDN is slow through Cloudflare. If none of
+    // those exist, fall back to whatever is available (including 1080p).
+    const PREFERRED = ['720p', '480p', '360p'];
+    const langSources = sources.filter((s) => dubLabel(s) === preferLang);
+    let first: StreamSource | null = null;
+    for (const q of PREFERRED) {
+      first = bestSource(langSources.filter((s) => qLabel(s) === q));
+      if (first) break;
+    }
+    first ??= bestSource(langSources) ?? best;
     setLang(dubLabel(first));
     setQuality(qLabel(first));
     setServer(first.provider);

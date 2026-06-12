@@ -108,8 +108,8 @@ function pickProxyAgent() {
   return new ProxyAgent(proxies[Math.floor(Math.random() * proxies.length)]);
 }
 
-const ATTEMPT_TIMEOUT_MS = 8000;
-const MAX_ATTEMPTS = 4;
+const ATTEMPT_TIMEOUT_MS = 5000;
+const MAX_ATTEMPTS = 3;
 
 async function proxyFetch(url, init = {}) {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
