@@ -16,6 +16,7 @@ sealed interface PlayerLoadState {
     data class Ready(
         val mpdUrl: String,
         val signCookie: String,
+        val format: String,
         val captions: List<Caption>,
         val qualities: List<Int>, // heights, descending; empty => auto only
     ) : PlayerLoadState
@@ -54,7 +55,7 @@ class PlayerViewModel : ViewModel() {
                     .mapNotNull { it.trim().toIntOrNull() }
                     .distinct()
                     .sortedDescending()
-                PlayerLoadState.Ready(stream.url, stream.signCookie, captions, qualities)
+                PlayerLoadState.Ready(stream.url, stream.signCookie, stream.format, captions, qualities)
             }.onSuccess { _state.value = it }
                 .onFailure { _state.value = PlayerLoadState.Error(it.message ?: "Playback failed.") }
         }

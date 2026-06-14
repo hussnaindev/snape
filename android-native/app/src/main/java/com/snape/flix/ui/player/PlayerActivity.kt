@@ -198,7 +198,13 @@ private fun PlayerSurface(
                 setMediaItem(
                     MediaItem.Builder()
                         .setUri(ready.mpdUrl)
-                        .setMimeType(MimeTypes.APPLICATION_MPD)
+                        .setMimeType(
+                            when (ready.format) {
+                                "HLS" -> MimeTypes.APPLICATION_M3U8
+                                "MP4" -> MimeTypes.VIDEO_MP4
+                                else -> MimeTypes.APPLICATION_MPD
+                            },
+                        )
                         .setSubtitleConfigurations(subs)
                         .build(),
                 )
