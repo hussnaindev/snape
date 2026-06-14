@@ -122,14 +122,14 @@ private fun Chip(text: String, modifier: Modifier = Modifier) {
             .background(ChipBg)
             .border(0.5.dp, ChipBorder, ChipShape)
             // slim pill: wide horizontal, minimal vertical padding
-            .padding(horizontal = 7.dp, vertical = 1.dp),
+            .padding(horizontal = 5.dp, vertical = 0.5.dp),
     ) {
         Text(
             text = text,
             color = Color.White,
-            fontSize = 7.sp,
+            fontSize = 6.sp,
             fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.3.sp,
+            letterSpacing = 0.2.sp,
         )
     }
 }

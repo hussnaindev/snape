@@ -83,8 +83,12 @@ object MovieBoxRepository {
 
     // --- public API ---------------------------------------------------------
 
-    /** Search movies + series. Filters out trailers/music and resource-less hits. */
-    suspend fun search(keyword: String): List<SubjectItem> = withContext(Dispatchers.IO) {
+    /**
+     * Search movies + series. Drops trailers/music and resource-less hits, then
+     * folds every audio variant (Original / Hindi / Tamil …) of the same title
+     * into a single [SubjectGroup] so the grid shows one card per title.
+     */
+    suspend fun search(keyword: String): List<SubjectGroup> = withContext(Dispatchers.IO) {
         val body = json.encodeToString(SearchRequest.serializer(), SearchRequest(keyword.trim()))
         val ts = System.currentTimeMillis()
         val sig = MovieBoxSign.signature("POST", P_SEARCH, "", body, ts)
@@ -100,8 +104,22 @@ object MovieBoxRepository {
             .applyCommonHeaders(ts, sig)
             .build()
         val parsed = json.decodeFromString(SearchResponse.serializer(), bodyString(req))
-        (parsed.data?.items ?: emptyList())
+        val items = (parsed.data?.items ?: emptyList())
+            // Keep only playable movies/series (the flag is `hasResource`).
             .filter { (it.subjectType == 1 || it.subjectType == 2) && it.subjectId.isNotBlank() && it.hasResource }
+        groupVariants(items)
+    }
+
+    /** Fold audio variants of the same title into one group (order preserved). */
+    private fun groupVariants(items: List<SubjectItem>): List<SubjectGroup> {
+        val groups = LinkedHashMap<String, MutableList<SubjectItem>>()
+        for (item in items) groups.getOrPut(item.groupKey) { mutableListOf() }.add(item)
+        return groups.values.map { variants ->
+            // Prefer the original (un-badged) variant as the default; play it first.
+            val primary = variants.firstOrNull { it.isOriginal } ?: variants.first()
+            val ordered = listOf(primary) + variants.filter { it.subjectId != primary.subjectId }
+            SubjectGroup(primary, ordered)
+        }
     }
 
     /** Seasons (with episode counts) for a series. */

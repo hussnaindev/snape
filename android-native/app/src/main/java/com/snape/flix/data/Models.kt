@@ -47,6 +47,33 @@ data class SubjectItem(
     val year: String get() = releaseDate.take(4)
     val posterUrl: String? get() = cover?.url?.ifBlank { null }
     val rating: Double? get() = imdbRatingValue.toDoubleOrNull()
+
+    /** Audio-variant badge for menus, e.g. "Hindi"/"Tamil"/"Original". */
+    val variantLabel: String get() = corner.ifBlank { "Original" }
+
+    /** A variant is the "original" when it carries no language badge. */
+    val isOriginal: Boolean get() = corner.isBlank() || corner.equals("Original", true)
+
+    /** Title without the trailing "[Hindi]"/"[Tamil]" tag, lower-cased — used
+     *  to fold audio variants of the same title into one search result. */
+    private val baseTitle: String
+        get() = title.replace(Regex("\\s*\\[[^]]*]\\s*$"), "").trim().lowercase()
+
+    /** Same movie/series across audio variants share this key. */
+    val groupKey: String get() = "$subjectType|$year|$baseTitle"
+}
+
+/**
+ * One search result that folds together every audio variant of the same title.
+ * [primary] is the original (or first) variant shown on the card and played by
+ * default; [variants] lists all of them (primary first) for the player's audio
+ * menu. Variants other than [primary] are only fetched when the user switches.
+ */
+data class SubjectGroup(
+    val primary: SubjectItem,
+    val variants: List<SubjectItem>,
+) {
+    val hasVariants: Boolean get() = variants.size > 1
 }
 
 // --- season-info ------------------------------------------------------------

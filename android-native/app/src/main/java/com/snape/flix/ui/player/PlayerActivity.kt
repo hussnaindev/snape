@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -80,6 +81,7 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.SubtitleView
+import com.snape.flix.R
 import com.snape.flix.data.MovieBoxSign
 import com.snape.flix.ui.theme.SnapeTheme
 import kotlinx.coroutines.delay
@@ -92,6 +94,8 @@ class PlayerActivity : ComponentActivity() {
         const val EXTRA_TITLE = "title"
         const val EXTRA_SE = "se"
         const val EXTRA_EP = "ep"
+        const val EXTRA_VARIANT_IDS = "variantIds"
+        const val EXTRA_VARIANT_LABELS = "variantLabels"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -116,17 +120,31 @@ class PlayerActivity : ComponentActivity() {
         val subjectId = intent.getStringExtra(EXTRA_SUBJECT_ID).orEmpty()
         val se = intent.getIntExtra(EXTRA_SE, 0)
         val ep = intent.getIntExtra(EXTRA_EP, 0)
+        val variantIds = intent.getStringArrayListExtra(EXTRA_VARIANT_IDS).orEmpty()
+        val variantLabels = intent.getStringArrayListExtra(EXTRA_VARIANT_LABELS).orEmpty()
+        // Pair each variant subjectId with its language label for the audio menu.
+        val variants = variantIds.mapIndexed { i, id ->
+            AudioVariant(id = id, label = variantLabels.getOrElse(i) { "Original" })
+        }
 
         setContent {
             SnapeTheme {
                 val vm: PlayerViewModel = viewModel()
-                LaunchedEffect(Unit) { vm.load(subjectId, se, ep) }
+                // The selected audio variant drives which stream is loaded; changing
+                // it (via the in-player audio menu) refetches and swaps the stream.
+                var currentId by remember { mutableStateOf(subjectId.ifBlank { variants.firstOrNull()?.id ?: "" }) }
+                LaunchedEffect(currentId) { vm.load(currentId, se, ep) }
                 val state by vm.state.collectAsStateWithLifecycle()
                 Box(Modifier.fillMaxSize().background(Color.Black)) {
                     when (val s = state) {
                         is PlayerLoadState.Loading -> CenterStatus("Loading…", spinner = true)
                         is PlayerLoadState.Error -> CenterStatus(s.message, spinner = false, onBack = ::finish)
-                        is PlayerLoadState.Ready -> PlayerSurface(s)
+                        is PlayerLoadState.Ready -> PlayerSurface(
+                            ready = s,
+                            variants = variants,
+                            selectedId = currentId,
+                            onSelectVariant = { currentId = it },
+                        )
                     }
                 }
             }
@@ -148,9 +166,17 @@ class PlayerActivity : ComponentActivity() {
     }
 }
 
+/** One selectable audio/language variant of the same title. */
+data class AudioVariant(val id: String, val label: String)
+
 @OptIn(UnstableApi::class)
 @Composable
-private fun PlayerSurface(ready: PlayerLoadState.Ready) {
+private fun PlayerSurface(
+    ready: PlayerLoadState.Ready,
+    variants: List<AudioVariant>,
+    selectedId: String,
+    onSelectVariant: (String) -> Unit,
+) {
     val context = LocalContext.current
 
     // --- streaming setup (unchanged) ----------------------------------------
@@ -194,6 +220,10 @@ private fun PlayerSurface(ready: PlayerLoadState.Ready) {
     // mode toggles). Classic noir look: white monospace on a ~55% black band with a
     // soft drop shadow; fixed bottom inset so the position never moves.
     val subtitleView = remember {
+        // Space Mono — the actual noir monospace face (Typeface.MONOSPACE fell back
+        // to the device default on some OEMs and never read as monospace).
+        val spaceMono = ResourcesCompat.getFont(context, R.font.space_mono)
+            ?: Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
         SubtitleView(context).apply {
             setApplyEmbeddedStyles(false)
             setApplyEmbeddedFontSizes(false)
@@ -204,12 +234,12 @@ private fun PlayerSurface(ready: PlayerLoadState.Ready) {
                     android.graphics.Color.TRANSPARENT,
                     CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
                     android.graphics.Color.BLACK,
-                    Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL),
+                    spaceMono,
                 ),
             )
             // Smaller standard caption size; larger bottom inset so the last line
             // never clips on the screen edge / nav bar.
-            setFractionalTextSize(0.045f)
+            setFractionalTextSize(0.036f)
             setBottomPaddingFraction(0.14f)
         }
     }
@@ -409,7 +439,7 @@ private fun PlayerSurface(ready: PlayerLoadState.Ready) {
                         Spacer(Modifier.width(gap))
                     }
                     Ctrl(PlayerIcons.Settings, "Settings", size = ctrlSize) {
-                        openMenu = if (openMenu == Menu.SETTINGS || openMenu == Menu.QUALITY || openMenu == Menu.SPEED) Menu.NONE else Menu.SETTINGS
+                        openMenu = if (openMenu == Menu.SETTINGS || openMenu == Menu.QUALITY || openMenu == Menu.SPEED || openMenu == Menu.AUDIO) Menu.NONE else Menu.SETTINGS
                     }
                     Spacer(Modifier.width(gap))
                     Ctrl(PlayerIcons.FillScreen, "Fill screen", active = fillScreen, size = ctrlSize) { fillScreen = !fillScreen }
@@ -437,6 +467,10 @@ private fun PlayerSurface(ready: PlayerLoadState.Ready) {
                     Menu.SETTINGS -> {
                         RowItem("Quality", qualityHeight?.let { "${it}p" } ?: "Auto") { openMenu = Menu.QUALITY }
                         RowItem("Speed", "${speed}x") { openMenu = Menu.SPEED }
+                        if (variants.size > 1) {
+                            val current = variants.firstOrNull { it.id == selectedId }?.label ?: "Original"
+                            RowItem("Audio", current) { openMenu = Menu.AUDIO }
+                        }
                     }
                     Menu.QUALITY -> {
                         OptItem("Auto", qualityHeight == null) {
@@ -464,6 +498,13 @@ private fun PlayerSurface(ready: PlayerLoadState.Ready) {
                             }
                         }
                     }
+                    Menu.AUDIO -> variants.forEach { v ->
+                        // Switching refetches that variant's stream (lazy by design).
+                        OptItem(v.label, v.id == selectedId) {
+                            if (v.id != selectedId) onSelectVariant(v.id)
+                            openMenu = Menu.NONE
+                        }
+                    }
                     Menu.NONE -> Unit
                 }
             }
@@ -471,7 +512,7 @@ private fun PlayerSurface(ready: PlayerLoadState.Ready) {
     }
 }
 
-private enum class Menu { NONE, SETTINGS, QUALITY, SPEED, SUBTITLES }
+private enum class Menu { NONE, SETTINGS, QUALITY, SPEED, SUBTITLES, AUDIO }
 
 private val SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
 

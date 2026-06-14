@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.snape.flix.data.Caption
 import com.snape.flix.data.MovieBoxRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,12 +28,20 @@ class PlayerViewModel : ViewModel() {
     private val _state = MutableStateFlow<PlayerLoadState>(PlayerLoadState.Loading)
     val state: StateFlow<PlayerLoadState> = _state.asStateFlow()
 
-    private var started = false
+    private var currentKey: String? = null
+    private var job: Job? = null
 
+    /**
+     * Load (or reload) a stream. Calling again with a different subjectId — e.g.
+     * the user picked another audio variant — refetches and swaps the stream.
+     */
     fun load(subjectId: String, se: Int, ep: Int) {
-        if (started) return
-        started = true
-        viewModelScope.launch {
+        val key = "$subjectId/$se/$ep"
+        if (key == currentKey) return
+        currentKey = key
+        job?.cancel()
+        _state.value = PlayerLoadState.Loading
+        job = viewModelScope.launch {
             runCatching {
                 // Stream is required; captions are best-effort and fetched in parallel.
                 val streamDeferred = async { MovieBoxRepository.playInfo(subjectId, se, ep) }

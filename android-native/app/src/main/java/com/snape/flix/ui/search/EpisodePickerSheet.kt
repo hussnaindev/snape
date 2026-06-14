@@ -37,14 +37,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.snape.flix.data.SeasonItem
-import com.snape.flix.data.SubjectItem
+import com.snape.flix.data.SubjectGroup
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EpisodePickerSheet(
     state: PickerState,
     onDismiss: () -> Unit,
-    onPlay: (item: SubjectItem, se: Int, ep: Int) -> Unit,
+    onPlay: (group: SubjectGroup, se: Int, ep: Int) -> Unit,
 ) {
     if (state is PickerState.Hidden) return
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -57,10 +57,10 @@ fun EpisodePickerSheet(
     ) {
         when (state) {
             is PickerState.Hidden -> Unit
-            is PickerState.Loading -> SheetMessage(state.item.title, loading = true)
-            is PickerState.Error -> SheetMessage("${state.item.title}\n${state.message}", loading = false)
+            is PickerState.Loading -> SheetMessage(state.group.primary.title, loading = true)
+            is PickerState.Error -> SheetMessage("${state.group.primary.title}\n${state.message}", loading = false)
             is PickerState.Ready -> SeasonEpisodeChooser(
-                item = state.item,
+                group = state.group,
                 seasons = state.seasons,
                 onPlay = onPlay,
             )
@@ -83,16 +83,16 @@ private fun SheetMessage(text: String, loading: Boolean) {
 
 @Composable
 private fun SeasonEpisodeChooser(
-    item: SubjectItem,
+    group: SubjectGroup,
     seasons: List<SeasonItem>,
-    onPlay: (SubjectItem, Int, Int) -> Unit,
+    onPlay: (SubjectGroup, Int, Int) -> Unit,
 ) {
     var selectedSeasonIdx by remember { mutableIntStateOf(0) }
     val season = seasons.getOrElse(selectedSeasonIdx) { seasons.first() }
 
     Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
         Text(
-            text = item.title.uppercase(),
+            text = group.primary.title.uppercase(),
             color = Color.White,
             fontSize = 15.sp,
             fontWeight = FontWeight.Light,
@@ -149,7 +149,7 @@ private fun SeasonEpisodeChooser(
                         .clip(CircleShape)
                         .background(Color(0x14FFFFFF))
                         .border(1.dp, Color(0x40FFFFFF), CircleShape)
-                        .clickable { onPlay(item, season.se, ep) },
+                        .clickable { onPlay(group, season.se, ep) },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text("$ep", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)

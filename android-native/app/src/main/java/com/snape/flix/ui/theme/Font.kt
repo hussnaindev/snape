@@ -11,3 +11,9 @@ import com.snape.flix.R
  * identically.
  */
 val ChesnaGrotesk = FontFamily(Font(R.font.chesna_grotesk))
+
+/**
+ * Space Mono — the classical/noir monospace face used for subtitles and the
+ * player's option menus, matching the web app's caption styling.
+ */
+val SpaceMono = FontFamily(Font(R.font.space_mono))

@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.snape.flix.data.MovieBoxRepository
 import com.snape.flix.data.SeasonItem
-import com.snape.flix.data.SubjectItem
+import com.snape.flix.data.SubjectGroup
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,16 +16,16 @@ import kotlinx.coroutines.launch
 data class SearchUiState(
     val query: String = "",
     val loading: Boolean = false,
-    val results: List<SubjectItem> = emptyList(),
+    val results: List<SubjectGroup> = emptyList(),
     val error: String? = null,
     val searched: Boolean = false,
 )
 
 sealed interface PickerState {
     data object Hidden : PickerState
-    data class Loading(val item: SubjectItem) : PickerState
-    data class Ready(val item: SubjectItem, val seasons: List<SeasonItem>) : PickerState
-    data class Error(val item: SubjectItem, val message: String) : PickerState
+    data class Loading(val group: SubjectGroup) : PickerState
+    data class Ready(val group: SubjectGroup, val seasons: List<SeasonItem>) : PickerState
+    data class Error(val group: SubjectGroup, val message: String) : PickerState
 }
 
 class SearchViewModel : ViewModel() {
@@ -62,20 +62,20 @@ class SearchViewModel : ViewModel() {
         }
     }
 
-    fun openSeries(item: SubjectItem) {
-        _picker.value = PickerState.Loading(item)
+    fun openSeries(group: SubjectGroup) {
+        _picker.value = PickerState.Loading(group)
         viewModelScope.launch {
-            runCatching { MovieBoxRepository.seasonInfo(item.subjectId) }
+            runCatching { MovieBoxRepository.seasonInfo(group.primary.subjectId) }
                 .onSuccess { seasons ->
                     _picker.value = if (seasons.isEmpty()) {
                         // Fall back to a single-season guess so the title is still playable.
-                        PickerState.Ready(item, listOf(SeasonItem(se = 1, maxEp = 1)))
+                        PickerState.Ready(group, listOf(SeasonItem(se = 1, maxEp = 1)))
                     } else {
-                        PickerState.Ready(item, seasons)
+                        PickerState.Ready(group, seasons)
                     }
                 }
                 .onFailure { e ->
-                    _picker.value = PickerState.Error(item, e.message ?: "Could not load episodes")
+                    _picker.value = PickerState.Error(group, e.message ?: "Could not load episodes")
                 }
         }
     }

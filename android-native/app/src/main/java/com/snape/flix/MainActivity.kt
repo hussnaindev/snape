@@ -25,13 +25,23 @@ class MainActivity : ComponentActivity() {
             SnapeTheme {
                 Surface(Modifier.fillMaxSize().background(Color.Black), color = Color.Black) {
                     SearchScreen(
-                        onPlay = { item, se, ep ->
+                        onPlay = { group, se, ep ->
                             startActivity(
                                 Intent(this, PlayerActivity::class.java).apply {
-                                    putExtra(PlayerActivity.EXTRA_SUBJECT_ID, item.subjectId)
-                                    putExtra(PlayerActivity.EXTRA_TITLE, item.title)
+                                    putExtra(PlayerActivity.EXTRA_SUBJECT_ID, group.primary.subjectId)
+                                    putExtra(PlayerActivity.EXTRA_TITLE, group.primary.title)
                                     putExtra(PlayerActivity.EXTRA_SE, se)
                                     putExtra(PlayerActivity.EXTRA_EP, ep)
+                                    // Audio variants for the in-player audio menu; the
+                                    // others are only fetched if the user switches.
+                                    putStringArrayListExtra(
+                                        PlayerActivity.EXTRA_VARIANT_IDS,
+                                        ArrayList(group.variants.map { it.subjectId }),
+                                    )
+                                    putStringArrayListExtra(
+                                        PlayerActivity.EXTRA_VARIANT_LABELS,
+                                        ArrayList(group.variants.map { it.variantLabel }),
+                                    )
                                 },
                             )
                         },

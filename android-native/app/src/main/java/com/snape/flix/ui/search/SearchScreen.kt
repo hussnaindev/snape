@@ -56,14 +56,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import com.snape.flix.R
-import com.snape.flix.data.SubjectItem
+import com.snape.flix.data.SubjectGroup
 import com.snape.flix.ui.components.MediaCard
 import com.snape.flix.ui.theme.ChesnaGrotesk
 
 @Composable
 fun SearchScreen(
-    onPlay: (item: SubjectItem, se: Int, ep: Int) -> Unit,
+    onPlay: (group: SubjectGroup, se: Int, ep: Int) -> Unit,
     viewModel: SearchViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -83,21 +88,15 @@ fun SearchScreen(
         ) {
             TopBar(
                 searchOpen = searchOpen,
+                query = state.query,
+                loading = state.loading,
                 onToggleSearch = {
                     searchOpen = !searchOpen
                     if (!searchOpen) viewModel.onQueryChange("")
                 },
+                onQueryChange = viewModel::onQueryChange,
                 onOpenMenu = { drawerOpen = true },
             )
-
-            if (searchOpen) {
-                Spacer(Modifier.height(12.dp))
-                SearchBar(
-                    query = state.query,
-                    loading = state.loading,
-                    onQueryChange = viewModel::onQueryChange,
-                )
-            }
 
             Spacer(Modifier.height(16.dp))
 
@@ -112,11 +111,12 @@ fun SearchScreen(
                     contentPadding = PaddingValues(bottom = 24.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    items(state.results, key = { it.subjectId + it.corner }) { item ->
+                    items(state.results, key = { it.primary.subjectId }) { group ->
                         MediaCard(
-                            item = item,
+                            item = group.primary,
                             onClick = {
-                                if (item.isSeries) viewModel.openSeries(item) else onPlay(item, 0, 0)
+                                if (group.primary.isSeries) viewModel.openSeries(group)
+                                else onPlay(group, 0, 0)
                             },
                         )
                     }
@@ -132,9 +132,9 @@ fun SearchScreen(
     EpisodePickerSheet(
         state = picker,
         onDismiss = viewModel::closePicker,
-        onPlay = { item, se, ep ->
+        onPlay = { group, se, ep ->
             viewModel.closePicker()
-            onPlay(item, se, ep)
+            onPlay(group, se, ep)
         },
     )
 }
@@ -142,7 +142,14 @@ fun SearchScreen(
 // ── top bar ──────────────────────────────────────────────────────────────────
 
 @Composable
-private fun TopBar(searchOpen: Boolean, onToggleSearch: () -> Unit, onOpenMenu: () -> Unit) {
+private fun TopBar(
+    searchOpen: Boolean,
+    query: String,
+    loading: Boolean,
+    onToggleSearch: () -> Unit,
+    onQueryChange: (String) -> Unit,
+    onOpenMenu: () -> Unit,
+) {
     Row(
         Modifier.fillMaxWidth().height(56.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -152,12 +159,30 @@ private fun TopBar(searchOpen: Boolean, onToggleSearch: () -> Unit, onOpenMenu: 
             contentDescription = "Snape",
             modifier = Modifier.size(24.dp),
         )
-        Spacer(Modifier.weight(1f))
-        BarIcon(
-            icon = if (searchOpen) Icons.Rounded.Close else Icons.Rounded.Search,
-            desc = if (searchOpen) "Close search" else "Search",
-            onClick = onToggleSearch,
-        )
+        // The search bar lives here and unfurls leftward from the search icon —
+        // it grows from the End edge, so it appears to slide out of the magnifier.
+        Box(
+            Modifier.weight(1f).padding(start = 12.dp),
+            contentAlignment = Alignment.CenterEnd,
+        ) {
+            AnimatedVisibility(
+                visible = searchOpen,
+                enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
+                exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut(),
+            ) {
+                SearchBar(
+                    query = query,
+                    loading = loading,
+                    onQueryChange = onQueryChange,
+                    onClose = onToggleSearch,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+        // When the bar is closed only the magnifier shows; tapping it reveals the bar.
+        if (!searchOpen) {
+            BarIcon(icon = Icons.Rounded.Search, desc = "Search", onClick = onToggleSearch)
+        }
         Spacer(Modifier.width(4.dp))
         // Hamburger sits in a rounded chip, like the web's mobile menu button.
         Box(
@@ -187,7 +212,13 @@ private fun BarIcon(icon: ImageVector, desc: String, onClick: () -> Unit) {
 // ── search field ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun SearchBar(query: String, loading: Boolean, onQueryChange: (String) -> Unit) {
+private fun SearchBar(
+    query: String,
+    loading: Boolean,
+    onQueryChange: (String) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val pill = RoundedCornerShape(50)
     BasicTextField(
         value = query,
@@ -201,29 +232,29 @@ private fun SearchBar(query: String, loading: Boolean, onQueryChange: (String) -
             letterSpacing = 0.4.sp,
         ),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(42.dp)
+        modifier = modifier
+            .height(40.dp)
             .clip(pill)
             .background(Color(0x14FFFFFF))
             .border(1.dp, Color(0x26FFFFFF), pill),
         decorationBox = { inner ->
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 14.dp),
+                Modifier.fillMaxWidth().padding(start = 14.dp, end = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                // Leading: search magnifier (or the live loading spinner).
                 if (loading) {
                     CircularProgressIndicator(
                         color = Color.White,
                         strokeWidth = 2.dp,
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(15.dp),
                     )
                 } else {
                     Icon(
                         Icons.Rounded.Search,
                         contentDescription = null,
                         tint = Color(0x99FFFFFF),
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(17.dp),
                     )
                 }
                 Spacer(Modifier.width(10.dp))
@@ -235,20 +266,25 @@ private fun SearchBar(query: String, loading: Boolean, onQueryChange: (String) -
                             fontFamily = ChesnaGrotesk,
                             fontSize = 13.sp,
                             letterSpacing = 0.4.sp,
+                            maxLines = 1,
                         )
                     }
                     inner()
                 }
-                if (query.isNotEmpty()) {
-                    Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(6.dp))
+                // Trailing: close (✕) — collapses the bar and clears the query.
+                Box(
+                    Modifier
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(50))
+                        .clickable(onClick = onClose),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Icon(
                         Icons.Rounded.Close,
-                        contentDescription = "Clear",
+                        contentDescription = "Close search",
                         tint = Color(0x99FFFFFF),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .size(18.dp)
-                            .clickable { onQueryChange("") },
+                        modifier = Modifier.size(17.dp),
                     )
                 }
             }
