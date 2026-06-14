@@ -165,19 +165,13 @@ private fun TopBar(
             Modifier.weight(1f).padding(start = 12.dp),
             contentAlignment = Alignment.CenterEnd,
         ) {
-            AnimatedVisibility(
+            ExpandingSearchBar(
                 visible = searchOpen,
-                enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
-                exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut(),
-            ) {
-                SearchBar(
-                    query = query,
-                    loading = loading,
-                    onQueryChange = onQueryChange,
-                    onClose = onToggleSearch,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
+                query = query,
+                loading = loading,
+                onQueryChange = onQueryChange,
+                onClose = onToggleSearch,
+            )
         }
         // When the bar is closed only the magnifier shows; tapping it reveals the bar.
         if (!searchOpen) {
@@ -210,6 +204,34 @@ private fun BarIcon(icon: ImageVector, desc: String, onClick: () -> Unit) {
 }
 
 // ── search field ─────────────────────────────────────────────────────────────
+
+/**
+ * The search field that unfurls leftward out of the topbar magnifier. Kept in
+ * its own composable (no Row/Column receiver in scope) so `AnimatedVisibility`
+ * resolves to the plain overload rather than the `RowScope` extension.
+ */
+@Composable
+private fun ExpandingSearchBar(
+    visible: Boolean,
+    query: String,
+    loading: Boolean,
+    onQueryChange: (String) -> Unit,
+    onClose: () -> Unit,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
+        exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut(),
+    ) {
+        SearchBar(
+            query = query,
+            loading = loading,
+            onQueryChange = onQueryChange,
+            onClose = onClose,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
 
 @Composable
 private fun SearchBar(
