@@ -17,6 +17,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -70,9 +72,9 @@ fun MediaCard(item: SubjectItem, onClick: () -> Unit, modifier: Modifier = Modif
             }
         }
 
-        // language chip — top-left (Original / Hindi / Tamil …)
+        // type chip — top-left (Film / Series), mirroring the web card
         Chip(
-            text = item.corner.ifBlank { "Original" }.uppercase(),
+            text = if (item.isSeries) "SERIES" else "FILM",
             modifier = Modifier.align(Alignment.TopStart).padding(5.dp),
         )
 
@@ -92,18 +94,22 @@ fun MediaCard(item: SubjectItem, onClick: () -> Unit, modifier: Modifier = Modif
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .background(TitleScrim)
-                .padding(horizontal = 6.dp, vertical = 1.5.dp),
+                .padding(horizontal = 6.dp, vertical = 1.dp),
         ) {
             Text(
                 text = item.cleanTitle(),
                 color = Color(0xE6FFFFFF),
                 fontFamily = ChesnaGrotesk,
                 fontSize = 9.sp,
+                lineHeight = 9.sp,
                 fontWeight = FontWeight.Light,
                 letterSpacing = 1.2.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
+                // Drop the font's built-in top/bottom padding so the band can be
+                // as short as the glyphs themselves.
+                style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
                 modifier = Modifier.fillMaxWidth().align(Alignment.Center),
             )
         }
@@ -121,15 +127,18 @@ private fun Chip(text: String, modifier: Modifier = Modifier) {
             .clip(ChipShape)
             .background(ChipBg)
             .border(0.5.dp, ChipBorder, ChipShape)
-            // slim pill: wide horizontal, minimal vertical padding
-            .padding(horizontal = 5.dp, vertical = 0.5.dp),
+            // slim pill: vertical padding ~half the horizontal and kept minimal.
+            .padding(horizontal = 6.dp, vertical = 1.dp),
     ) {
         Text(
             text = text,
             color = Color.White,
-            fontSize = 6.sp,
+            fontSize = 7.sp,
+            lineHeight = 7.sp,
             fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.2.sp,
+            letterSpacing = 0.3.sp,
+            // No font padding → the pill hugs the text, so it reads slim not round.
+            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
         )
     }
 }

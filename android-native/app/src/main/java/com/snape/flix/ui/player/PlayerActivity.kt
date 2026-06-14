@@ -2,7 +2,6 @@ package com.snape.flix.ui.player
 
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
-import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -27,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -58,11 +58,11 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -78,11 +78,9 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
-import androidx.media3.ui.SubtitleView
-import com.snape.flix.R
 import com.snape.flix.data.MovieBoxSign
+import com.snape.flix.ui.theme.MonoFont
 import com.snape.flix.ui.theme.SnapeTheme
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -215,34 +213,11 @@ private fun PlayerSurface(
 
     DisposableEffect(Unit) { onDispose { exo.release() } }
 
-    // Captions render in their own screen-anchored view (not PlayerView's built-in
-    // one, which follows the video frame and shifts/clips when the fit/zoom resize
-    // mode toggles). Classic noir look: white monospace on a ~55% black band with a
-    // soft drop shadow; fixed bottom inset so the position never moves.
-    val subtitleView = remember {
-        // Space Mono — the actual noir monospace face (Typeface.MONOSPACE fell back
-        // to the device default on some OEMs and never read as monospace).
-        val spaceMono = ResourcesCompat.getFont(context, R.font.space_mono)
-            ?: Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
-        SubtitleView(context).apply {
-            setApplyEmbeddedStyles(false)
-            setApplyEmbeddedFontSizes(false)
-            setStyle(
-                CaptionStyleCompat(
-                    android.graphics.Color.WHITE,
-                    0x8C000000.toInt(),
-                    android.graphics.Color.TRANSPARENT,
-                    CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
-                    android.graphics.Color.BLACK,
-                    spaceMono,
-                ),
-            )
-            // Smaller standard caption size; larger bottom inset so the last line
-            // never clips on the screen edge / nav bar.
-            setFractionalTextSize(0.036f)
-            setBottomPaddingFraction(0.14f)
-        }
-    }
+    // Captions are drawn by our own Compose overlay (not PlayerView's built-in
+    // SubtitleView, which follows the video frame and shifts/clips when the
+    // fit/zoom resize mode toggles). We just mirror the active cue text here; the
+    // overlay anchors it to the screen so the position is identical in both modes.
+    var cueText by remember { mutableStateOf("") }
 
     // --- player state mirrored into Compose ---------------------------------
     var playing by remember { mutableStateOf(exo.isPlaying) }
@@ -260,7 +235,9 @@ private fun PlayerSurface(
                 playbackState = state
                 if (state == Player.STATE_READY) durationMs = exo.duration.coerceAtLeast(0L)
             }
-            override fun onCues(cueGroup: CueGroup) { subtitleView.setCues(cueGroup.cues) }
+            override fun onCues(cueGroup: CueGroup) {
+                cueText = cueGroup.cues.joinToString("\n") { it.text?.toString().orEmpty() }.trim()
+            }
         }
         exo.addListener(listener)
         onDispose { exo.removeListener(listener) }
@@ -316,20 +293,40 @@ private fun PlayerSurface(
                     useController = false // we draw our own web-style chrome
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                     setBackgroundColor(android.graphics.Color.BLACK)
-                    // We draw captions in our own screen-anchored SubtitleView so they
-                    // stay put across fit/zoom toggles; hide the built-in one.
+                    // We draw captions in our own Compose overlay so they stay put
+                    // across fit/zoom toggles; hide PlayerView's built-in one.
                     subtitleView?.visibility = android.view.View.GONE
                 }
             },
             update = { it.resizeMode = if (fillScreen) AspectRatioFrameLayout.RESIZE_MODE_ZOOM else AspectRatioFrameLayout.RESIZE_MODE_FIT },
         )
 
-        // Captions overlay — anchored to the full screen, so their position is
-        // independent of the video's fit/zoom resize mode.
-        AndroidView(
-            modifier = Modifier.fillMaxSize(),
-            factory = { subtitleView },
-        )
+        // Captions overlay — Compose-drawn and screen-anchored, so the position
+        // and size are identical in fit and zoom modes and never clip. Space Mono
+        // on a ~55% black band with horizontal breathing room (classic noir).
+        if (cueText.isNotEmpty()) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 48.dp),
+                contentAlignment = Alignment.BottomCenter,
+            ) {
+                Text(
+                    text = cueText,
+                    color = Color.White,
+                    fontFamily = MonoFont,
+                    fontSize = 14.sp,
+                    lineHeight = 19.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color(0x8C000000))
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                )
+            }
+        }
 
         // Tap surface: single tap toggles the chrome (or dismisses a menu),
         // double-tap on the left/right third seeks ∓10s, center toggles play.

@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -252,6 +253,9 @@ private fun SearchBar(
             fontFamily = ChesnaGrotesk,
             fontSize = 13.sp,
             letterSpacing = 0.4.sp,
+            // Without this the glyph box carries extra top padding, so the caret
+            // and typed text sit above the placeholder. Dropping it centers them.
+            platformStyle = PlatformTextStyle(includeFontPadding = false),
         ),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         modifier = modifier
@@ -280,7 +284,7 @@ private fun SearchBar(
                     )
                 }
                 Spacer(Modifier.width(10.dp))
-                Box(Modifier.weight(1f)) {
+                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                     if (query.isEmpty()) {
                         Text(
                             "Search for any movie or series",
@@ -289,6 +293,7 @@ private fun SearchBar(
                             fontSize = 13.sp,
                             letterSpacing = 0.4.sp,
                             maxLines = 1,
+                            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
                         )
                     }
                     inner()
@@ -393,8 +398,8 @@ private fun SideDrawer(onClose: () -> Unit) {
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Menu", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Browse & account", color = Color(0x66FFFFFF), fontSize = 12.sp)
+                    Text("Menu", color = Color.White, fontFamily = ChesnaGrotesk, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Browse & account", color = Color(0x66FFFFFF), fontFamily = ChesnaGrotesk, fontSize = 12.sp)
                 }
                 Box(
                     Modifier
@@ -421,6 +426,7 @@ private fun SideDrawer(onClose: () -> Unit) {
                     Text(
                         text = section.title.uppercase(),
                         color = Color(0x66FFFFFF),
+                        fontFamily = ChesnaGrotesk,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = 1.sp,
