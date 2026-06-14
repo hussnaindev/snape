@@ -38,16 +38,16 @@ class SearchViewModel : ViewModel() {
 
     private var searchJob: Job? = null
 
-    fun onQueryChange(query: String) {
-        _state.update { it.copy(query = query) }
+    /** Debounced search — only updates [SearchUiState.query] when a fetch actually runs. */
+    fun search(query: String) {
         searchJob?.cancel()
         if (query.isBlank()) {
-            _state.update { it.copy(results = emptyList(), loading = false, error = null, searched = false) }
+            _state.update { it.copy(query = "", results = emptyList(), loading = false, error = null, searched = false) }
             return
         }
         searchJob = viewModelScope.launch {
-            delay(350) // debounce keystrokes
-            _state.update { it.copy(loading = true, error = null) }
+            delay(350)
+            _state.update { it.copy(query = query, loading = true, error = null) }
             runCatching { MovieBoxRepository.search(query) }
                 .onSuccess { items ->
                     _state.update {

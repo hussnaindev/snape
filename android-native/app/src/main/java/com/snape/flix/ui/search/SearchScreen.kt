@@ -33,6 +33,9 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,9 +69,8 @@ fun SearchScreen(
         Header()
         Spacer(Modifier.height(14.dp))
         SearchBar(
-            query = state.query,
             loading = state.loading,
-            onQueryChange = viewModel::onQueryChange,
+            onSearch = viewModel::search,
         )
         Spacer(Modifier.height(16.dp))
 
@@ -81,9 +83,13 @@ fun SearchScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 24.dp),
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.weight(1f).fillMaxWidth(),
             ) {
-                items(state.results, key = { it.subjectId + it.corner }) { item ->
+                items(
+                    items = state.results,
+                    key = { it.subjectId + it.corner },
+                    contentType = { "card" },
+                ) { item ->
                     MediaCard(
                         item = item,
                         onClick = {
@@ -128,10 +134,13 @@ private fun Header() {
 }
 
 @Composable
-private fun SearchBar(query: String, loading: Boolean, onQueryChange: (String) -> Unit) {
+private fun SearchBar(loading: Boolean, onSearch: (String) -> Unit) {
+    // Local text state keeps keystrokes from recomposing the results grid.
+    var query by remember { mutableStateOf("") }
+
     TextField(
         value = query,
-        onValueChange = onQueryChange,
+        onValueChange = { query = it; onSearch(it) },
         singleLine = true,
         placeholder = { Text("Search movies & series", color = Color(0x66FFFFFF)) },
         leadingIcon = {
@@ -154,7 +163,7 @@ private fun SearchBar(query: String, loading: Boolean, onQueryChange: (String) -
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
                         .size(20.dp)
-                        .clickable { onQueryChange("") },
+                        .clickable { query = ""; onSearch("") },
                 )
             }
         },
