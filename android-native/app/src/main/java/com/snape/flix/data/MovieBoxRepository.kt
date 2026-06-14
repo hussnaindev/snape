@@ -35,6 +35,22 @@ object MovieBoxRepository {
         .readTimeout(15, TimeUnit.SECONDS)
         .callTimeout(20, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
+        // Diagnostic: a 407 on a direct route makes OkHttp throw an opaque
+        // "while not using proxy" error before we can inspect it. Intercept the
+        // raw response on the network layer and re-throw with the headers that
+        // identify whoever issued it (CDN edge vs. on-path proxy).
+        .addNetworkInterceptor { chain ->
+            val resp = chain.proceed(chain.request())
+            if (resp.code == 407) {
+                val diag = listOf(
+                    "server", "via", "proxy-authenticate",
+                    "x-amz-cf-pop", "x-cache", "cf-ray",
+                ).mapNotNull { h -> resp.header(h)?.let { "$h=$it" } }.joinToString(" ")
+                resp.close()
+                throw java.io.IOException("407 [${chain.request().url.host}] $diag".trim())
+            }
+            resp
+        }
         .build()
 
     // --- request builders ---------------------------------------------------
@@ -64,7 +80,16 @@ object MovieBoxRepository {
 
     private fun bodyString(req: Request): String =
         client.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) error("HTTP ${resp.code}")
+            if (!resp.isSuccessful) {
+                // Diagnostic: name whatever edge/proxy issued a non-200 so we can
+                // tell a CDN anti-abuse 407 apart from an on-path proxy.
+                val diag = listOf(
+                    "server", "via", "proxy-authenticate",
+                    "x-amz-cf-pop", "x-cache", "cf-ray",
+                ).mapNotNull { h -> resp.header(h)?.let { "$h=$it" } }
+                    .joinToString(" ")
+                error("HTTP ${resp.code} [${req.url.host}] $diag".trim())
+            }
             resp.body?.string() ?: error("empty body")
         }
 
