@@ -46,11 +46,13 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,6 +77,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.ImageLoader
@@ -196,6 +201,29 @@ fun DetailScreen(
 
     BackHandler(enabled = fullscreen) { fullscreen = false }
     BackHandler(enabled = playerActive && !fullscreen) { playerActive = false }
+
+    // Tie playback to the activity lifecycle: when this screen is no longer in the
+    // foreground (e.g. opening a "More Like This" title on top, backgrounding the
+    // app, or screen-off) tear the inline player down. That releases the ExoPlayer
+    // and restores the backdrop, so nothing keeps playing — or leaking — behind
+    // the next screen.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    // Latest player, read at event time (the observer is created once).
+    val currentExo by rememberUpdatedState(exo)
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) {
+                // Silence immediately — recomposition is deferred while stopped, so
+                // don't rely on the state flip alone. Release follows when the
+                // player leaves composition (on return/destroy).
+                currentExo?.pause()
+                fullscreen = false
+                playerActive = false
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     fun play(se: Int, ep: Int) {
         currentSe = se
