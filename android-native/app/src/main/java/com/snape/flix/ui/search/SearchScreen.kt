@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -35,8 +36,6 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,8 +45,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -187,49 +188,71 @@ private fun BarIcon(icon: ImageVector, desc: String, onClick: () -> Unit) {
 
 @Composable
 private fun SearchBar(query: String, loading: Boolean, onQueryChange: (String) -> Unit) {
-    TextField(
+    val pill = RoundedCornerShape(50)
+    BasicTextField(
         value = query,
         onValueChange = onQueryChange,
         singleLine = true,
-        placeholder = { Text("Search movies & series", color = Color(0x66FFFFFF)) },
-        leadingIcon = {
-            if (loading) {
-                CircularProgressIndicator(
-                    color = Color.White,
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.size(18.dp),
-                )
-            } else {
-                Icon(Icons.Rounded.Search, contentDescription = null, tint = Color(0x99FFFFFF))
-            }
-        },
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                Icon(
-                    Icons.Rounded.Close,
-                    contentDescription = "Clear",
-                    tint = Color(0x99FFFFFF),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .size(20.dp)
-                        .clickable { onQueryChange("") },
-                )
-            }
-        },
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        shape = RoundedCornerShape(50),
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = Color(0x14FFFFFF),
-            unfocusedContainerColor = Color(0x14FFFFFF),
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-            cursorColor = Color.White,
-            focusedTextColor = Color.White,
-            unfocusedTextColor = Color.White,
+        cursorBrush = SolidColor(Color.White),
+        textStyle = TextStyle(
+            color = Color.White,
+            fontFamily = ChesnaGrotesk,
+            fontSize = 13.sp,
+            letterSpacing = 0.4.sp,
         ),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(50)),
+            .height(42.dp)
+            .clip(pill)
+            .background(Color(0x14FFFFFF))
+            .border(1.dp, Color(0x26FFFFFF), pill),
+        decorationBox = { inner ->
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (loading) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(16.dp),
+                    )
+                } else {
+                    Icon(
+                        Icons.Rounded.Search,
+                        contentDescription = null,
+                        tint = Color(0x99FFFFFF),
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Box(Modifier.weight(1f)) {
+                    if (query.isEmpty()) {
+                        Text(
+                            "Search for any movie or series",
+                            color = Color(0x66FFFFFF),
+                            fontFamily = ChesnaGrotesk,
+                            fontSize = 13.sp,
+                            letterSpacing = 0.4.sp,
+                        )
+                    }
+                    inner()
+                }
+                if (query.isNotEmpty()) {
+                    Spacer(Modifier.width(8.dp))
+                    Icon(
+                        Icons.Rounded.Close,
+                        contentDescription = "Clear",
+                        tint = Color(0x99FFFFFF),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .size(18.dp)
+                            .clickable { onQueryChange("") },
+                    )
+                }
+            }
+        },
     )
 }
 
@@ -389,7 +412,9 @@ private fun CenterNote(text: String) {
         Text(
             text = text,
             color = Color(0x80FFFFFF),
+            fontFamily = ChesnaGrotesk,
             fontSize = 13.sp,
+            letterSpacing = 0.4.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(32.dp),
         )

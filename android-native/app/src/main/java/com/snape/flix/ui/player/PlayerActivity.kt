@@ -204,11 +204,13 @@ private fun PlayerSurface(ready: PlayerLoadState.Ready) {
                     android.graphics.Color.TRANSPARENT,
                     CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
                     android.graphics.Color.BLACK,
-                    Typeface.MONOSPACE,
+                    Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL),
                 ),
             )
-            setFractionalTextSize(0.0533f)
-            setBottomPaddingFraction(0.08f)
+            // Smaller standard caption size; larger bottom inset so the last line
+            // never clips on the screen edge / nav bar.
+            setFractionalTextSize(0.045f)
+            setBottomPaddingFraction(0.14f)
         }
     }
 
@@ -644,7 +646,9 @@ private fun MenuPopup(modifier: Modifier = Modifier, content: @Composable () -> 
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
             ) {}
-            .heightIn(max = 300.dp)
+            // Cap shorter than the (landscape) screen so the popup never reaches
+            // the top edge — leaves a visible gap; scrolls if the list is longer.
+            .heightIn(max = 200.dp)
             .verticalScroll(rememberScrollState())
             .padding(vertical = 6.dp),
     ) {
