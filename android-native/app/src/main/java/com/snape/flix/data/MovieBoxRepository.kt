@@ -35,21 +35,16 @@ object MovieBoxRepository {
         .readTimeout(15, TimeUnit.SECONDS)
         .callTimeout(20, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
-        // Diagnostic: a 407 on a direct route makes OkHttp throw an opaque
-        // "while not using proxy" error before we can inspect it. Intercept the
-        // raw response on the network layer and re-throw with the FULL header
-        // block + body snippet + negotiated protocol, so we can tell a real CDN
-        // edge apart from a synthetic, locally-injected response.
+        // A signed-request rejection comes back as 407, which OkHttp would
+        // otherwise turn into an opaque "while not using proxy" throw on a
+        // direct route. Surface the BFF's own error payload instead so failures
+        // are legible.
         .addNetworkInterceptor { chain ->
             val resp = chain.proceed(chain.request())
             if (resp.code >= 400) {
-                val hdrs = resp.headers.joinToString(" | ") { (n, v) -> "$n: $v" }
-                val body = runCatching { resp.peekBody(2048).string() }.getOrDefault("").take(160)
+                val msg = runCatching { resp.peekBody(2048).string() }.getOrDefault("").take(200)
                 resp.close()
-                throw java.io.IOException(
-                    "HTTP ${resp.code} ${resp.protocol} [${chain.request().url.host}] " +
-                        "hdrs={$hdrs} body={$body}",
-                )
+                throw java.io.IOException("HTTP ${resp.code} $msg".trim())
             }
             resp
         }
@@ -82,16 +77,7 @@ object MovieBoxRepository {
 
     private fun bodyString(req: Request): String =
         client.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) {
-                // Diagnostic: name whatever edge/proxy issued a non-200 so we can
-                // tell a CDN anti-abuse 407 apart from an on-path proxy.
-                val diag = listOf(
-                    "server", "via", "proxy-authenticate",
-                    "x-amz-cf-pop", "x-cache", "cf-ray",
-                ).mapNotNull { h -> resp.header(h)?.let { "$h=$it" } }
-                    .joinToString(" ")
-                error("HTTP ${resp.code} [${req.url.host}] $diag".trim())
-            }
+            if (!resp.isSuccessful) error("HTTP ${resp.code}")
             resp.body?.string() ?: error("empty body")
         }
 
@@ -104,7 +90,13 @@ object MovieBoxRepository {
         val sig = MovieBoxSign.signature("POST", P_SEARCH, "", body, ts)
         val req = Request.Builder()
             .url("$BASE$P_SEARCH")
-            .post(body.toRequestBody("application/json".toMediaType()))
+            // NOTE: send the body as bytes, not String. String.toRequestBody
+            // appends "; charset=utf-8" to the Content-Type, but the signature
+            // canonical signs a bare "application/json" — the mismatch makes the
+            // BFF reject every request with 407 "Signature invalid". ByteArray's
+            // toRequestBody uses the media type verbatim, so the sent header
+            // matches what we signed.
+            .post(body.toByteArray(Charsets.UTF_8).toRequestBody("application/json".toMediaType()))
             .applyCommonHeaders(ts, sig)
             .build()
         val parsed = json.decodeFromString(SearchResponse.serializer(), bodyString(req))
