@@ -21,8 +21,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -37,6 +39,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -104,18 +108,49 @@ fun SearchScreen(
                 state.error != null -> CenterNote(state.error!!)
                 !state.searched -> CenterNote("Search for any movie or series.")
                 state.results.isEmpty() && !state.loading -> CenterNote("No results for “${state.query}”.")
-                else -> LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(bottom = 24.dp),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    items(state.results, key = { it.primary.subjectId }) { group ->
-                        MediaCard(
-                            item = group.primary,
-                            onClick = { onOpenDetail(group) },
-                        )
+                else -> {
+                    val gridState = rememberLazyGridState()
+
+                    // Infinite scroll: when the last few cards come into view and
+                    // more pages remain, fetch the next page.
+                    val shouldLoadMore by remember {
+                        derivedStateOf {
+                            val last = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                            last >= state.results.size - 4
+                        }
+                    }
+                    LaunchedEffect(shouldLoadMore, state.canLoadMore) {
+                        if (shouldLoadMore && state.canLoadMore) viewModel.loadMore()
+                    }
+
+                    LazyVerticalGrid(
+                        state = gridState,
+                        columns = GridCells.Fixed(2),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(bottom = 24.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        items(state.results, key = { it.primary.subjectId }) { group ->
+                            MediaCard(
+                                item = group.primary,
+                                onClick = { onOpenDetail(group) },
+                            )
+                        }
+                        if (state.loadingMore) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box(
+                                    Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = Color.White,
+                                        strokeWidth = 2.dp,
+                                        modifier = Modifier.size(22.dp),
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

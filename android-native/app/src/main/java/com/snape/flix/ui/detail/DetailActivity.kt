@@ -95,6 +95,7 @@ class DetailActivity : ComponentActivity() {
         lifecycleScope.launch {
             val group = runCatching { MovieBoxRepository.search(hit.displayTitle) }
                 .getOrNull()
+                ?.groups
                 ?.firstOrNull()
             if (group != null) start(this@DetailActivity, group)
         }

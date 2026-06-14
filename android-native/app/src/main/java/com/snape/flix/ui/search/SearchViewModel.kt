@@ -16,9 +16,11 @@ import kotlinx.coroutines.launch
 data class SearchUiState(
     val query: String = "",
     val loading: Boolean = false,
+    val loadingMore: Boolean = false,
     val results: List<SubjectGroup> = emptyList(),
     val error: String? = null,
     val searched: Boolean = false,
+    val canLoadMore: Boolean = false,
 )
 
 sealed interface PickerState {
@@ -37,27 +39,67 @@ class SearchViewModel : ViewModel() {
     val picker: StateFlow<PickerState> = _picker.asStateFlow()
 
     private var searchJob: Job? = null
+    private var loadMoreJob: Job? = null
+    private var page = 1
 
     fun onQueryChange(query: String) {
         _state.update { it.copy(query = query) }
         searchJob?.cancel()
+        loadMoreJob?.cancel()
+        page = 1
         if (query.isBlank()) {
-            _state.update { it.copy(results = emptyList(), loading = false, error = null, searched = false) }
+            _state.update {
+                it.copy(results = emptyList(), loading = false, loadingMore = false, error = null, searched = false, canLoadMore = false)
+            }
             return
         }
         searchJob = viewModelScope.launch {
             delay(350) // debounce keystrokes
             _state.update { it.copy(loading = true, error = null) }
-            runCatching { MovieBoxRepository.search(query) }
-                .onSuccess { items ->
+            runCatching { MovieBoxRepository.search(query, page = 1) }
+                .onSuccess { pageResult ->
                     _state.update {
-                        it.copy(loading = false, results = items, searched = true, error = null)
+                        it.copy(
+                            loading = false,
+                            results = pageResult.groups,
+                            searched = true,
+                            error = null,
+                            canLoadMore = pageResult.hasMore,
+                        )
                     }
                 }
                 .onFailure { e ->
                     _state.update {
-                        it.copy(loading = false, error = e.message ?: "Search failed", searched = true)
+                        it.copy(loading = false, error = e.message ?: "Search failed", searched = true, canLoadMore = false)
                     }
+                }
+        }
+    }
+
+    /** Fetch the next page and append it (deduping by subjectId). */
+    fun loadMore() {
+        val s = _state.value
+        if (s.loading || s.loadingMore || !s.canLoadMore || s.query.isBlank()) return
+        if (loadMoreJob?.isActive == true) return
+        loadMoreJob = viewModelScope.launch {
+            _state.update { it.copy(loadingMore = true) }
+            val next = page + 1
+            runCatching { MovieBoxRepository.search(s.query, page = next) }
+                .onSuccess { pageResult ->
+                    page = next
+                    val existing = _state.value.results.mapTo(HashSet()) { it.primary.subjectId }
+                    val fresh = pageResult.groups.filter { it.primary.subjectId !in existing }
+                    _state.update {
+                        it.copy(
+                            loadingMore = false,
+                            results = it.results + fresh,
+                            canLoadMore = pageResult.hasMore,
+                        )
+                    }
+                }
+                .onFailure {
+                    // Keep what we have; stop trying so we don't loop on a bad page.
+                    _state.update { it.copy(loadingMore = false, canLoadMore = false) }
                 }
         }
     }

@@ -416,9 +416,14 @@ private fun TrailerWebView(
 }
 
 // Uses the YouTube IFrame Player API (loaded from youtube.com, same origin as the
-// base URL) rather than a bare <iframe src=embed>. The bare embed renders
-// "Video unavailable" inside a WebView because its referer/origin is empty; the
-// API player created with an explicit origin plays reliably.
+// base URL) — the proven android-youtube-player recipe. Key points that make it
+// play inside a WebView (a bare <iframe src=embed> or a constructor `videoId`
+// renders "Video unavailable"):
+//   • create the player with NO videoId, then loadVideoById() from onReady — the
+//     deferred load carries the proper origin/referrer handshake.
+//   • keep `origin` matching the base URL; do NOT set `host`.
+//   • loop manually by replaying on the ENDED state (playlist-loop is unreliable
+//     with loadVideoById).
 private fun trailerHtml(key: String): String = """
     <!DOCTYPE html><html><head>
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
@@ -435,12 +440,15 @@ private fun trailerHtml(key: String): String = """
      var player;
      function onYouTubeIframeAPIReady(){
        player=new YT.Player('player',{
-         videoId:'$key',
-         host:'https://www.youtube.com',
-         playerVars:{autoplay:1,controls:0,mute:1,loop:1,playlist:'$key',
+         playerVars:{autoplay:0,controls:0,disablekb:1,enablejsapi:1,
            modestbranding:1,rel:0,playsinline:1,iv_load_policy:3,fs:0,
            origin:'https://www.youtube.com'},
-         events:{onReady:function(e){e.target.mute();e.target.playVideo();}}
+         events:{
+           onReady:function(e){e.target.mute();e.target.loadVideoById('$key');},
+           onStateChange:function(e){
+             if(e.data===YT.PlayerState.ENDED){player.seekTo(0);player.playVideo();}
+           }
+         }
        });
      }
      function mute(){if(player&&player.mute)player.mute();}

@@ -67,29 +67,102 @@ object TmdbRepository {
 
     // --- public API ---------------------------------------------------------
 
-    /** Resolve a MovieBox title+year to its TMDB id (best year match wins). */
+    /**
+     * Resolve a MovieBox title+year to its TMDB id.
+     *
+     * The previous version hard-filtered the TMDB query by year (so a MovieBox
+     * year that was off by one silently dropped the correct title) and, on a
+     * miss, accepted `hits.first()` with no title check at all (so unrelated
+     * titles got matched). This scores every candidate by normalized-title
+     * similarity + year proximity (mirroring the web `pickBestMovieboxMatch`
+     * bars), and only accepts a hit that actually looks like the title — so we
+     * capture valid matches accurately without enriching from the wrong entry.
+     */
     suspend fun resolveId(isSeries: Boolean, title: String, year: String): Int? =
         withContext(Dispatchers.IO) {
             runCatching {
                 val q = cleanTitle(title)
                 if (q.isBlank()) return@runCatching null
                 val path = if (isSeries) "/search/tv" else "/search/movie"
-                val params = buildList {
-                    add("query" to q)
-                    add("include_adult" to "false")
-                    if (year.length >= 4) {
-                        add((if (isSeries) "first_air_date_year" else "year") to year.take(4))
-                    }
-                }
-                val hits = get(path, params, TmdbSearchResponse.serializer()).results
+                // No hard year filter — fetch candidates and rank them ourselves
+                // so a slightly-off MovieBox year can't drop the right title.
+                val hits = get(
+                    path,
+                    listOf("query" to q, "include_adult" to "false"),
+                    TmdbSearchResponse.serializer(),
+                ).results
                 if (hits.isEmpty()) return@runCatching null
-                val y = year.take(4)
-                val byYear = hits.firstOrNull {
-                    (if (isSeries) it.first_air_date else it.release_date).take(4) == y
+
+                val wantYear = year.take(4).toIntOrNull()
+                val target = normalizeTitle(q)
+
+                data class Scored(val id: Int, val titleSim: Double, val score: Double)
+
+                val scored = hits.map { hit ->
+                    val hitYear = (if (isSeries) hit.first_air_date else hit.release_date)
+                        .take(4).toIntOrNull()
+                    val titleSim = titleSimilarity(target, normalizeTitle(hit.displayTitle))
+                    val yearScore = when {
+                        wantYear == null || hitYear == null -> 0.4 // unknown → neutral-ish
+                        hitYear == wantYear -> 1.0
+                        kotlin.math.abs(hitYear - wantYear) == 1 -> 0.6
+                        else -> 0.0
+                    }
+                    Scored(hit.id, titleSim, titleSim * 0.8 + yearScore * 0.2)
+                }.sortedByDescending { it.score }
+
+                val best = scored.first()
+                when {
+                    // Exact (normalized) title: accept even if the year is weak.
+                    best.titleSim >= 0.98 -> best.id
+                    // Otherwise require a confident combined + title score, like
+                    // the web matcher's minScore 0.62 / minTitle 0.55 bars.
+                    best.score >= 0.62 && best.titleSim >= 0.55 -> best.id
+                    else -> null
                 }
-                (byYear ?: hits.first()).id
             }.getOrNull()
         }
+
+    /** Normalize a title for comparison: lowercase, de-punctuate, drop a leading article. */
+    private fun normalizeTitle(s: String): String =
+        s.lowercase()
+            .replace("&", " and ")
+            .replace(Regex("[^a-z0-9]+"), " ")
+            .trim()
+            .replace(Regex("^(the|a|an) "), "")
+            .replace(Regex("\\s+"), " ")
+
+    /** Title similarity in [0,1]: max of a Levenshtein ratio and token-set Jaccard. */
+    private fun titleSimilarity(a: String, b: String): Double {
+        if (a.isEmpty() || b.isEmpty()) return 0.0
+        if (a == b) return 1.0
+        val lev = run {
+            val dist = levenshtein(a, b)
+            1.0 - dist.toDouble() / maxOf(a.length, b.length)
+        }
+        val jaccard = run {
+            val sa = a.split(" ").toSet()
+            val sb = b.split(" ").toSet()
+            val inter = sa.intersect(sb).size.toDouble()
+            val union = sa.union(sb).size.toDouble()
+            if (union == 0.0) 0.0 else inter / union
+        }
+        return maxOf(lev, jaccard)
+    }
+
+    private fun levenshtein(a: String, b: String): Int {
+        val prev = IntArray(b.length + 1) { it }
+        val cur = IntArray(b.length + 1)
+        for (i in 1..a.length) {
+            cur[0] = i
+            for (j in 1..b.length) {
+                val cost = if (a[i - 1] == b[j - 1]) 0 else 1
+                cur[j] = minOf(cur[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost)
+            }
+            System.arraycopy(cur, 0, prev, 0, cur.size)
+        }
+        return prev[b.length]
+    }
 
     suspend fun detail(isSeries: Boolean, id: Int): TmdbDetail? = withContext(Dispatchers.IO) {
         runCatching {

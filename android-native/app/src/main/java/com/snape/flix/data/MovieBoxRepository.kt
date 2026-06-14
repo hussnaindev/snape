@@ -83,13 +83,20 @@ object MovieBoxRepository {
 
     // --- public API ---------------------------------------------------------
 
+    private const val PER_PAGE = 24
+
     /**
-     * Search movies + series. Drops trailers/music and resource-less hits, then
-     * folds every audio variant (Original / Hindi / Tamil …) of the same title
-     * into a single [SubjectGroup] so the grid shows one card per title.
+     * Search movies + series for one [page]. Drops trailers/music and
+     * resource-less hits, then folds every audio variant (Original / Hindi /
+     * Tamil …) of the same title into a single [SubjectGroup] so the grid shows
+     * one card per title. Returns the page's groups plus whether more pages
+     * remain (for the grid's infinite scroll).
      */
-    suspend fun search(keyword: String): List<SubjectGroup> = withContext(Dispatchers.IO) {
-        val body = json.encodeToString(SearchRequest.serializer(), SearchRequest(keyword.trim()))
+    suspend fun search(keyword: String, page: Int = 1): SearchPage = withContext(Dispatchers.IO) {
+        val body = json.encodeToString(
+            SearchRequest.serializer(),
+            SearchRequest(keyword = keyword.trim(), page = page, perPage = PER_PAGE),
+        )
         val ts = System.currentTimeMillis()
         val sig = MovieBoxSign.signature("POST", P_SEARCH, "", body, ts)
         val req = Request.Builder()
@@ -104,10 +111,13 @@ object MovieBoxRepository {
             .applyCommonHeaders(ts, sig)
             .build()
         val parsed = json.decodeFromString(SearchResponse.serializer(), bodyString(req))
-        val items = (parsed.data?.items ?: emptyList())
+        val rawItems = parsed.data?.items ?: emptyList()
+        val items = rawItems
             // Keep only playable movies/series (the flag is `hasResource`).
             .filter { (it.subjectType == 1 || it.subjectType == 2) && it.subjectId.isNotBlank() && it.hasResource }
-        groupVariants(items)
+        // Trust the pager when present; otherwise infer from a full page of raw hits.
+        val hasMore = parsed.data?.pager?.hasMore ?: (rawItems.size >= PER_PAGE)
+        SearchPage(groups = groupVariants(items), hasMore = hasMore)
     }
 
     /** Fold audio variants of the same title into one group (order preserved). */

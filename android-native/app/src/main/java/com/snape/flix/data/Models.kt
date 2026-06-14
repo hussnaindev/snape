@@ -14,7 +14,7 @@ import kotlinx.serialization.Serializable
 data class SearchRequest(
     val keyword: String,
     val page: Int = 1,
-    val perPage: Int = 20,
+    val perPage: Int = 24,
     // 0 = all (movies, series, music, …). We filter to 1/2 client-side.
     val subjectType: Int = 0,
 )
@@ -23,7 +23,19 @@ data class SearchRequest(
 data class SearchResponse(val code: Int = -1, val message: String = "", val data: SearchData? = null)
 
 @Serializable
-data class SearchData(val items: List<SubjectItem> = emptyList())
+data class SearchData(
+    val items: List<SubjectItem> = emptyList(),
+    val pager: Pager? = null,
+)
+
+/**
+ * One page of grouped search results plus whether more pages remain — drives the
+ * search grid's infinite scroll.
+ */
+data class SearchPage(
+    val groups: List<SubjectGroup>,
+    val hasMore: Boolean,
+)
 
 @Serializable
 data class Cover(val url: String = "")
