@@ -1,0 +1,43 @@
+package com.snape.flix
+
+import android.content.Intent
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import com.snape.flix.ui.player.PlayerActivity
+import com.snape.flix.ui.search.SearchScreen
+import com.snape.flix.ui.theme.SnapeTheme
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // Black full-screen splash with the centred white Snape logo.
+        installSplashScreen()
+        enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
+        setContent {
+            SnapeTheme {
+                Surface(Modifier.fillMaxSize().background(Color.Black), color = Color.Black) {
+                    SearchScreen(
+                        onPlay = { item, se, ep ->
+                            startActivity(
+                                Intent(this, PlayerActivity::class.java).apply {
+                                    putExtra(PlayerActivity.EXTRA_SUBJECT_ID, item.subjectId)
+                                    putExtra(PlayerActivity.EXTRA_TITLE, item.title)
+                                    putExtra(PlayerActivity.EXTRA_SE, se)
+                                    putExtra(PlayerActivity.EXTRA_EP, ep)
+                                },
+                            )
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
