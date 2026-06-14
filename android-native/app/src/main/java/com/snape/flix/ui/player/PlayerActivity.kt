@@ -71,6 +71,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
+import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
@@ -78,6 +79,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
+import androidx.media3.ui.SubtitleView
 import com.snape.flix.data.MovieBoxSign
 import com.snape.flix.ui.theme.SnapeTheme
 import kotlinx.coroutines.delay
@@ -187,6 +189,29 @@ private fun PlayerSurface(ready: PlayerLoadState.Ready) {
 
     DisposableEffect(Unit) { onDispose { exo.release() } }
 
+    // Captions render in their own screen-anchored view (not PlayerView's built-in
+    // one, which follows the video frame and shifts/clips when the fit/zoom resize
+    // mode toggles). Classic noir look: white monospace on a ~55% black band with a
+    // soft drop shadow; fixed bottom inset so the position never moves.
+    val subtitleView = remember {
+        SubtitleView(context).apply {
+            setApplyEmbeddedStyles(false)
+            setApplyEmbeddedFontSizes(false)
+            setStyle(
+                CaptionStyleCompat(
+                    android.graphics.Color.WHITE,
+                    0x8C000000.toInt(),
+                    android.graphics.Color.TRANSPARENT,
+                    CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
+                    android.graphics.Color.BLACK,
+                    Typeface.MONOSPACE,
+                ),
+            )
+            setFractionalTextSize(0.0533f)
+            setBottomPaddingFraction(0.08f)
+        }
+    }
+
     // --- player state mirrored into Compose ---------------------------------
     var playing by remember { mutableStateOf(exo.isPlaying) }
     var playbackState by remember { mutableIntStateOf(exo.playbackState) }
@@ -203,6 +228,7 @@ private fun PlayerSurface(ready: PlayerLoadState.Ready) {
                 playbackState = state
                 if (state == Player.STATE_READY) durationMs = exo.duration.coerceAtLeast(0L)
             }
+            override fun onCues(cueGroup: CueGroup) { subtitleView.setCues(cueGroup.cues) }
         }
         exo.addListener(listener)
         onDispose { exo.removeListener(listener) }
@@ -258,27 +284,19 @@ private fun PlayerSurface(ready: PlayerLoadState.Ready) {
                     useController = false // we draw our own web-style chrome
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                     setBackgroundColor(android.graphics.Color.BLACK)
-                    subtitleView?.apply {
-                        setApplyEmbeddedStyles(false)
-                        setApplyEmbeddedFontSizes(false)
-                        // Classic noir caption: white monospace on a translucent
-                        // black band (~55%) with a soft black drop shadow for depth.
-                        setStyle(
-                            CaptionStyleCompat(
-                                android.graphics.Color.WHITE,
-                                0x8C000000.toInt(), // ~55% opacity black background
-                                android.graphics.Color.TRANSPARENT,
-                                CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
-                                android.graphics.Color.BLACK,
-                                Typeface.MONOSPACE,
-                            ),
-                        )
-                        // Standard caption size (~5.3% of viewport height).
-                        setFractionalTextSize(0.0533f)
-                    }
+                    // We draw captions in our own screen-anchored SubtitleView so they
+                    // stay put across fit/zoom toggles; hide the built-in one.
+                    subtitleView?.visibility = android.view.View.GONE
                 }
             },
             update = { it.resizeMode = if (fillScreen) AspectRatioFrameLayout.RESIZE_MODE_ZOOM else AspectRatioFrameLayout.RESIZE_MODE_FIT },
+        )
+
+        // Captions overlay — anchored to the full screen, so their position is
+        // independent of the video's fit/zoom resize mode.
+        AndroidView(
+            modifier = Modifier.fillMaxSize(),
+            factory = { subtitleView },
         )
 
         // Tap surface: single tap toggles the chrome (or dismisses a menu),
