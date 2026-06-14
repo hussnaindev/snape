@@ -440,8 +440,13 @@ private fun trailerHtml(key: String): String = """
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <style>
      html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden}
-     .wrap{position:fixed;inset:0;overflow:hidden}
-     #player{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+     /* clip everything outside the hero box */
+     .wrap{position:fixed;inset:0;overflow:hidden;background:#000}
+     /* 16:9 cover, then over-scale so YouTube's own letterbox bars (cinematic
+        2.39:1 trailers) AND the player chrome (title bar / logo) are cropped
+        out of view instead of showing as black bars + an overlay on start. */
+     #player{position:absolute;top:50%;left:50%;
+      transform:translate(-50%,-50%) scale(1.35);
       width:100vw;height:56.25vw;min-width:177.78vh;min-height:100vh}
      #player iframe{width:100%;height:100%;border:0;pointer-events:none}
     </style></head><body>
