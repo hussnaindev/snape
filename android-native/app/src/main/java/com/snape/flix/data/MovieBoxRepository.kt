@@ -37,17 +37,19 @@ object MovieBoxRepository {
         .retryOnConnectionFailure(true)
         // Diagnostic: a 407 on a direct route makes OkHttp throw an opaque
         // "while not using proxy" error before we can inspect it. Intercept the
-        // raw response on the network layer and re-throw with the headers that
-        // identify whoever issued it (CDN edge vs. on-path proxy).
+        // raw response on the network layer and re-throw with the FULL header
+        // block + body snippet + negotiated protocol, so we can tell a real CDN
+        // edge apart from a synthetic, locally-injected response.
         .addNetworkInterceptor { chain ->
             val resp = chain.proceed(chain.request())
-            if (resp.code == 407) {
-                val diag = listOf(
-                    "server", "via", "proxy-authenticate",
-                    "x-amz-cf-pop", "x-cache", "cf-ray",
-                ).mapNotNull { h -> resp.header(h)?.let { "$h=$it" } }.joinToString(" ")
+            if (resp.code >= 400) {
+                val hdrs = resp.headers.joinToString(" | ") { (n, v) -> "$n: $v" }
+                val body = runCatching { resp.peekBody(2048).string() }.getOrDefault("").take(160)
                 resp.close()
-                throw java.io.IOException("407 [${chain.request().url.host}] $diag".trim())
+                throw java.io.IOException(
+                    "HTTP ${resp.code} ${resp.protocol} [${chain.request().url.host}] " +
+                        "hdrs={$hdrs} body={$body}",
+                )
             }
             resp
         }
