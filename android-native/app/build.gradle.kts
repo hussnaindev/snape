@@ -19,7 +19,14 @@ android {
 
     buildTypes {
         release {
+            // Non-debuggable build: ART runs the app fully optimized and the
+            // Compose runtime drops its debug composition-tracking overhead, so
+            // scrolling is dramatically smoother than a debug build. Minify stays
+            // off to keep streaming/serialization behaviour identical for now.
             isMinifyEnabled = false
+            // Sign with the auto-generated debug keystore so the release APK is
+            // installable straight from CI without managing signing secrets.
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

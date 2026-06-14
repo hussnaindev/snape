@@ -34,12 +34,15 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Build debug APK
-        run: gradle :app:assembleDebug --no-daemon --stacktrace
+      - name: Build release APK
+        # Release (non-debuggable) build — scrolling/animation perf is much
+        # smoother than a debug build. Signed with the debug keystore so it
+        # installs without secrets.
+        run: gradle :app:assembleRelease --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: snape-debug-apk
-          path: android-native/app/build/outputs/apk/debug/app-debug.apk
+          name: snape-release-apk
+          path: android-native/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
