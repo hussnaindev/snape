@@ -15,9 +15,19 @@ subtitles) goes straight to the MovieBox mobile BFF from the phone's own
   chips, language pill, gradient title bar).
 - **Splash**: black full-screen launch with the centred white Snape logo
   (AndroidX splash-screen API).
-- **Movies** play immediately on tap.
-- **Series** open a season/episode picker sheet; pick an episode to play.
-- **Player** (landscape, immersive): Media3/ExoPlayer plays the adaptive **DASH**
+- **Detail page** (`ui/detail/`): tapping any card opens a pixel replica of the
+  web app's mobile detail screen — hero/backdrop, poster card, title logo,
+  metadata row (year · runtime/seasons · rating), genre + status chips,
+  expandable synopsis, a **Starring** cast rail, an **Episodes** carousel
+  (series) and a **More Like This** rail. MovieBox supplies the base (it is the
+  playable source); the richer fields MovieBox lacks (backdrop, title logo,
+  trailer key, cast, genres, episode stills, recommendations) are fetched
+  **on-device from TMDB** (`data/Tmdb.kt`) — no web backend is involved.
+- **Watch / episodes**: the Watch button (movies) and episode taps (series) play
+  the MovieBox stream **inline inside the hero section** (vertical), exactly like
+  the web. The player's fullscreen button expands the *same* ExoPlayer instance
+  to a full-screen landscape overlay (no audio restart); back returns inline.
+- **Player** (`ui/player/StreamPlayer.kt`): Media3/ExoPlayer plays the adaptive
   stream (`subject-api/play-info`) using the CloudFront `signCookie` for the CDN.
   - **Quality** is switchable (1080/720/480 + Auto) via the ⚙ HD menu.
   - **Subtitles** are switchable (sideloaded `.srt` from `get-ext-captions`) via

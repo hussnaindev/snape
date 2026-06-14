@@ -1,13 +1,7 @@
 package com.snape.flix.ui.player
 
-import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.view.WindowManager
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,8 +9,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,8 +23,10 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -58,16 +52,10 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
@@ -81,127 +69,30 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.snape.flix.data.MovieBoxSign
 import com.snape.flix.ui.theme.MonoFont
-import com.snape.flix.ui.theme.SnapeTheme
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
-
-class PlayerActivity : ComponentActivity() {
-
-    companion object {
-        const val EXTRA_SUBJECT_ID = "subjectId"
-        const val EXTRA_TITLE = "title"
-        const val EXTRA_SE = "se"
-        const val EXTRA_EP = "ep"
-        const val EXTRA_VARIANT_IDS = "variantIds"
-        const val EXTRA_VARIANT_LABELS = "variantLabels"
-    }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        // Draw the video into the display cutout area so a notch/camera no longer
-        // leaves a black letterbox strip on the short/long edge in landscape.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.attributes = window.attributes.apply {
-                layoutInDisplayCutoutMode =
-                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
-            }
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            window.attributes = window.attributes.apply {
-                layoutInDisplayCutoutMode =
-                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-            }
-        }
-        hideSystemBars()
-
-        val subjectId = intent.getStringExtra(EXTRA_SUBJECT_ID).orEmpty()
-        val se = intent.getIntExtra(EXTRA_SE, 0)
-        val ep = intent.getIntExtra(EXTRA_EP, 0)
-        val variantIds = intent.getStringArrayListExtra(EXTRA_VARIANT_IDS).orEmpty()
-        val variantLabels = intent.getStringArrayListExtra(EXTRA_VARIANT_LABELS).orEmpty()
-        // Pair each variant subjectId with its language label for the audio menu.
-        // Fall back to a single variant from the bare subjectId if none were passed.
-        val variants = if (variantIds.isNotEmpty()) {
-            variantIds.mapIndexed { i, id ->
-                AudioVariant(id = id, label = variantLabels.getOrElse(i) { "Original" })
-            }
-        } else {
-            listOf(AudioVariant(id = subjectId, label = "Original"))
-        }
-        // Try variants in this preference order; the first with a real stream wins.
-        val ordered = variants.sortedBy { audioPreferenceRank(it.label) }
-
-        setContent {
-            SnapeTheme {
-                val vm: PlayerViewModel = viewModel()
-                // null => play the default (preference order). A non-null id means
-                // the user explicitly picked that variant from the audio menu: it's
-                // tried first, with the rest as fallback if it has no stream.
-                var requestedId by remember { mutableStateOf<String?>(null) }
-                LaunchedEffect(requestedId) {
-                    val candidates = requestedId
-                        ?.let { id -> ordered.filter { it.id == id } + ordered.filter { it.id != id } }
-                        ?: ordered
-                    vm.load(candidates, se, ep)
-                }
-                val state by vm.state.collectAsStateWithLifecycle()
-                Box(Modifier.fillMaxSize().background(Color.Black)) {
-                    when (val s = state) {
-                        is PlayerLoadState.Loading -> CenterStatus("Loading…", spinner = true)
-                        is PlayerLoadState.Error -> CenterStatus(s.message, spinner = false, onBack = ::finish)
-                        is PlayerLoadState.Ready -> PlayerSurface(
-                            ready = s,
-                            variants = ordered,
-                            // The variant that actually resolved (may differ from the
-                            // request when we fell back), so the menu shows what plays.
-                            selectedId = s.subjectId,
-                            onSelectVariant = { requestedId = it },
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    // Re-assert immersive mode whenever the window regains focus — the system
-    // re-shows the bars after dialogs, the volume panel, or a swipe-reveal.
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) hideSystemBars()
-    }
-
-    private fun hideSystemBars() {
-        WindowInsetsControllerCompat(window, window.decorView).apply {
-            hide(WindowInsetsCompat.Type.systemBars())
-            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        }
-    }
-}
 
 /** One selectable audio/language variant of the same title. */
 data class AudioVariant(val id: String, val label: String)
 
 /** Default playback preference: Original → English → Hindi → everything else. */
-private fun audioPreferenceRank(label: String): Int = when {
+fun audioPreferenceRank(label: String): Int = when {
     label.equals("Original", true) -> 0
     label.equals("English", true) -> 1
     label.equals("Hindi", true) -> 2
     else -> 3
 }
 
+/**
+ * Build (and own) an ExoPlayer for a resolved stream. Keyed on the stream URL so
+ * switching episode/variant rebuilds it, while an inline ↔ fullscreen toggle (which
+ * keeps the same [ready]) preserves the instance and uninterrupted playback.
+ */
 @OptIn(UnstableApi::class)
 @Composable
-private fun PlayerSurface(
-    ready: PlayerLoadState.Ready,
-    variants: List<AudioVariant>,
-    selectedId: String,
-    onSelectVariant: (String) -> Unit,
-) {
+fun rememberStreamExoPlayer(ready: PlayerLoadState.Ready): ExoPlayer {
     val context = LocalContext.current
-
-    // --- streaming setup (unchanged) ----------------------------------------
-    val exo = remember {
+    val exo = remember(ready.mpdUrl) {
         val httpFactory = DefaultHttpDataSource.Factory()
             .setUserAgent(MovieBoxSign.USER_AGENT)
             .setAllowCrossProtocolRedirects(true)
@@ -221,10 +112,6 @@ private fun PlayerSurface(
                 setMediaItem(
                     MediaItem.Builder()
                         .setUri(ready.mpdUrl)
-                        // The BFF serves different containers per audio variant
-                        // (Original→HLS, Hindi/Telugu→DASH, Tamil→MP4); ExoPlayer
-                        // picks the right MediaSource from the MIME type, so it must
-                        // match the stream's actual format, not always DASH.
                         .setMimeType(
                             when (ready.format.uppercase()) {
                                 "HLS" -> MimeTypes.APPLICATION_M3U8
@@ -235,7 +122,6 @@ private fun PlayerSurface(
                         .setSubtitleConfigurations(subs)
                         .build(),
                 )
-                // Subtitles off by default; user opts in via the CC menu.
                 trackSelectionParameters = trackSelectionParameters.buildUpon()
                     .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
                     .build()
@@ -243,16 +129,29 @@ private fun PlayerSurface(
                 playWhenReady = true
             }
     }
+    DisposableEffect(exo) { onDispose { exo.release() } }
+    return exo
+}
 
-    DisposableEffect(Unit) { onDispose { exo.release() } }
-
-    // Captions are drawn by our own Compose overlay (not PlayerView's built-in
-    // SubtitleView, which follows the video frame and shifts/clips when the
-    // fit/zoom resize mode toggles). We just mirror the active cue text here; the
-    // overlay anchors it to the screen so the position is identical in both modes.
+/**
+ * The web-style player chrome (scrubber, controls, menus, captions overlay). The
+ * same composable backs the inline detail-hero player and its fullscreen overlay;
+ * [fullscreen] only changes the fullscreen toggle icon and the control density.
+ */
+@OptIn(UnstableApi::class)
+@Composable
+fun StreamPlayerChrome(
+    exo: ExoPlayer,
+    ready: PlayerLoadState.Ready,
+    variants: List<AudioVariant>,
+    selectedId: String,
+    onSelectVariant: (String) -> Unit,
+    fullscreen: Boolean,
+    onToggleFullscreen: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     var cueText by remember { mutableStateOf("") }
 
-    // --- player state mirrored into Compose ---------------------------------
     var playing by remember { mutableStateOf(exo.isPlaying) }
     var playbackState by remember { mutableIntStateOf(exo.playbackState) }
     var positionMs by remember { mutableLongStateOf(0L) }
@@ -276,7 +175,6 @@ private fun PlayerSurface(
         onDispose { exo.removeListener(listener) }
     }
 
-    // Poll position/buffer a few times a second (cheap; only the slider redraws).
     LaunchedEffect(exo) {
         while (true) {
             if (!scrubbing) {
@@ -288,28 +186,25 @@ private fun PlayerSurface(
         }
     }
 
-    // --- chrome state -------------------------------------------------------
-    val activity = context as? android.app.Activity
     var controlsShown by remember { mutableStateOf(true) }
     var openMenu by remember { mutableStateOf(Menu.NONE) }
-    var qualityHeight by remember { mutableStateOf<Int?>(null) } // null = auto
-    var subtitleLang by remember { mutableStateOf<String?>(null) } // null = off
+    var qualityHeight by remember { mutableStateOf<Int?>(null) }
+    var subtitleLang by remember { mutableStateOf<String?>(null) }
     var speed by remember { mutableFloatStateOf(1f) }
     var fillScreen by remember { mutableStateOf(true) }
-    var portraitAllowed by remember { mutableStateOf(false) }
     var muted by remember { mutableStateOf(false) }
     var surfaceWidthPx by remember { mutableIntStateOf(1) }
 
-    // In portrait the bar has far less width: drop the ∓10s skip buttons (double-
-    // tap still seeks) and tighten icon size + spacing so nothing clips.
-    val compact = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
+    // Inline (portrait) has far less width: drop the ∓10s skip buttons and tighten
+    // icon size + spacing so nothing clips. Fullscreen (landscape) shows them all.
+    val compact = !fullscreen ||
+        LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
     val ctrlSize = if (compact) 22.dp else 24.dp
     val gap = if (compact) 10.dp else 14.dp
 
     val buffering = playbackState == Player.STATE_BUFFERING
     val chromeVisible = controlsShown || !playing
 
-    // Auto-hide the controls while playing.
     LaunchedEffect(controlsShown, playing, openMenu) {
         if (controlsShown && playing && openMenu == Menu.NONE) {
             delay(3200)
@@ -317,26 +212,29 @@ private fun PlayerSurface(
         }
     }
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier.background(Color.Black)) {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
                 PlayerView(ctx).apply {
                     player = exo
-                    useController = false // we draw our own web-style chrome
+                    useController = false
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                     setBackgroundColor(android.graphics.Color.BLACK)
-                    // We draw captions in our own Compose overlay so they stay put
-                    // across fit/zoom toggles; hide PlayerView's built-in one.
                     subtitleView?.visibility = android.view.View.GONE
                 }
             },
-            update = { it.resizeMode = if (fillScreen) AspectRatioFrameLayout.RESIZE_MODE_ZOOM else AspectRatioFrameLayout.RESIZE_MODE_FIT },
+            update = {
+                it.player = exo
+                it.resizeMode = if (fillScreen) {
+                    AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                } else {
+                    AspectRatioFrameLayout.RESIZE_MODE_FIT
+                }
+            },
+            onRelease = { it.player = null },
         )
 
-        // Captions overlay — Compose-drawn and screen-anchored, so the position
-        // and size are identical in fit and zoom modes and never clip. Space Mono
-        // on a ~55% black band with horizontal breathing room (classic noir).
         if (cueText.isNotEmpty()) {
             Box(
                 Modifier
@@ -352,7 +250,7 @@ private fun PlayerSurface(
                     fontFamily = MonoFont,
                     fontSize = 14.sp,
                     lineHeight = 19.sp,
-                    textAlign = TextAlign.Center,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     modifier = Modifier
                         .clip(RoundedCornerShape(4.dp))
                         .background(Color(0x8C000000))
@@ -361,8 +259,6 @@ private fun PlayerSurface(
             }
         }
 
-        // Tap surface: single tap toggles the chrome (or dismisses a menu),
-        // double-tap on the left/right third seeks ∓10s, center toggles play.
         Box(
             Modifier
                 .fillMaxSize()
@@ -386,10 +282,9 @@ private fun PlayerSurface(
                 },
         )
 
-        // Center: loading spinner while buffering, else play/pause.
         if (buffering) {
             CircularProgressIndicator(
-                modifier = Modifier.align(Alignment.Center).size(64.dp),
+                modifier = Modifier.align(Alignment.Center).size(56.dp),
                 color = Color(0xFFE50914),
                 strokeWidth = 4.dp,
                 trackColor = Color(0x1AFFFFFF),
@@ -403,7 +298,6 @@ private fun PlayerSurface(
         }
 
         if (chromeVisible) {
-            // Bottom: scrubber + control row over a gradient.
             Column(
                 Modifier
                     .align(Alignment.BottomCenter)
@@ -475,22 +369,15 @@ private fun PlayerSurface(
                     Ctrl(PlayerIcons.FillScreen, "Fill screen", active = fillScreen, size = ctrlSize) { fillScreen = !fillScreen }
                     Spacer(Modifier.width(gap))
                     Ctrl(
-                        if (portraitAllowed) PlayerIcons.FullscreenEnter else PlayerIcons.FullscreenExit,
-                        "Rotate",
+                        if (fullscreen) PlayerIcons.FullscreenExit else PlayerIcons.FullscreenEnter,
+                        "Fullscreen",
                         size = ctrlSize,
-                    ) {
-                        portraitAllowed = !portraitAllowed
-                        activity?.requestedOrientation = if (portraitAllowed) {
-                            ActivityInfo.SCREEN_ORIENTATION_SENSOR
-                        } else {
-                            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                        }
-                    }
+                        onClick = onToggleFullscreen,
+                    )
                 }
             }
         }
 
-        // --- menus (bottom-right popup, web-style) --------------------------
         if (openMenu != Menu.NONE) {
             MenuPopup(modifier = Modifier.align(Alignment.BottomEnd)) {
                 when (openMenu) {
@@ -529,7 +416,6 @@ private fun PlayerSurface(
                         }
                     }
                     Menu.AUDIO -> variants.forEach { v ->
-                        // Switching refetches that variant's stream (lazy by design).
                         OptItem(v.label, v.id == selectedId) {
                             if (v.id != selectedId) onSelectVariant(v.id)
                             openMenu = Menu.NONE
@@ -588,7 +474,6 @@ private fun fmt(ms: Long): String {
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }
 
-/** YouTube-style scrubber: white/20 track, white/40 buffered, red played + knob. */
 @Composable
 private fun Scrubber(
     positionMs: Long,
@@ -618,9 +503,6 @@ private fun Scrubber(
                 detectTapGestures { o -> onSeek((o.x / widthPx).coerceIn(0f, 1f)) }
             }
             .pointerInput(Unit) {
-                // dragFrac tracks the live position so onDragEnd commits the
-                // latest fraction (the captured `scrubFrac` param would be stale,
-                // since this gesture block is not restarted on recomposition).
                 var dragFrac = 0f
                 detectHorizontalDragGestures(
                     onDragStart = { o -> dragFrac = (o.x / widthPx).coerceIn(0f, 1f); onScrubStart(dragFrac) },
@@ -635,12 +517,10 @@ private fun Scrubber(
             },
         contentAlignment = Alignment.CenterStart,
     ) {
-        // track
         Box(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape).background(Color(0x33FFFFFF))) {
             Box(Modifier.fillMaxWidth(bufferedFrac).height(3.dp).background(Color(0x66FFFFFF)))
             Box(Modifier.fillMaxWidth(playedFrac).height(3.dp).background(red))
         }
-        // knob
         Box(
             Modifier
                 .offset { IntOffset((widthPx * playedFrac).roundToInt() - knobPx / 2, 0) }
@@ -671,7 +551,6 @@ private fun CenterPlayButton(playing: Boolean, modifier: Modifier = Modifier, on
     }
 }
 
-/** A bottom-bar control button with the web's red active underline. */
 @Composable
 private fun Ctrl(
     icon: ImageVector,
@@ -706,19 +585,14 @@ private fun MenuPopup(modifier: Modifier = Modifier, content: @Composable () -> 
     Column(
         modifier
             .padding(end = 16.dp, bottom = 76.dp)
-            // Fixed compact width — without a max, the fillMaxWidth rows would
-            // stretch the popup across the whole player.
             .width(220.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(Color(0xF2000000))
             .border(1.dp, Color(0x26FFFFFF), RoundedCornerShape(12.dp))
-            // Consume taps so they don't fall through to the toggle surface.
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
             ) {}
-            // Cap shorter than the (landscape) screen so the popup never reaches
-            // the top edge — leaves a visible gap; scrolls if the list is longer.
             .heightIn(max = 200.dp)
             .verticalScroll(rememberScrollState())
             .padding(vertical = 6.dp),
@@ -751,28 +625,5 @@ private fun OptItem(label: String, active: Boolean, onClick: () -> Unit) {
                 .background(if (active) Color(0xFFE50914) else Color.Transparent),
         )
         Text(label, color = if (active) Color.White else Color(0xB3FFFFFF), fontSize = 14.sp, fontFamily = FontFamily.Monospace)
-    }
-}
-
-@Composable
-private fun CenterStatus(message: String, spinner: Boolean, onBack: (() -> Unit)? = null) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            if (spinner) CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp)
-            Text(message, color = Color(0xCCFFFFFF), fontSize = 14.sp)
-            if (onBack != null) {
-                Text(
-                    "GO BACK",
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    letterSpacing = 2.sp,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(Color(0x14FFFFFF))
-                        .clickable(onClick = onBack)
-                        .padding(horizontal = 24.dp, vertical = 12.dp),
-                )
-            }
-        }
     }
 }

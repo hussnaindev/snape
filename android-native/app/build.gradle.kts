@@ -71,6 +71,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
+    // SVG decoder so the bundled provider logos (Netflix/Max/…) render as vectors.
+    implementation("io.coil-kt:coil-svg:2.7.0")
 
     val media3 = "1.4.1"
     implementation("androidx.media3:media3-exoplayer:$media3")

@@ -69,11 +69,10 @@ import com.snape.flix.ui.theme.ChesnaGrotesk
 
 @Composable
 fun SearchScreen(
-    onPlay: (group: SubjectGroup, se: Int, ep: Int) -> Unit,
+    onOpenDetail: (group: SubjectGroup) -> Unit,
     viewModel: SearchViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val picker by viewModel.picker.collectAsStateWithLifecycle()
 
     // Search field shows by default (this is the search screen); the magnifier in
     // the bar collapses it. Drawer mirrors the web's right-side mobile menu.
@@ -115,10 +114,7 @@ fun SearchScreen(
                     items(state.results, key = { it.primary.subjectId }) { group ->
                         MediaCard(
                             item = group.primary,
-                            onClick = {
-                                if (group.primary.isSeries) viewModel.openSeries(group)
-                                else onPlay(group, 0, 0)
-                            },
+                            onClick = { onOpenDetail(group) },
                         )
                     }
                 }
@@ -129,15 +125,6 @@ fun SearchScreen(
             SideDrawer(onClose = { drawerOpen = false })
         }
     }
-
-    EpisodePickerSheet(
-        state = picker,
-        onDismiss = viewModel::closePicker,
-        onPlay = { group, se, ep ->
-            viewModel.closePicker()
-            onPlay(group, se, ep)
-        },
-    )
 }
 
 // ── top bar ──────────────────────────────────────────────────────────────────

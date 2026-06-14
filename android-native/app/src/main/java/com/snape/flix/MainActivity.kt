@@ -1,6 +1,5 @@
 package com.snape.flix
 
-import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -11,7 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import com.snape.flix.ui.player.PlayerActivity
+import com.snape.flix.ui.detail.DetailActivity
 import com.snape.flix.ui.search.SearchScreen
 import com.snape.flix.ui.theme.SnapeTheme
 
@@ -25,26 +24,9 @@ class MainActivity : ComponentActivity() {
             SnapeTheme {
                 Surface(Modifier.fillMaxSize().background(Color.Black), color = Color.Black) {
                     SearchScreen(
-                        onPlay = { group, se, ep ->
-                            startActivity(
-                                Intent(this, PlayerActivity::class.java).apply {
-                                    putExtra(PlayerActivity.EXTRA_SUBJECT_ID, group.primary.subjectId)
-                                    putExtra(PlayerActivity.EXTRA_TITLE, group.primary.title)
-                                    putExtra(PlayerActivity.EXTRA_SE, se)
-                                    putExtra(PlayerActivity.EXTRA_EP, ep)
-                                    // Audio variants for the in-player audio menu; the
-                                    // others are only fetched if the user switches.
-                                    putStringArrayListExtra(
-                                        PlayerActivity.EXTRA_VARIANT_IDS,
-                                        ArrayList(group.variants.map { it.subjectId }),
-                                    )
-                                    putStringArrayListExtra(
-                                        PlayerActivity.EXTRA_VARIANT_LABELS,
-                                        ArrayList(group.variants.map { it.variantLabel }),
-                                    )
-                                },
-                            )
-                        },
+                        // Every card opens the detail page; movies and series alike.
+                        // Watch/episode playback happens inline on the detail screen.
+                        onOpenDetail = { group -> DetailActivity.start(this, group) },
                     )
                 }
             }
