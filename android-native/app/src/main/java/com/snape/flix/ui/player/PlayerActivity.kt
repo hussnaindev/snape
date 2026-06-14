@@ -121,17 +121,30 @@ class PlayerActivity : ComponentActivity() {
         val variantIds = intent.getStringArrayListExtra(EXTRA_VARIANT_IDS).orEmpty()
         val variantLabels = intent.getStringArrayListExtra(EXTRA_VARIANT_LABELS).orEmpty()
         // Pair each variant subjectId with its language label for the audio menu.
-        val variants = variantIds.mapIndexed { i, id ->
-            AudioVariant(id = id, label = variantLabels.getOrElse(i) { "Original" })
+        // Fall back to a single variant from the bare subjectId if none were passed.
+        val variants = if (variantIds.isNotEmpty()) {
+            variantIds.mapIndexed { i, id ->
+                AudioVariant(id = id, label = variantLabels.getOrElse(i) { "Original" })
+            }
+        } else {
+            listOf(AudioVariant(id = subjectId, label = "Original"))
         }
+        // Try variants in this preference order; the first with a real stream wins.
+        val ordered = variants.sortedBy { audioPreferenceRank(it.label) }
 
         setContent {
             SnapeTheme {
                 val vm: PlayerViewModel = viewModel()
-                // The selected audio variant drives which stream is loaded; changing
-                // it (via the in-player audio menu) refetches and swaps the stream.
-                var currentId by remember { mutableStateOf(subjectId.ifBlank { variants.firstOrNull()?.id ?: "" }) }
-                LaunchedEffect(currentId) { vm.load(currentId, se, ep) }
+                // null => play the default (preference order). A non-null id means
+                // the user explicitly picked that variant from the audio menu: it's
+                // tried first, with the rest as fallback if it has no stream.
+                var requestedId by remember { mutableStateOf<String?>(null) }
+                LaunchedEffect(requestedId) {
+                    val candidates = requestedId
+                        ?.let { id -> ordered.filter { it.id == id } + ordered.filter { it.id != id } }
+                        ?: ordered
+                    vm.load(candidates, se, ep)
+                }
                 val state by vm.state.collectAsStateWithLifecycle()
                 Box(Modifier.fillMaxSize().background(Color.Black)) {
                     when (val s = state) {
@@ -139,9 +152,11 @@ class PlayerActivity : ComponentActivity() {
                         is PlayerLoadState.Error -> CenterStatus(s.message, spinner = false, onBack = ::finish)
                         is PlayerLoadState.Ready -> PlayerSurface(
                             ready = s,
-                            variants = variants,
-                            selectedId = currentId,
-                            onSelectVariant = { currentId = it },
+                            variants = ordered,
+                            // The variant that actually resolved (may differ from the
+                            // request when we fell back), so the menu shows what plays.
+                            selectedId = s.subjectId,
+                            onSelectVariant = { requestedId = it },
                         )
                     }
                 }
@@ -166,6 +181,14 @@ class PlayerActivity : ComponentActivity() {
 
 /** One selectable audio/language variant of the same title. */
 data class AudioVariant(val id: String, val label: String)
+
+/** Default playback preference: Original → English → Hindi → everything else. */
+private fun audioPreferenceRank(label: String): Int = when {
+    label.equals("Original", true) -> 0
+    label.equals("English", true) -> 1
+    label.equals("Hindi", true) -> 2
+    else -> 3
+}
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -198,7 +221,17 @@ private fun PlayerSurface(
                 setMediaItem(
                     MediaItem.Builder()
                         .setUri(ready.mpdUrl)
-                        .setMimeType(MimeTypes.APPLICATION_MPD)
+                        // The BFF serves different containers per audio variant
+                        // (Original→HLS, Hindi/Telugu→DASH, Tamil→MP4); ExoPlayer
+                        // picks the right MediaSource from the MIME type, so it must
+                        // match the stream's actual format, not always DASH.
+                        .setMimeType(
+                            when (ready.format.uppercase()) {
+                                "HLS" -> MimeTypes.APPLICATION_M3U8
+                                "MP4" -> MimeTypes.VIDEO_MP4
+                                else -> MimeTypes.APPLICATION_MPD
+                            },
+                        )
                         .setSubtitleConfigurations(subs)
                         .build(),
                 )

@@ -14,8 +14,10 @@ import kotlinx.coroutines.launch
 sealed interface PlayerLoadState {
     data object Loading : PlayerLoadState
     data class Ready(
+        val subjectId: String, // the variant that actually resolved to a stream
         val mpdUrl: String,
         val signCookie: String,
+        val format: String, // "DASH" | "HLS" | "MP4" — drives the player's MIME type
         val captions: List<Caption>,
         val qualities: List<Int>, // heights, descending; empty => auto only
     ) : PlayerLoadState
@@ -32,29 +34,49 @@ class PlayerViewModel : ViewModel() {
     private var job: Job? = null
 
     /**
-     * Load (or reload) a stream. Calling again with a different subjectId — e.g.
-     * the user picked another audio variant — refetches and swaps the stream.
+     * Load a stream, trying [candidates] (in order) until one yields a playable
+     * stream. The mobile BFF reports `hasResource:true` in search for variants
+     * whose play-info nonetheless returns *zero* streams — e.g. an un-dubbed
+     * original where only the Hindi track is wired up on the play side. Rather
+     * than dead-end on "No playable stream found", we fall back to the next
+     * variant; the caller orders [candidates] by preference (Original → English
+     * → Hindi → …). [PlayerLoadState.Ready.subjectId] reports which one won so
+     * the UI's audio menu can reflect what's actually playing.
      */
-    fun load(subjectId: String, se: Int, ep: Int) {
-        val key = "$subjectId/$se/$ep"
+    fun load(candidates: List<AudioVariant>, se: Int, ep: Int) {
+        val key = candidates.joinToString(",") { it.id } + "/$se/$ep"
         if (key == currentKey) return
         currentKey = key
         job?.cancel()
         _state.value = PlayerLoadState.Loading
         job = viewModelScope.launch {
             runCatching {
-                // Stream is required; captions are best-effort and fetched in parallel.
-                val streamDeferred = async { MovieBoxRepository.playInfo(subjectId, se, ep) }
-                val captionsDeferred = async { MovieBoxRepository.captions(subjectId, se, ep) }
-                val stream = streamDeferred.await()
-                    ?: return@runCatching PlayerLoadState.Error("No playable stream found.")
-                val captions = captionsDeferred.await()
-                val qualities = stream.resolutions
-                    .split(",")
-                    .mapNotNull { it.trim().toIntOrNull() }
-                    .distinct()
-                    .sortedDescending()
-                PlayerLoadState.Ready(stream.url, stream.signCookie, captions, qualities)
+                for (variant in candidates) {
+                    // Stream is required; captions are best-effort, fetched in
+                    // parallel for the same variant and dropped if it has no stream.
+                    val streamDeferred = async { MovieBoxRepository.playInfo(variant.id, se, ep) }
+                    val captionsDeferred = async { MovieBoxRepository.captions(variant.id, se, ep) }
+                    val stream = streamDeferred.await()
+                    if (stream == null) {
+                        captionsDeferred.cancel()
+                        continue
+                    }
+                    val captions = captionsDeferred.await()
+                    val qualities = stream.resolutions
+                        .split(",")
+                        .mapNotNull { it.trim().toIntOrNull() }
+                        .distinct()
+                        .sortedDescending()
+                    return@runCatching PlayerLoadState.Ready(
+                        subjectId = variant.id,
+                        mpdUrl = stream.url,
+                        signCookie = stream.signCookie,
+                        format = stream.format,
+                        captions = captions,
+                        qualities = qualities,
+                    )
+                }
+                PlayerLoadState.Error("No playable stream found.")
             }.onSuccess { _state.value = it }
                 .onFailure { _state.value = PlayerLoadState.Error(it.message ?: "Playback failed.") }
         }

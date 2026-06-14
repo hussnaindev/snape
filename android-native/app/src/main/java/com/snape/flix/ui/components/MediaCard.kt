@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -88,13 +89,16 @@ fun MediaCard(item: SubjectItem, onClick: () -> Unit, modifier: Modifier = Modif
             }
         }
 
-        // gradient title bar — bottom
+        // gradient title bar — bottom. A taller band with the title vertically
+        // centered (contentAlignment) so it reads as a proper overlay strip.
         Box(
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .height(20.dp)
                 .background(TitleScrim)
-                .padding(horizontal = 6.dp, vertical = 1.dp),
+                .padding(horizontal = 6.dp),
+            contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = item.cleanTitle(),
@@ -107,10 +111,10 @@ fun MediaCard(item: SubjectItem, onClick: () -> Unit, modifier: Modifier = Modif
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
-                // Drop the font's built-in top/bottom padding so the band can be
-                // as short as the glyphs themselves.
+                // Drop the font's built-in top/bottom padding so it sits exactly
+                // on the band's vertical center.
                 style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
-                modifier = Modifier.fillMaxWidth().align(Alignment.Center),
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }

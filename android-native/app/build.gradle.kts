@@ -75,5 +75,10 @@ dependencies {
     val media3 = "1.4.1"
     implementation("androidx.media3:media3-exoplayer:$media3")
     implementation("androidx.media3:media3-exoplayer-dash:$media3")
+    // HLS source: the BFF serves some audio variants (e.g. the un-dubbed
+    // original) as HLS, not DASH — without this module ExoPlayer can't build an
+    // HLS MediaSource and those variants fail to play. (MP4/progressive is
+    // built into media3-exoplayer.)
+    implementation("androidx.media3:media3-exoplayer-hls:$media3")
     implementation("androidx.media3:media3-ui:$media3")
 }
