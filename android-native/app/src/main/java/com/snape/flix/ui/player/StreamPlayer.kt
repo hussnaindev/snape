@@ -241,7 +241,7 @@ fun StreamPlayerChrome(
                     .fillMaxSize()
                     .navigationBarsPadding()
                     .padding(horizontal = 24.dp)
-                    .padding(bottom = 48.dp),
+                    .padding(bottom = 12.dp),
                 contentAlignment = Alignment.BottomCenter,
             ) {
                 Text(

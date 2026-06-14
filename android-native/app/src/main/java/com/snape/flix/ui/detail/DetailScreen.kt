@@ -5,8 +5,13 @@ import android.content.pm.ActivityInfo
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,7 +26,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -55,7 +59,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.PlatformTextStyle
@@ -64,6 +70,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -90,6 +97,33 @@ import java.time.LocalDate
 
 private val noFontPad = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
 
+// Shared layout constants so the skeleton, the loaded page and the player all use
+// identical dimensions — that's what keeps the layout from shifting when TMDB
+// data arrives or the inline player opens.
+private val PosterW = 96.dp
+private val LogoH = 56.dp
+// How far the info block overlaps up into the hero (web `-mt-36`, trimmed so more
+// of the backdrop/trailer stays visible).
+private val MetaOverlap = 72.dp
+// Mute button sits just above the info block's top edge.
+private val MuteBottomInset = MetaOverlap + 12.dp
+
+private fun heroHeightDp(screenHeightDp: Int, active: Boolean): Dp =
+    ((if (active) 0.45f else 0.30f) * screenHeightDp).dp + 64.dp
+
+/**
+ * Negative/positive top "margin" that actually reclaims (or adds) layout height —
+ * unlike `Modifier.offset`, which only translates drawing and would leave dead
+ * space at the bottom (or clip content) as the shift changes. This keeps the
+ * trailing blank space identical whether or not the inline player is open.
+ */
+private fun Modifier.verticalShift(dy: Dp): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+    val d = dy.roundToPx()
+    val h = (placeable.height + d).coerceAtLeast(0)
+    layout(placeable.width, h) { placeable.place(0, d) }
+}
+
 @Composable
 fun DetailScreen(
     group: com.snape.flix.data.SubjectGroup,
@@ -99,7 +133,13 @@ fun DetailScreen(
 ) {
     LaunchedEffect(group) { vm.start(group) }
     val state by vm.state.collectAsStateWithLifecycle()
-    val s = state ?: return
+    val s = state
+    // Show the full skeleton (laid out identically to the final page) until TMDB
+    // enrichment finishes, so the page never reflows when the data lands.
+    if (s == null || s.enriching) {
+        DetailSkeleton(isSeries = group.primary.isSeries, onBack = onBack)
+        return
+    }
 
     val activity = LocalContext.current as? Activity
     val cfg = LocalConfiguration.current
@@ -164,11 +204,8 @@ fun DetailScreen(
         playerActive = true
     }
 
-    val heroH by animateDpAsState(
-        if (playerActive) (cfg.screenHeightDp * 0.45f).dp + 64.dp else (cfg.screenHeightDp * 0.30f).dp + 64.dp,
-        label = "heroH",
-    )
-    val metaOffset by animateDpAsState(if (playerActive) 16.dp else (-144).dp, label = "metaOffset")
+    val heroH by animateDpAsState(heroHeightDp(cfg.screenHeightDp, playerActive), label = "heroH")
+    val metaMargin by animateDpAsState(if (playerActive) 16.dp else -MetaOverlap, label = "metaMargin")
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         Column(
@@ -223,7 +260,9 @@ fun DetailScreen(
                         if (trailerVisible) {
                             MuteButton(
                                 muted = trailerMuted,
-                                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(end = 16.dp, bottom = MuteBottomInset),
                             ) {
                                 trailerMuted = !trailerMuted
                                 webRef.value?.evaluateJavascript(
@@ -239,8 +278,8 @@ fun DetailScreen(
                 }
             }
 
-            // ── everything below the hero — slides up to overlap it ───────────
-            Column(Modifier.fillMaxWidth().offset(y = metaOffset)) {
+            // ── everything below the hero — overlaps it, reclaiming the space ──
+            Column(Modifier.fillMaxWidth().verticalShift(metaMargin)) {
                 MetaCard(s, onWatch = { play(0, 0) })
 
                 Spacer(Modifier.height(24.dp))
@@ -348,23 +387,36 @@ private fun TrailerWebView(
     )
 }
 
+// Uses the YouTube IFrame Player API (loaded from youtube.com, same origin as the
+// base URL) rather than a bare <iframe src=embed>. The bare embed renders
+// "Video unavailable" inside a WebView because its referer/origin is empty; the
+// API player created with an explicit origin plays reliably.
 private fun trailerHtml(key: String): String = """
     <!DOCTYPE html><html><head>
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
     <style>
      html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden}
      .wrap{position:fixed;inset:0;overflow:hidden}
-     iframe{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-      width:100vw;height:56.25vw;min-width:177.78vh;min-height:100vh;border:0;pointer-events:none}
+     #player{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:100vw;height:56.25vw;min-width:177.78vh;min-height:100vh}
+     #player iframe{width:100%;height:100%;border:0;pointer-events:none}
     </style></head><body>
-    <div class="wrap">
-     <iframe id="yt" allow="autoplay; encrypted-media"
-      src="https://www.youtube.com/embed/$key?vq=hd1080&autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0&loop=1&playlist=$key&iv_load_policy=3&enablejsapi=1&playsinline=1"></iframe>
-    </div>
+    <div class="wrap"><div id="player"></div></div>
+    <script src="https://www.youtube.com/iframe_api"></script>
     <script>
-     function cmd(f){var y=document.getElementById('yt');if(y&&y.contentWindow){y.contentWindow.postMessage(JSON.stringify({event:'command',func:f,args:[]}),'*');}}
-     function mute(){cmd('mute');}
-     function unMute(){cmd('unMute');}
+     var player;
+     function onYouTubeIframeAPIReady(){
+       player=new YT.Player('player',{
+         videoId:'$key',
+         host:'https://www.youtube.com',
+         playerVars:{autoplay:1,controls:0,mute:1,loop:1,playlist:'$key',
+           modestbranding:1,rel:0,playsinline:1,iv_load_policy:3,fs:0,
+           origin:'https://www.youtube.com'},
+         events:{onReady:function(e){e.target.mute();e.target.playVideo();}}
+       });
+     }
+     function mute(){if(player&&player.mute)player.mute();}
+     function unMute(){if(player&&player.unMute)player.unMute();}
     </script>
     </body></html>
 """.trimIndent()
@@ -438,6 +490,10 @@ private fun HeroStatus(message: String, spinner: Boolean = false, onBack: (() ->
 
 @Composable
 private fun MetaCard(s: DetailUiState, onWatch: () -> Unit) {
+    var downloadOpen by remember { mutableStateOf(false) }
+    if (downloadOpen) {
+        DownloadSheet(group = s.group, isSeries = s.isSeries, onDismiss = { downloadOpen = false })
+    }
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             // poster
@@ -523,7 +579,7 @@ private fun MetaCard(s: DetailUiState, onWatch: () -> Unit) {
                 // actions: Watch + Download + Watchlist
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     WatchButton(modifier = Modifier.weight(1f), onClick = onWatch)
-                    ActionIcon(Icons.Rounded.Download, "Download") { /* native downloads not yet wired */ }
+                    ActionIcon(Icons.Rounded.Download, "Download") { downloadOpen = true }
                     WatchlistIcon()
                 }
             }
@@ -1046,4 +1102,138 @@ private fun MoreLikeThis(recs: List<TmdbSearchHit>, onOpen: (TmdbSearchHit) -> U
             }
         }
     }
+}
+
+// ── skeleton — laid out 1:1 with the loaded page so nothing reflows ─────────────
+
+@Composable
+private fun DetailSkeleton(isSeries: Boolean, onBack: () -> Unit) {
+    val cfg = LocalConfiguration.current
+    val pulse by rememberInfiniteTransition(label = "skeleton").animateFloat(
+        initialValue = 0.45f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+        label = "pulse",
+    )
+
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            // hero
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(heroHeightDp(cfg.screenHeightDp, false).coerceAtLeast(200.dp))
+                    .background(Color(0x0DFFFFFF)),
+            ) {
+                HeroGradient()
+                BackButton(onClick = onBack, modifier = Modifier.align(Alignment.TopStart))
+            }
+
+            Column(Modifier.fillMaxWidth().verticalShift(-MetaOverlap)) {
+                // info block
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Skel(Modifier.width(PosterW).aspectRatio(2f / 3f), pulse)
+                        Column(Modifier.weight(1f)) {
+                            Skel(Modifier.width(180.dp).height(LogoH), pulse)
+                            Spacer(Modifier.height(8.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Skel(Modifier.width(60.dp).height(12.dp), pulse)
+                                Skel(Modifier.width(44.dp).height(12.dp), pulse)
+                                Skel(Modifier.width(52.dp).height(12.dp), pulse)
+                            }
+                            Spacer(Modifier.height(10.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                repeat(3) {
+                                    Skel(Modifier.width(56.dp).height(22.dp), pulse, RoundedCornerShape(50))
+                                }
+                            }
+                            Spacer(Modifier.height(10.dp))
+                            Skel(Modifier.width(120.dp).height(22.dp), pulse)
+                            Spacer(Modifier.height(12.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Skel(Modifier.weight(1f).height(40.dp), pulse, RoundedCornerShape(50))
+                                Skel(Modifier.size(36.dp), pulse, CircleShape)
+                                Skel(Modifier.size(36.dp), pulse, CircleShape)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(20.dp))
+                    Skel(Modifier.fillMaxWidth().height(12.dp), pulse)
+                    Spacer(Modifier.height(8.dp))
+                    Skel(Modifier.fillMaxWidth(0.9f).height(12.dp), pulse)
+                    Spacer(Modifier.height(8.dp))
+                    Skel(Modifier.fillMaxWidth(0.6f).height(12.dp), pulse)
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                if (isSeries) {
+                    Skel(Modifier.padding(horizontal = 16.dp).width(96.dp).height(14.dp), pulse)
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        repeat(4) {
+                            Skel(Modifier.width(180.dp).aspectRatio(4f / 3f), pulse, RoundedCornerShape(16.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(24.dp))
+                }
+
+                // starring
+                SkelDivider(pulse)
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    repeat(6) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Skel(Modifier.size(96.dp), pulse, CircleShape)
+                            Spacer(Modifier.height(6.dp))
+                            Skel(Modifier.width(80.dp).height(20.dp), pulse, RoundedCornerShape(6.dp))
+                        }
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
+
+                // more like this
+                SkelDivider(pulse)
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    repeat(6) {
+                        Skel(Modifier.width(130.dp).aspectRatio(2f / 3f), pulse, RoundedCornerShape(16.dp))
+                    }
+                }
+
+                Spacer(Modifier.height(40.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkelDivider(pulse: Float) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(Modifier.weight(1f).height(1.dp).background(Color(0x1AFFFFFF)))
+        Skel(Modifier.width(64.dp).height(12.dp), pulse)
+        Box(Modifier.weight(1f).height(1.dp).background(Color(0x1AFFFFFF)))
+    }
+}
+
+@Composable
+private fun Skel(modifier: Modifier, pulse: Float, shape: Shape = RoundedCornerShape(4.dp)) {
+    Box(modifier.clip(shape).background(Color.White.copy(alpha = 0.12f * pulse)))
 }
