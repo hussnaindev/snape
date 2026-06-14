@@ -120,6 +120,56 @@ Tests live in `lib/moviebox-match.test.mjs` (`node lib/moviebox-match.test.mjs`)
 
 ---
 
+## Other mobile-BFF endpoints (catalog / category / genre browsing)
+
+Beyond the search/play/captions flow we use, the mobile BFF
+(`api.inmoviebox.com/wefeed-mobile-bff`) exposes (paths confirmed live, signed
+GET/POST with the same `x-tr-signature` scheme; reference names from
+`Simatwa/moviebox-api` v3 `urls.py`):
+
+| Path | Method | Purpose |
+|---|---|---|
+| `/subject-api/search` | POST | Keyword search (what we use). Body `{keyword,page,perPage,subjectType}`. Response `data.{pager,items,verticalRanks}`. **`pager.hasMore/nextPage/totalCount` is present** — real pagination. |
+| `/subject-api/search/v2` | POST | Newer search; strict schema (rejects unknown fields with HTTP 400). No genre-browse param. |
+| `/tab-operating` | GET | The app home feed. Params `{tabId,page,version}`. Returns `data.items[]`, one per home row, each with `type` (BANNER / SPORT_LIVE / **FILTER** / SUBJECTS_MOVIE / CUSTOM / …), `title`, `opId`, `deepLink`, `subjects[]`, `filters[]`, `rankingData`. Ignores `categoryType`. |
+| `/subject-api/get` | GET | Subject detail by id (`SUBJECT_GET_PATH`). |
+| `/subject-api/season-info`, `/play-info`, `/resource`, `/get-ext-captions` | — | Series/episode + stream + captions (what we use). |
+
+`TabID` enum (for `tab-operating`): ALL, MUSIC, PEOPLE, EDUCATION, MOVIE,
+TV_SERIES, MOVIE_TV, SHORT_TV, FIGHTZONE, SPORTS. **There is no "Adult" tab.**
+
+There is also a `SECRET_KEY_ALT = "Xqn2nnO41/L92o1iuXhSLHTbXvY4Z5ZZ62m8mSLA"`
+alongside the default HMAC key — useful if `76iRl0…` ever stops signing.
+
+### Category / genre browsing & **Adult** content
+
+- **`genre` is a plain string on each subject** (`"Action"`, `"Drama,Romance"`,
+  **`"Adult"`**, …) — *not* a numeric id. There is **no genre/category query
+  param on `search`**: an empty-keyword search with `genre:"Adult"` returns
+  `totalCount:0`.
+- **The app browses genres via deeplinks, not a public REST param.** The home
+  `FILTER` row ("Categories") and "Browse by Genre" rows carry deeplinks like:
+  - `oneroom://…?type=/home/movieFilter&tabId=2&filterType={"classify":"Hindi dub","country":"India","genre":"All","sort":"ForYou","year":"All"}`
+  - `oneroom://…?type=/rank/all&category=<numericId>&tabId=0`
+  - `oneroom://…?type=/home/category&categoryType=<numericId>` (curated
+    collections, e.g. the adult collection *"Desire Unveiled"*,
+    `categoryType=5283096811576656320`, ~161 items).
+
+  So genre **is** a first-class filter dimension (string `genre:"Adult"`) and
+  collections have numeric ids — but the **HTTP endpoint behind `movieFilter` /
+  `rank/all` is not in the reference lib and not guessable** (every
+  `subject-api/{filter,movie-filter,category,rank,op-subjects,…}` guess 404s).
+  Capturing it needs a proxy (mitmproxy/Charles) on the MovieBox app while
+  tapping a genre filter, to record the exact path + body.
+- **What works today without that endpoint:** keyword search. `keyword:"adult"`
+  returns ~340 items, all tagged `genre:"Adult"`. So adult titles are already
+  reachable (and already surface in the native app's search) — just
+  keyword-driven, not a clean "enumerate the whole Adult category" browse.
+- **`include_adult`** is a TMDB param (we send `false` in `resolveId`), unrelated
+  to MovieBox; MovieBox does no adult filtering on the mobile BFF.
+
+---
+
 ## Request signing (mobile BFF)
 
 Required for `api.inmoviebox.com`. Implemented in `moviebox.mjs`:
