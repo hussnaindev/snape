@@ -89,7 +89,6 @@ private fun SeasonEpisodeChooser(
 ) {
     var selectedSeasonIdx by remember { mutableIntStateOf(0) }
     val season = seasons.getOrElse(selectedSeasonIdx) { seasons.first() }
-    val episodes = remember(season.maxEp) { (1..season.maxEp).toList() }
 
     Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
         Text(
@@ -113,8 +112,8 @@ private fun SeasonEpisodeChooser(
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(seasons.size, key = { seasons[it].se }) { idx ->
-                    val s = seasons[idx]
+                items(seasons) { s ->
+                    val idx = seasons.indexOf(s)
                     val selected = idx == selectedSeasonIdx
                     Box(
                         Modifier
@@ -143,7 +142,7 @@ private fun SeasonEpisodeChooser(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxWidth().height(280.dp),
         ) {
-            items(episodes, key = { it }) { ep ->
+            items((1..season.maxEp).toList()) { ep ->
                 Box(
                     Modifier
                         .size(56.dp)
