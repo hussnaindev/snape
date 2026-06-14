@@ -402,7 +402,7 @@ private fun TrailerWebView(
                     useWideViewPort = true
                 }
                 loadDataWithBaseURL(
-                    "https://www.youtube.com",
+                    TRAILER_ORIGIN,
                     trailerHtml(trailerKey),
                     "text/html",
                     "utf-8",
@@ -415,18 +415,29 @@ private fun TrailerWebView(
     )
 }
 
-// Uses the YouTube IFrame Player API (loaded from youtube.com, same origin as the
-// base URL) — the proven android-youtube-player recipe. Key points that make it
-// play inside a WebView (a bare <iframe src=embed> or a constructor `videoId`
-// renders "Video unavailable"):
+// The WebView document must present a REAL, non-youtube https origin as its
+// embedder identity. YouTube's July-2025 update rejects embeds whose HTTP Referer
+// is absent or spoofed as youtube.com itself — that is what produces
+// "Error code: 152-4 / this video is unavailable". Using a real origin we own and
+// declaring a referrer policy that actually sends it fixes verification. Must match
+// the `origin` playerVar below and the base URL passed to loadDataWithBaseURL.
+private const val TRAILER_ORIGIN = "https://hussnaindev.github.io"
+
+// Uses the YouTube IFrame Player API (loaded from youtube.com) hosted from a page
+// whose origin is TRAILER_ORIGIN — the proven android-youtube-player recipe plus
+// the 2025 embedder-verification fix. Key points that make it play inside a WebView
+// (a bare <iframe src=embed> or a constructor `videoId` renders "Video unavailable"):
 //   • create the player with NO videoId, then loadVideoById() from onReady — the
 //     deferred load carries the proper origin/referrer handshake.
-//   • keep `origin` matching the base URL; do NOT set `host`.
+//   • base URL, the <meta referrer> policy, and the `origin` playerVar must all be
+//     the real TRAILER_ORIGIN so YouTube receives a valid embedder Referer; do NOT
+//     set `host` and do NOT spoof youtube.com here (→ error 152).
 //   • loop manually by replaying on the ENDED state (playlist-loop is unreliable
 //     with loadVideoById).
 private fun trailerHtml(key: String): String = """
     <!DOCTYPE html><html><head>
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <style>
      html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden}
      .wrap{position:fixed;inset:0;overflow:hidden}
@@ -442,7 +453,7 @@ private fun trailerHtml(key: String): String = """
        player=new YT.Player('player',{
          playerVars:{autoplay:0,controls:0,disablekb:1,enablejsapi:1,
            modestbranding:1,rel:0,playsinline:1,iv_load_policy:3,fs:0,
-           origin:'https://www.youtube.com'},
+           origin:'$TRAILER_ORIGIN'},
          events:{
            onReady:function(e){e.target.mute();e.target.loadVideoById('$key');},
            onStateChange:function(e){
