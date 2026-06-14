@@ -261,17 +261,20 @@ private fun PlayerSurface(ready: PlayerLoadState.Ready) {
                     subtitleView?.apply {
                         setApplyEmbeddedStyles(false)
                         setApplyEmbeddedFontSizes(false)
+                        // Classic noir caption: white monospace on a translucent
+                        // black band (~55%) with a soft black drop shadow for depth.
                         setStyle(
                             CaptionStyleCompat(
                                 android.graphics.Color.WHITE,
-                                0x99000000.toInt(), // 60% opacity black background
+                                0x8C000000.toInt(), // ~55% opacity black background
                                 android.graphics.Color.TRANSPARENT,
-                                CaptionStyleCompat.EDGE_TYPE_NONE,
+                                CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
                                 android.graphics.Color.BLACK,
                                 Typeface.MONOSPACE,
                             ),
                         )
-                        setFractionalTextSize(0.055f)
+                        // Standard caption size (~5.3% of viewport height).
+                        setFractionalTextSize(0.0533f)
                     }
                 }
             },

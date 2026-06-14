@@ -29,7 +29,7 @@ import com.snape.flix.ui.theme.ChesnaGrotesk
 // Hoisted so they are not reallocated for every card on every recomposition
 // while the grid scrolls.
 private val CardShape = RoundedCornerShape(16.dp) // web mobile: rounded-2xl
-private val ChipShape = RoundedCornerShape(50)
+private val ChipShape = RoundedCornerShape(5.dp) // rectangular w/ slightly rounded corners
 private val TitleScrim = Brush.verticalGradient(0f to Color(0x80000000), 1f to Color(0xD9000000))
 
 private val CardSurface = Color(0x0DFFFFFF) // white @ 5%   (web: bg-white/5)
@@ -121,14 +121,15 @@ private fun Chip(text: String, modifier: Modifier = Modifier) {
             .clip(ChipShape)
             .background(ChipBg)
             .border(0.5.dp, ChipBorder, ChipShape)
-            .padding(horizontal = 5.dp, vertical = 1.5.dp),
+            // wider + shorter than before so the pill reads as a small rectangle
+            .padding(horizontal = 6.dp, vertical = 0.5.dp),
     ) {
         Text(
             text = text,
             color = Color.White,
-            fontSize = 7.sp,
+            fontSize = 6.5.sp,
             fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.4.sp,
+            letterSpacing = 0.3.sp,
         )
     }
 }
