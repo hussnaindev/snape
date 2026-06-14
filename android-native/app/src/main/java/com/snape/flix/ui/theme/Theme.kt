@@ -6,7 +6,6 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
@@ -34,18 +33,18 @@ private val SnapeColors = darkColorScheme(
 
 private val SnapeTypography = Typography(
     titleLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = ChesnaGrotesk,
         fontWeight = FontWeight.Light,
         fontSize = 22.sp,
         letterSpacing = 4.sp,
     ),
     bodyMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = ChesnaGrotesk,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
     ),
     labelSmall = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = ChesnaGrotesk,
         fontWeight = FontWeight.SemiBold,
         fontSize = 9.sp,
         letterSpacing = 1.5.sp,

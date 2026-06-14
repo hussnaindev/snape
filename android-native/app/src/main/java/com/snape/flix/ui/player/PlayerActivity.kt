@@ -1,6 +1,7 @@
 package com.snape.flix.ui.player
 
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
@@ -53,6 +54,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
@@ -227,7 +229,14 @@ private fun PlayerSurface(ready: PlayerLoadState.Ready) {
     var speed by remember { mutableFloatStateOf(1f) }
     var fillScreen by remember { mutableStateOf(true) }
     var portraitAllowed by remember { mutableStateOf(false) }
+    var muted by remember { mutableStateOf(false) }
     var surfaceWidthPx by remember { mutableIntStateOf(1) }
+
+    // In portrait the bar has far less width: drop the ∓10s skip buttons (double-
+    // tap still seeks) and tighten icon size + spacing so nothing clips.
+    val compact = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
+    val ctrlSize = if (compact) 22.dp else 24.dp
+    val gap = if (compact) 10.dp else 14.dp
 
     val buffering = playbackState == Player.STATE_BUFFERING
     val chromeVisible = controlsShown || !playing
@@ -339,18 +348,30 @@ private fun PlayerSurface(ready: PlayerLoadState.Ready) {
                 Spacer(Modifier.height(4.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Ctrl(if (playing) PlayerIcons.Pause else PlayerIcons.Play, "Play/Pause") { exo.togglePlay() }
-                    Spacer(Modifier.width(14.dp))
-                    Ctrl(PlayerIcons.Replay10, "Back 10s", size = 24.dp) { exo.seekBy(-10_000) }
-                    Spacer(Modifier.width(14.dp))
-                    Ctrl(PlayerIcons.Forward10, "Forward 10s", size = 24.dp) { exo.seekBy(10_000) }
-                    Spacer(Modifier.width(14.dp))
+                    Ctrl(if (playing) PlayerIcons.Pause else PlayerIcons.Play, "Play/Pause", size = ctrlSize) { exo.togglePlay() }
+                    if (!compact) {
+                        Spacer(Modifier.width(gap))
+                        Ctrl(PlayerIcons.Replay10, "Back 10s", size = ctrlSize) { exo.seekBy(-10_000) }
+                        Spacer(Modifier.width(gap))
+                        Ctrl(PlayerIcons.Forward10, "Forward 10s", size = ctrlSize) { exo.seekBy(10_000) }
+                    }
+                    Spacer(Modifier.width(gap))
+                    Ctrl(
+                        if (muted) PlayerIcons.VolumeOff else PlayerIcons.VolumeOn,
+                        if (muted) "Unmute" else "Mute",
+                        active = muted,
+                        size = ctrlSize,
+                    ) {
+                        muted = !muted
+                        exo.volume = if (muted) 0f else 1f
+                    }
+                    Spacer(Modifier.width(gap))
 
                     val displayMs = if (scrubbing) (scrubFrac * durationMs).toLong() else positionMs
                     Text(
                         text = "${fmt(displayMs)}  /  ${fmt(durationMs)}",
                         color = Color.White,
-                        fontSize = 13.sp,
+                        fontSize = if (compact) 12.sp else 13.sp,
                     )
 
                     Spacer(Modifier.weight(1f))
@@ -360,18 +381,20 @@ private fun PlayerSurface(ready: PlayerLoadState.Ready) {
                             PlayerIcons.Captions,
                             "Subtitles",
                             active = subtitleLang != null,
+                            size = ctrlSize,
                         ) { openMenu = if (openMenu == Menu.SUBTITLES) Menu.NONE else Menu.SUBTITLES }
-                        Spacer(Modifier.width(14.dp))
+                        Spacer(Modifier.width(gap))
                     }
-                    Ctrl(PlayerIcons.Settings, "Settings") {
+                    Ctrl(PlayerIcons.Settings, "Settings", size = ctrlSize) {
                         openMenu = if (openMenu == Menu.SETTINGS || openMenu == Menu.QUALITY || openMenu == Menu.SPEED) Menu.NONE else Menu.SETTINGS
                     }
-                    Spacer(Modifier.width(14.dp))
-                    Ctrl(PlayerIcons.FillScreen, "Fill screen", active = fillScreen) { fillScreen = !fillScreen }
-                    Spacer(Modifier.width(14.dp))
+                    Spacer(Modifier.width(gap))
+                    Ctrl(PlayerIcons.FillScreen, "Fill screen", active = fillScreen, size = ctrlSize) { fillScreen = !fillScreen }
+                    Spacer(Modifier.width(gap))
                     Ctrl(
                         if (portraitAllowed) PlayerIcons.FullscreenEnter else PlayerIcons.FullscreenExit,
                         "Rotate",
+                        size = ctrlSize,
                     ) {
                         portraitAllowed = !portraitAllowed
                         activity?.requestedOrientation = if (portraitAllowed) {

@@ -24,10 +24,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.snape.flix.data.SubjectItem
+import com.snape.flix.ui.theme.ChesnaGrotesk
 
 // Hoisted so they are not reallocated for every card on every recomposition
 // while the grid scrolls.
-private val CardShape = RoundedCornerShape(24.dp)
+private val CardShape = RoundedCornerShape(16.dp) // web mobile: rounded-2xl
 private val ChipShape = RoundedCornerShape(50)
 private val TitleScrim = Brush.verticalGradient(0f to Color(0x80000000), 1f to Color(0xD9000000))
 
@@ -48,7 +49,7 @@ fun MediaCard(item: SubjectItem, onClick: () -> Unit, modifier: Modifier = Modif
         modifier = modifier
             .clip(CardShape)
             .background(CardSurface)
-            .border(2.dp, CardRing, CardShape)
+            .border(1.dp, CardRing, CardShape) // web mobile: ring-1
             .clickable(onClick = onClick)
             .fillMaxWidth()
             .aspectRatio(2f / 3f),
@@ -72,7 +73,7 @@ fun MediaCard(item: SubjectItem, onClick: () -> Unit, modifier: Modifier = Modif
         // language chip — top-left (Original / Hindi / Tamil …)
         Chip(
             text = item.corner.ifBlank { "Original" }.uppercase(),
-            modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+            modifier = Modifier.align(Alignment.TopStart).padding(5.dp),
         )
 
         // rating chip — top-right
@@ -80,7 +81,7 @@ fun MediaCard(item: SubjectItem, onClick: () -> Unit, modifier: Modifier = Modif
             if (r > 0) {
                 Chip(
                     text = "★ ${"%.1f".format(r)}",
-                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+                    modifier = Modifier.align(Alignment.TopEnd).padding(5.dp),
                 )
             }
         }
@@ -91,14 +92,15 @@ fun MediaCard(item: SubjectItem, onClick: () -> Unit, modifier: Modifier = Modif
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .background(TitleScrim)
-                .padding(horizontal = 8.dp, vertical = 8.dp),
+                .padding(horizontal = 6.dp, vertical = 5.dp),
         ) {
             Text(
                 text = item.cleanTitle(),
                 color = Color(0xE6FFFFFF),
-                fontSize = 11.sp,
+                fontFamily = ChesnaGrotesk,
+                fontSize = 9.sp,
                 fontWeight = FontWeight.Light,
-                letterSpacing = 1.6.sp,
+                letterSpacing = 1.2.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
@@ -118,15 +120,15 @@ private fun Chip(text: String, modifier: Modifier = Modifier) {
         modifier
             .clip(ChipShape)
             .background(ChipBg)
-            .border(1.dp, ChipBorder, ChipShape)
-            .padding(horizontal = 8.dp, vertical = 3.dp),
+            .border(0.5.dp, ChipBorder, ChipShape)
+            .padding(horizontal = 5.dp, vertical = 1.5.dp),
     ) {
         Text(
             text = text,
             color = Color.White,
-            fontSize = 9.sp,
+            fontSize = 7.sp,
             fontWeight = FontWeight.SemiBold,
-            letterSpacing = 1.sp,
+            letterSpacing = 0.4.sp,
         )
     }
 }
