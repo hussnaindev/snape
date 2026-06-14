@@ -123,7 +123,7 @@ private fun Chip(text: String, modifier: Modifier = Modifier) {
     ) {
         Text(
             text = text,
-            color = Color(0xCCFFFFFF),
+            color = Color.White,
             fontSize = 9.sp,
             fontWeight = FontWeight.SemiBold,
             letterSpacing = 1.sp,

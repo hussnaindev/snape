@@ -77,7 +77,7 @@ fun SearchScreen(
             !state.searched -> CenterNote("Search for any movie or series.")
             state.results.isEmpty() && !state.loading -> CenterNote("No results for “${state.query}”.")
             else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(110.dp),
+                columns = GridCells.Fixed(3),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 24.dp),

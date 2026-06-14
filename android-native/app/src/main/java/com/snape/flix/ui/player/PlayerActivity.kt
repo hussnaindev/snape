@@ -1,8 +1,11 @@
 package com.snape.flix.ui.player
 
+import android.content.pm.ActivityInfo
 import android.graphics.Typeface
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.OptIn
@@ -12,6 +15,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,15 +25,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -53,7 +56,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -92,10 +94,22 @@ class PlayerActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        // Draw the video into the display cutout area so a notch/camera no longer
+        // leaves a black letterbox strip on the short/long edge in landscape.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.attributes = window.attributes.apply {
+                layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            window.attributes = window.attributes.apply {
+                layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        }
         hideSystemBars()
 
         val subjectId = intent.getStringExtra(EXTRA_SUBJECT_ID).orEmpty()
-        val title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
         val se = intent.getIntExtra(EXTRA_SE, 0)
         val ep = intent.getIntExtra(EXTRA_EP, 0)
 
@@ -108,7 +122,7 @@ class PlayerActivity : ComponentActivity() {
                     when (val s = state) {
                         is PlayerLoadState.Loading -> CenterStatus("Loading…", spinner = true)
                         is PlayerLoadState.Error -> CenterStatus(s.message, spinner = false, onBack = ::finish)
-                        is PlayerLoadState.Ready -> PlayerSurface(s, title, onBack = ::finish)
+                        is PlayerLoadState.Ready -> PlayerSurface(s)
                     }
                 }
             }
@@ -132,7 +146,7 @@ class PlayerActivity : ComponentActivity() {
 
 @OptIn(UnstableApi::class)
 @Composable
-private fun PlayerSurface(ready: PlayerLoadState.Ready, title: String, onBack: () -> Unit) {
+private fun PlayerSurface(ready: PlayerLoadState.Ready) {
     val context = LocalContext.current
 
     // --- streaming setup (unchanged) ----------------------------------------
@@ -205,12 +219,15 @@ private fun PlayerSurface(ready: PlayerLoadState.Ready, title: String, onBack: (
     }
 
     // --- chrome state -------------------------------------------------------
+    val activity = context as? android.app.Activity
     var controlsShown by remember { mutableStateOf(true) }
     var openMenu by remember { mutableStateOf(Menu.NONE) }
     var qualityHeight by remember { mutableStateOf<Int?>(null) } // null = auto
     var subtitleLang by remember { mutableStateOf<String?>(null) } // null = off
     var speed by remember { mutableFloatStateOf(1f) }
     var fillScreen by remember { mutableStateOf(true) }
+    var portraitAllowed by remember { mutableStateOf(false) }
+    var surfaceWidthPx by remember { mutableIntStateOf(1) }
 
     val buffering = playbackState == Player.STATE_BUFFERING
     val chromeVisible = controlsShown || !playing
@@ -252,16 +269,28 @@ private fun PlayerSurface(ready: PlayerLoadState.Ready, title: String, onBack: (
             update = { it.resizeMode = if (fillScreen) AspectRatioFrameLayout.RESIZE_MODE_ZOOM else AspectRatioFrameLayout.RESIZE_MODE_FIT },
         )
 
-        // Tap surface: toggle the chrome (or dismiss an open menu).
+        // Tap surface: single tap toggles the chrome (or dismisses a menu),
+        // double-tap on the left/right third seeks ∓10s, center toggles play.
         Box(
             Modifier
                 .fillMaxSize()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                ) {
-                    if (openMenu != Menu.NONE) openMenu = Menu.NONE
-                    else controlsShown = !controlsShown
+                .onSizeChanged { surfaceWidthPx = it.width.coerceAtLeast(1) }
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = {
+                            if (openMenu != Menu.NONE) openMenu = Menu.NONE
+                            else controlsShown = !controlsShown
+                        },
+                        onDoubleTap = { offset ->
+                            val third = surfaceWidthPx / 3f
+                            when {
+                                offset.x < third -> exo.seekBy(-10_000)
+                                offset.x > third * 2 -> exo.seekBy(10_000)
+                                else -> exo.togglePlay()
+                            }
+                            controlsShown = true
+                        },
+                    )
                 },
         )
 
@@ -282,27 +311,6 @@ private fun PlayerSurface(ready: PlayerLoadState.Ready, title: String, onBack: (
         }
 
         if (chromeVisible) {
-            // Top: back + title over a soft gradient.
-            Row(
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .background(Brush.verticalGradient(0f to Color(0xB3000000), 1f to Color.Transparent))
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                BackButton(onClick = onBack)
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = title,
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-
             // Bottom: scrubber + control row over a gradient.
             Column(
                 Modifier
@@ -360,6 +368,18 @@ private fun PlayerSurface(ready: PlayerLoadState.Ready, title: String, onBack: (
                     }
                     Spacer(Modifier.width(14.dp))
                     Ctrl(PlayerIcons.FillScreen, "Fill screen", active = fillScreen) { fillScreen = !fillScreen }
+                    Spacer(Modifier.width(14.dp))
+                    Ctrl(
+                        if (portraitAllowed) PlayerIcons.FullscreenEnter else PlayerIcons.FullscreenExit,
+                        "Rotate",
+                    ) {
+                        portraitAllowed = !portraitAllowed
+                        activity?.requestedOrientation = if (portraitAllowed) {
+                            ActivityInfo.SCREEN_ORIENTATION_SENSOR
+                        } else {
+                            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                        }
+                    }
                 }
             }
         }
@@ -534,16 +554,6 @@ private fun CenterPlayButton(playing: Boolean, modifier: Modifier = Modifier, on
     }
 }
 
-@Composable
-private fun BackButton(onClick: () -> Unit) {
-    Box(
-        Modifier.size(38.dp).clip(CircleShape).background(Color(0x66000000)).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back", tint = Color.White, modifier = Modifier.size(20.dp))
-    }
-}
-
 /** A bottom-bar control button with the web's red active underline. */
 @Composable
 private fun Ctrl(
@@ -579,7 +589,9 @@ private fun MenuPopup(modifier: Modifier = Modifier, content: @Composable () -> 
     Column(
         modifier
             .padding(end = 16.dp, bottom = 76.dp)
-            .widthIn(min = 176.dp)
+            // Fixed compact width — without a max, the fillMaxWidth rows would
+            // stretch the popup across the whole player.
+            .width(220.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(Color(0xF2000000))
             .border(1.dp, Color(0x26FFFFFF), RoundedCornerShape(12.dp))
@@ -588,6 +600,8 @@ private fun MenuPopup(modifier: Modifier = Modifier, content: @Composable () -> 
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
             ) {}
+            .heightIn(max = 300.dp)
+            .verticalScroll(rememberScrollState())
             .padding(vertical = 6.dp),
     ) {
         content()
