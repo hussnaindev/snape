@@ -92,7 +92,7 @@ fun MediaCard(item: SubjectItem, onClick: () -> Unit, modifier: Modifier = Modif
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .background(TitleScrim)
-                .padding(horizontal = 6.dp, vertical = 5.dp),
+                .padding(horizontal = 6.dp, vertical = 3.dp),
         ) {
             Text(
                 text = item.cleanTitle(),
