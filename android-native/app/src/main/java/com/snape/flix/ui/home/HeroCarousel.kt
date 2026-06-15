@@ -1,5 +1,6 @@
 package com.snape.flix.ui.home
 
+import android.view.LayoutInflater
 import androidx.annotation.OptIn
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -53,9 +54,9 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
+import com.snape.flix.R
 import kotlin.math.abs
 import kotlinx.coroutines.delay
 
@@ -117,14 +118,12 @@ private val SLIDES = listOf(
 
 private val PageBg = Color(0xFF070B08)
 
-// DIAGNOSTIC BISECT (home scroll jank): when false, the hero shows only the still
-// image — no ExoPlayer is created, no PlayerView/SurfaceView is mounted, and the
-// scroll-driven mount/unmount path is gone entirely. This isolates the video
-// subsystem (a SurfaceView hole-punched into the window + continuous decode, both
-// torn down/rebuilt on every scroll) from the rest of the home screen's cost.
-//   smooth with this false  → video is the culprit; re-enable as a TextureView.
-//   still janky with false   → video is exonerated; cost is section composition.
-private const val HERO_TRAILER_ENABLED = false
+// The home scroll jank turned out to be the LazyColumn re-composing sections on
+// the fling (now a Column + verticalScroll), not the hero video — so the trailer
+// is back on. The PlayerView is inflated as a TextureView (see hero_trailer_view
+// .xml) rather than the default SurfaceView, so it composites like a normal view
+// and never hole-punches the window or forces a relayout while scrolling.
+private const val HERO_TRAILER_ENABLED = true
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -223,12 +222,15 @@ fun HeroCarousel(
                     if (videoAlpha > 0f && !scrolling) {
                         AndroidView(
                             factory = { ctx ->
-                                PlayerView(ctx).apply {
-                                    useController = false
-                                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                                    setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
-                                    this.player = player
-                                }
+                                // Inflated (not new PlayerView(ctx)) so it's a
+                                // TextureView — surface_type is an inflation-time
+                                // attribute with no programmatic setter.
+                                (LayoutInflater.from(ctx)
+                                    .inflate(R.layout.hero_trailer_view, null) as PlayerView)
+                                    .apply {
+                                        setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
+                                        this.player = player
+                                    }
                             },
                             // RESIZE_MODE_ZOOM already fills the box; the extra
                             // over-scale crops residual letterbox bars / chrome

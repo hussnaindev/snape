@@ -209,12 +209,11 @@ fun ProviderSection(
 
         // ── poster carousel — pulled up to overlap the hero's lower edge ──
         // A plain Row + horizontalScroll, NOT a LazyRow: each section holds only
-        // ~10 cards (HomeRepository.CAROUSEL_SIZE), and a nested LazyRow is a
-        // SubcomposeLayout that the parent LazyColumn must instantiate — and whose
-        // children it cannot prefetch — on the very frame the section scrolls into
-        // view. That subcompose-on-the-critical-frame is what drops frames on every
-        // up/down pass. Ten tiny cards compose eagerly far cheaper, and the parent's
-        // prefetch can now warm the whole section ahead of time.
+        // ~10 cards (HomeRepository.CAROUSEL_SIZE), so the lazy machinery buys
+        // nothing and a nested LazyRow is a SubcomposeLayout with real per-instance
+        // overhead. The home feed is composed once inside a Column + verticalScroll
+        // (see HomeScreen), so these ten tiny cards just compose eagerly alongside
+        // the rest of the section — cheaper than spinning up a lazy layout.
         Row(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier
