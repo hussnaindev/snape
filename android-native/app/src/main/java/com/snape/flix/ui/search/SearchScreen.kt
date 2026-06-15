@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -69,6 +70,7 @@ import androidx.compose.animation.shrinkHorizontally
 import com.snape.flix.R
 import com.snape.flix.data.SubjectGroup
 import com.snape.flix.ui.components.MediaCard
+import com.snape.flix.ui.home.HomeScreen
 import com.snape.flix.ui.theme.ChesnaGrotesk
 
 @Composable
@@ -78,17 +80,17 @@ fun SearchScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    // Search field shows by default (this is the search screen); the magnifier in
-    // the bar collapses it. Drawer mirrors the web's right-side mobile menu.
-    var searchOpen by remember { mutableStateOf(true) }
+    // Home shows by default; the magnifier opens the search bar, and as soon as
+    // the user types, the body crossfades to the results grid. Drawer mirrors the
+    // web's right-side mobile menu.
+    var searchOpen by remember { mutableStateOf(false) }
     var drawerOpen by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         Column(
             Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp),
+                .statusBarsPadding(),
         ) {
             TopBar(
                 searchOpen = searchOpen,
@@ -100,64 +102,97 @@ fun SearchScreen(
                 },
                 onQueryChange = viewModel::onQueryChange,
                 onOpenMenu = { drawerOpen = true },
+                modifier = Modifier.padding(horizontal = 16.dp),
             )
 
-            Spacer(Modifier.height(16.dp))
-
-            when {
-                state.error != null -> CenterNote(state.error!!)
-                !state.searched -> CenterNote("Search for any movie or series.")
-                state.results.isEmpty() && !state.loading -> CenterNote("No results for “${state.query}”.")
-                else -> {
-                    val gridState = rememberLazyGridState()
-
-                    // Infinite scroll: when the last few cards come into view and
-                    // more pages remain, fetch the next page.
-                    val shouldLoadMore by remember {
-                        derivedStateOf {
-                            val last = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                            last >= state.results.size - 4
-                        }
-                    }
-                    LaunchedEffect(shouldLoadMore, state.canLoadMore) {
-                        if (shouldLoadMore && state.canLoadMore) viewModel.loadMore()
-                    }
-
-                    LazyVerticalGrid(
-                        state = gridState,
-                        columns = GridCells.Fixed(2),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(bottom = 24.dp),
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        items(state.results, key = { it.primary.subjectId }) { group ->
-                            MediaCard(
-                                item = group.primary,
-                                onClick = { onOpenDetail(group) },
-                            )
-                        }
-                        if (state.loadingMore) {
-                            item(span = { GridItemSpan(maxLineSpan) }) {
-                                Box(
-                                    Modifier.fillMaxWidth().padding(vertical = 20.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    CircularProgressIndicator(
-                                        color = Color.White,
-                                        strokeWidth = 2.dp,
-                                        modifier = Modifier.size(22.dp),
-                                    )
-                                }
-                            }
-                        }
-                    }
+            // No typed query → home; otherwise the search results grid.
+            Crossfade(
+                targetState = state.query.isNotBlank(),
+                modifier = Modifier.weight(1f),
+                label = "homeSearch",
+            ) { searching ->
+                if (!searching) {
+                    HomeScreen(onOpenDetail = onOpenDetail)
+                } else {
+                    SearchResults(
+                        state = state,
+                        onLoadMore = viewModel::loadMore,
+                        onOpenDetail = onOpenDetail,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
                 }
             }
         }
 
         if (drawerOpen) {
             SideDrawer(onClose = { drawerOpen = false })
+        }
+    }
+}
+
+@Composable
+private fun SearchResults(
+    state: SearchUiState,
+    onLoadMore: () -> Unit,
+    onOpenDetail: (group: SubjectGroup) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier.fillMaxSize()) {
+        when {
+            state.error != null -> CenterNote(state.error!!)
+            state.results.isEmpty() && state.loading -> Box(
+                Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(22.dp))
+            }
+            state.results.isEmpty() && !state.loading && state.searched ->
+                CenterNote("No results for “${state.query}”.")
+            else -> {
+                val gridState = rememberLazyGridState()
+
+                // Infinite scroll: when the last few cards come into view and
+                // more pages remain, fetch the next page.
+                val shouldLoadMore by remember {
+                    derivedStateOf {
+                        val last = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                        last >= state.results.size - 4
+                    }
+                }
+                LaunchedEffect(shouldLoadMore, state.canLoadMore) {
+                    if (shouldLoadMore && state.canLoadMore) onLoadMore()
+                }
+
+                LazyVerticalGrid(
+                    state = gridState,
+                    columns = GridCells.Fixed(2),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp),
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    items(state.results, key = { it.primary.subjectId }) { group ->
+                        MediaCard(
+                            item = group.primary,
+                            onClick = { onOpenDetail(group) },
+                        )
+                    }
+                    if (state.loadingMore) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Box(
+                                Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -172,9 +207,10 @@ private fun TopBar(
     onToggleSearch: () -> Unit,
     onQueryChange: (String) -> Unit,
     onOpenMenu: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        Modifier.fillMaxWidth().height(56.dp),
+        modifier.fillMaxWidth().height(56.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(

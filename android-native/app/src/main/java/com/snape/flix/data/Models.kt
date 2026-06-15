@@ -54,11 +54,17 @@ data class SubjectItem(
     val corner: String = "", // language/quality badge e.g. "Hindi", "Tamil"
     val seNum: Int = 0, // number of seasons (tv)
     val hasResource: Boolean = false,
+    // Present on home-feed (`tab-operating`) subjects, empty on search hits.
+    val detailUrl: String = "",
+    val countryName: String = "",
 ) {
     val isSeries: Boolean get() = subjectType == 2
     val year: String get() = releaseDate.take(4)
     val posterUrl: String? get() = cover?.url?.ifBlank { null }
     val rating: Double? get() = imdbRatingValue.toDoubleOrNull()
+
+    /** Title without the trailing "[Hindi]"/"[Tamil]" audio tag. */
+    val cleanTitle: String get() = title.replace(Regex("\\s*\\[[^]]*]\\s*$"), "").trim()
 
     /** Audio-variant badge for menus, e.g. "Hindi"/"Tamil"/"Original". */
     val variantLabel: String get() = corner.ifBlank { "Original" }
@@ -87,6 +93,64 @@ data class SubjectGroup(
 ) {
     val hasVariants: Boolean get() = variants.size > 1
 }
+
+// --- home feed (tab-operating) ----------------------------------------------
+
+@Serializable
+data class TabOperatingResponse(val code: Int = -1, val data: TabOperatingData? = null)
+
+@Serializable
+data class TabOperatingData(val items: List<HomeRow> = emptyList())
+
+/**
+ * One row of the MovieBox app home feed. `type` is BANNER / FILTER /
+ * SUBJECTS_MOVIE / CUSTOM / SPORT_LIVE / … — only SUBJECTS_MOVIE rows carry a
+ * populated [subjects] list (the others are deeplink-driven on the app).
+ */
+@Serializable
+data class HomeRow(
+    val type: String = "",
+    val title: String = "",
+    val opId: String = "",
+    val subjects: List<SubjectItem> = emptyList(),
+)
+
+// --- home UI models (built by HomeRepository, consumed by the home screen) ---
+
+/**
+ * A single home-screen poster card. When [subject] is non-null the card came
+ * from MovieBox and opens detail directly; otherwise it came from TMDB and must
+ * be resolved to a MovieBox subject (via search) before it can play.
+ */
+data class HomeCard(
+    val title: String,
+    val posterUrl: String?,
+    val rating: Double?,
+    val isSeries: Boolean,
+    val year: String,
+    val subject: SubjectItem?,
+    val tmdbId: Int? = null,
+)
+
+/**
+ * One curated provider section, mirroring the web `CuratedProviderSection`.
+ * Cards are available immediately; the TMDB-enriched hero fields ([heroBackdropUrl],
+ * [heroLogoUrl], …) are patched in asynchronously, so they are nullable.
+ */
+data class HomeSection(
+    val key: String,
+    val label: String,
+    val brandColor: Long, // 0xFFRRGGBB
+    val isSeries: Boolean,
+    val cards: List<HomeCard>,
+    val heroTitle: String,
+    val heroYear: String? = null,
+    val heroRating: String? = null,
+    val rtScore: Int? = null,
+    val overview: String? = null,
+    val heroBackdropUrl: String? = null,
+    val heroLogoUrl: String? = null,
+)
 
 // --- season-info ------------------------------------------------------------
 

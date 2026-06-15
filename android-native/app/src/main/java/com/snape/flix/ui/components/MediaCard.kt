@@ -101,7 +101,7 @@ fun MediaCard(item: SubjectItem, onClick: () -> Unit, modifier: Modifier = Modif
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = item.cleanTitle(),
+                text = item.cleanTitle.uppercase(),
                 color = Color(0xE6FFFFFF),
                 fontFamily = ChesnaGrotesk,
                 fontSize = 9.sp,
@@ -119,10 +119,6 @@ fun MediaCard(item: SubjectItem, onClick: () -> Unit, modifier: Modifier = Modif
         }
     }
 }
-
-/** Strip the trailing "[Hindi]"/"[Tamil]" tag; the language chip already shows it. */
-private fun SubjectItem.cleanTitle(): String =
-    title.replace(Regex("\\s*\\[[^]]*]\\s*$"), "").trim().uppercase()
 
 @Composable
 private fun Chip(text: String, modifier: Modifier = Modifier) {
