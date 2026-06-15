@@ -3,10 +3,10 @@ package com.snape.flix.ui.home
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,8 +16,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -209,19 +208,22 @@ fun ProviderSection(
         }
 
         // ── poster carousel — pulled up to overlap the hero's lower edge ──
-        LazyRow(
+        // A plain Row + horizontalScroll, NOT a LazyRow: each section holds only
+        // ~10 cards (HomeRepository.CAROUSEL_SIZE), and a nested LazyRow is a
+        // SubcomposeLayout that the parent LazyColumn must instantiate — and whose
+        // children it cannot prefetch — on the very frame the section scrolls into
+        // view. That subcompose-on-the-critical-frame is what drops frames on every
+        // up/down pass. Ten tiny cards compose eagerly far cheaper, and the parent's
+        // prefetch can now warm the whole section ahead of time.
+        Row(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
-            contentPadding = PaddingValues(horizontal = 20.dp),
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .padding(bottom = 8.dp),
+                .horizontalScroll(rememberScrollState())
+                .padding(start = 20.dp, end = 20.dp, bottom = 8.dp),
         ) {
-            items(
-                section.cards,
-                key = { it.subject?.subjectId ?: it.tmdbId?.toString() ?: it.title },
-                contentType = { "posterCard" },
-            ) { card ->
+            for (card in section.cards) {
                 PosterCard(
                     posterUrl = card.posterUrl,
                     isSeries = card.isSeries,
