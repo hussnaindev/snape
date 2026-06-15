@@ -2,12 +2,12 @@ package com.snape.flix.ui.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -46,9 +46,15 @@ fun HomeScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val resolving by viewModel.resolving.collectAsStateWithLifecycle()
-    val listState = rememberLazyListState()
-    val heroPlaying by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
-    val scrolling by remember { derivedStateOf { listState.isScrollInProgress } }
+    // A plain vertical scroll, NOT a LazyColumn. The feed is bounded (hero + 8
+    // sections + banner), so we don't need virtualization — and virtualization is
+    // exactly what caused the fling jank: a LazyColumn re-composes each heavy
+    // section as it scrolls into view, on the fling's critical frames. A Column +
+    // verticalScroll composes all children once, then scrolling is pure layer
+    // translation (like the web home's compositor scroll) with no re-composition.
+    val scrollState = rememberScrollState()
+    val heroPlaying by remember { derivedStateOf { scrollState.value < 600 } }
+    val scrolling by remember { derivedStateOf { scrollState.isScrollInProgress } }
 
     fun openCard(card: HomeCard) {
         val subject = card.subject
@@ -76,23 +82,20 @@ fun HomeScreen(
                 )
             }
 
-            else -> LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
+            else -> Column(
+                modifier = Modifier.fillMaxSize().verticalScroll(scrollState),
             ) {
-                item {
-                    HeroCarousel(
-                        onOpenTitle = { title, isSeries -> viewModel.resolveAndOpen(title, onOpenDetail) },
-                        playbackEnabled = heroPlaying && !resolving,
-                        scrolling = scrolling,
-                    )
-                }
+                HeroCarousel(
+                    onOpenTitle = { title, isSeries -> viewModel.resolveAndOpen(title, onOpenDetail) },
+                    playbackEnabled = heroPlaying && !resolving,
+                    scrolling = scrolling,
+                )
 
                 // Continue Watching row — built but hidden until local watch
                 // history exists (recording deferred). Renders nothing for now.
-                item { ContinueWatchingRow(entries = emptyList(), onOpen = {}) }
+                ContinueWatchingRow(entries = emptyList(), onOpen = {})
 
-                items(state.sections, key = { it.key }, contentType = { "section" }) { section ->
+                for (section in state.sections) {
                     ProviderSection(
                         section = section,
                         onOpenCard = ::openCard,
@@ -100,7 +103,7 @@ fun HomeScreen(
                     )
                 }
 
-                item { HomeBanner(onLogin = {}, onSignUp = {}, modifier = Modifier.navigationBarsPadding()) }
+                HomeBanner(onLogin = {}, onSignUp = {}, modifier = Modifier.navigationBarsPadding())
             }
         }
 
