@@ -90,6 +90,7 @@ import com.snape.flix.data.TmdbEpisode
 import com.snape.flix.data.TmdbRepository
 import com.snape.flix.data.TmdbSearchHit
 import com.snape.flix.data.WatchProviderKey
+import com.snape.flix.ui.components.PosterCard
 import com.snape.flix.ui.player.AudioVariant
 import com.snape.flix.ui.player.PlayerLoadState
 import com.snape.flix.ui.player.PlayerViewModel
@@ -446,7 +447,7 @@ private fun trailerHtml(key: String): String = """
         2.39:1 trailers) AND the player chrome (title bar / logo) are cropped
         out of view instead of showing as black bars + an overlay on start. */
      #player{position:absolute;top:50%;left:50%;
-      transform:translate(-50%,-50%) scale(1.35);
+      transform:translate(-50%,-50%) scale(1.6);
       width:100vw;height:56.25vw;min-width:177.78vh;min-height:100vh}
      #player iframe{width:100%;height:100%;border:0;pointer-events:none}
     </style></head><body>
@@ -1107,51 +1108,14 @@ private fun MoreLikeThis(recs: List<TmdbSearchHit>, onOpen: (TmdbSearchHit) -> U
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         recs.forEach { hit ->
-            Box(
-                Modifier
-                    .width(130.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0x0DFFFFFF))
-                    .border(1.dp, Color(0x40FFFFFF), RoundedCornerShape(16.dp))
-                    .clickable { onOpen(hit) },
-            ) {
-                Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f)) {
-                    val poster = TmdbRepository.img(hit.poster_path, "w342")
-                    if (poster != null) {
-                        AsyncImage(
-                            model = poster,
-                            contentDescription = hit.displayTitle,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-                    MiniChip(if (hit.name.isNotBlank()) "SERIES" else "FILM", Modifier.align(Alignment.TopStart).padding(5.dp))
-                    if (hit.vote_average > 0) {
-                        MiniChip("★ ${"%.1f".format(hit.vote_average)}", Modifier.align(Alignment.TopEnd).padding(5.dp))
-                    }
-                    Box(
-                        Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .background(Brush.verticalGradient(0f to Color(0x80000000), 1f to Color(0xD9000000)))
-                            .padding(horizontal = 6.dp, vertical = 5.dp),
-                    ) {
-                        Text(
-                            hit.displayTitle.uppercase(),
-                            color = Color(0xE6FFFFFF),
-                            fontFamily = ChesnaGrotesk,
-                            fontWeight = FontWeight.Light,
-                            fontSize = 9.sp,
-                            letterSpacing = 1.2.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth(),
-                            style = noFontPad,
-                        )
-                    }
-                }
-            }
+            PosterCard(
+                posterUrl = TmdbRepository.img(hit.poster_path, "w342"),
+                isSeries = hit.name.isNotBlank(),
+                rating = hit.vote_average.takeIf { it > 0 },
+                title = hit.displayTitle,
+                onClick = { onOpen(hit) },
+                modifier = Modifier.width(130.dp),
+            )
         }
     }
 }

@@ -122,12 +122,16 @@ fun HeroCarousel(
     onOpenTitle: (title: String, isSeries: Boolean) -> Unit,
     playbackEnabled: Boolean,
     modifier: Modifier = Modifier,
+    scrolling: Boolean = false,
 ) {
     val context = LocalContext.current
     val screenH = LocalConfiguration.current.screenHeightDp.dp
     val heroH = (screenH * 0.55f).coerceAtLeast(320.dp)
 
-    val pagerState = rememberPagerState(pageCount = { SLIDES.size })
+    // Randomize the slide order once per app launch so the hero doesn't always
+    // open on the same title.
+    val slides = remember { SLIDES.shuffled() }
+    val pagerState = rememberPagerState(pageCount = { slides.size })
 
     // One shared muted player; fed the current slide's trailer after a 2s dwell.
     val player = remember {
@@ -158,7 +162,7 @@ fun HeroCarousel(
         player.clearMediaItems()
         if (!playbackEnabled) return@LaunchedEffect
         delay(2000)
-        val slide = SLIDES[pagerState.currentPage]
+        val slide = slides[pagerState.currentPage]
         player.setMediaItem(
             MediaItem.Builder()
                 .setUri(slide.trailerUrl)
@@ -171,7 +175,7 @@ fun HeroCarousel(
 
     Box(modifier.fillMaxWidth().height(heroH).background(PageBg)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-            val slide = SLIDES[page]
+            val slide = slides[page]
             Box(Modifier.fillMaxSize().clipToBounds()) {
                 AsyncImage(
                     model = slide.bgAsset,
@@ -187,7 +191,10 @@ fun HeroCarousel(
                         targetValue = if (videoReady && playbackEnabled) 1f else 0f,
                         label = "heroVideoAlpha",
                     )
-                    if (videoAlpha > 0f) {
+                    // Drop the heavy video surface out of the tree while the list
+                    // is actively scrolling (the muted player keeps its position),
+                    // so scrolling never drags a SurfaceView along — keeps it smooth.
+                    if (videoAlpha > 0f && !scrolling) {
                         AndroidView(
                             factory = { ctx ->
                                 PlayerView(ctx).apply {
@@ -309,7 +316,7 @@ fun HeroCarousel(
                 .padding(horizontal = 4.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            for (i in SLIDES.indices) {
+            for (i in slides.indices) {
                 val dist = abs(i - pagerState.currentPage)
                 val target = when {
                     i == pagerState.currentPage -> 0.45f

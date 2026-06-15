@@ -9,17 +9,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -43,11 +40,29 @@ import com.snape.flix.ui.theme.ChesnaGrotesk
 
 private val PageBg = Color(0xFF070B08)
 
+// Hoisted, content-independent brushes — allocated once, not per recomposition.
+private val LeftFade = Brush.horizontalGradient(0f to PageBg, 0.55f to Color.Transparent)
+private val TopFade = Brush.verticalGradient(0f to PageBg.copy(alpha = 0.65f), 0.18f to Color.Transparent)
+private val BottomFade = Brush.verticalGradient(
+    0.45f to Color.Transparent,
+    0.78f to PageBg.copy(alpha = 0.75f),
+    1f to PageBg,
+)
+private val ChipShape = RoundedCornerShape(50)
+
+private val HeroHeight = 300.dp
+private val SectionHeight = 440.dp
+
 /**
  * One curated provider section — a pixel replica of the web `CuratedProviderSection`.
- * A brand-tinted gradient backdrop with the TMDB hero art fading in from the
- * right (mask), the meta block (label, title logo, year/rating/RT, Watch/Explore),
- * and the poster carousel pulled up to overlap the hero's lower edge.
+ * A full-width landscape banner (the TMDB backdrop) that fades out toward the left
+ * for metadata legibility, a brand-tinted overlay, the meta block (label, contained
+ * title logo, year/rating/RT, Watch/Explore) and the poster carousel pulled up to
+ * overlap the banner's lower edge.
+ *
+ * Performance: every gradient is painted in a single cached [drawWithCache] pass
+ * rather than as a stack of translucent `Box(background=…)` layout nodes, so the
+ * section is cheap to measure and draw while the home list scrolls.
  */
 @Composable
 fun ProviderSection(
@@ -59,74 +74,47 @@ fun ProviderSection(
     if (section.cards.isEmpty()) return
 
     val brand = Color(section.brandColor)
-    val heroH = 300.dp
 
-    Box(modifier.fillMaxWidth().height(440.dp)) {
+    Box(modifier.fillMaxWidth().height(SectionHeight)) {
 
         // ── hero banner ──
-        Box(Modifier.fillMaxWidth().height(heroH)) {
-            // brand gradient: #070b08 → brand@30% → brand@55% (left → right)
-            Box(
-                Modifier.fillMaxSize().background(
-                    Brush.horizontalGradient(
-                        0.0f to PageBg,
-                        0.28f to PageBg,
-                        0.58f to brand.copy(alpha = 0.19f),
-                        1.0f to brand.copy(alpha = 0.33f),
-                    ),
-                ),
-            )
+        Box(Modifier.fillMaxWidth().height(HeroHeight)) {
 
-            // TMDB backdrop on the right, faded into the page bg from its left
-            // edge. A plain gradient overlay (SrcOver) — no offscreen layer or
-            // per-frame blend pass, so it stays cheap while scrolling.
-            section.heroBackdropUrl?.let { url ->
-                Box(
-                    Modifier
-                        .align(Alignment.CenterEnd)
-                        .fillMaxHeight()
-                        .fillMaxWidth(0.62f),
-                ) {
-                    AsyncImage(
-                        model = url,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        alignment = Alignment.TopCenter,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    Box(
-                        Modifier.fillMaxSize().background(
-                            Brush.horizontalGradient(
-                                0.0f to PageBg,
-                                0.45f to Color.Transparent,
-                            ),
-                        ),
-                    )
-                }
+            // Full-width landscape backdrop, anchored right so the focal art sits
+            // away from the metadata (which lives on the faded-out left).
+            if (section.heroBackdropUrl != null) {
+                AsyncImage(
+                    model = section.heroBackdropUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.CenterEnd,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
 
-            // top + bottom vignettes blending into the page bg
+            // One cached pass: brand tint on the right, fade to page-bg on the
+            // left, plus top/bottom vignettes — no per-layer composable nodes.
             Box(
-                Modifier.align(Alignment.TopCenter).fillMaxWidth().fillMaxHeight(0.2f)
-                    .background(Brush.verticalGradient(0f to PageBg, 1f to Color.Transparent)),
-            )
-            Box(
-                Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.4f)
-                    .background(
-                        Brush.verticalGradient(
-                            0f to Color.Transparent,
-                            0.5f to PageBg.copy(alpha = 0.6f),
-                            1f to PageBg,
-                        ),
-                    ),
+                Modifier.fillMaxSize().drawWithCache {
+                    val brandTint = Brush.horizontalGradient(
+                        0.45f to Color.Transparent,
+                        1f to brand.copy(alpha = 0.30f),
+                    )
+                    onDrawBehind {
+                        drawRect(brandTint)
+                        drawRect(LeftFade)
+                        drawRect(TopFade)
+                        drawRect(BottomFade)
+                    }
+                },
             )
 
-            // ── meta block (left, ~41% down) ──
+            // ── meta block (left) ──
             Column(
                 Modifier
                     .align(Alignment.CenterStart)
                     .offset(y = (-18).dp)
-                    .fillMaxWidth(0.62f)
+                    .fillMaxWidth(0.66f)
                     .padding(start = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -162,7 +150,7 @@ fun ProviderSection(
                     }
                 }
 
-                // Year chip first, then HD · ★rating · 🍅rt% — one row.
+                // Year (pill) first, then HD · ★rating · 🍅rt% — one row.
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -174,10 +162,10 @@ fun ProviderSection(
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
+                                .clip(ChipShape)
                                 .background(Color(0x1FFFFFFF))
-                                .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(6.dp))
-                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                                .border(1.dp, Color(0x33FFFFFF), ChipShape)
+                                .padding(horizontal = 9.dp, vertical = 3.dp),
                         )
                     }
                     Text("HD", color = Color(0xB3FFFFFF), fontSize = 11.sp, fontWeight = FontWeight.Medium)
@@ -218,7 +206,11 @@ fun ProviderSection(
                 .fillMaxWidth()
                 .padding(bottom = 8.dp),
         ) {
-            items(section.cards, key = { (it.subject?.subjectId ?: it.tmdbId.toString()) + it.title }) { card ->
+            items(
+                section.cards,
+                key = { it.subject?.subjectId ?: it.tmdbId?.toString() ?: it.title },
+                contentType = { "posterCard" },
+            ) { card ->
                 PosterCard(
                     posterUrl = card.posterUrl,
                     isSeries = card.isSeries,
@@ -234,14 +226,13 @@ fun ProviderSection(
 
 @Composable
 private fun MetaButton(label: String, primary: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(50)
     Box(
         Modifier
             .height(32.dp)
-            .clip(shape)
+            .clip(ChipShape)
             .then(
                 if (primary) Modifier.background(Color.White)
-                else Modifier.background(Color(0x1AFFFFFF)).border(1.dp, Color(0x33FFFFFF), shape),
+                else Modifier.background(Color(0x1AFFFFFF)).border(1.dp, Color(0x33FFFFFF), ChipShape),
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp),

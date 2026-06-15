@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -24,6 +23,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.snape.flix.data.HomeCard
 import com.snape.flix.data.SubjectGroup
+import com.snape.flix.ui.components.SnakeLoader
 import com.snape.flix.ui.theme.ChesnaGrotesk
 
 private val PageBg = Color(0xFF070B08)
@@ -44,6 +44,7 @@ fun HomeScreen(
     val resolving by viewModel.resolving.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val heroPlaying by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
+    val scrolling by remember { derivedStateOf { listState.isScrollInProgress } }
 
     fun openCard(card: HomeCard) {
         val subject = card.subject
@@ -54,7 +55,7 @@ fun HomeScreen(
     Box(modifier.fillMaxSize().background(PageBg)) {
         when {
             state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp)
+                SnakeLoader(size = 56.dp)
             }
 
             state.error != null && state.sections.isEmpty() -> Box(
@@ -79,6 +80,7 @@ fun HomeScreen(
                     HeroCarousel(
                         onOpenTitle = { title, isSeries -> viewModel.resolveAndOpen(title, onOpenDetail) },
                         playbackEnabled = heroPlaying && !resolving,
+                        scrolling = scrolling,
                     )
                 }
 
@@ -103,7 +105,7 @@ fun HomeScreen(
                 Modifier.fillMaxSize().background(Color(0x66000000)),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp)
+                SnakeLoader(size = 56.dp)
             }
         }
     }

@@ -29,14 +29,14 @@ object HomeRepository {
     )
 
     val SPECS: List<SectionSpec> = listOf(
-        SectionSpec("hollywood", "Hollywood", 0xFFDC2626, false, "Hollywood"),
-        SectionSpec("bollywood", "Bollywood", 0xFFF97316, false, "Bollywood"),
-        SectionSpec("punjabi", "Punjabi", 0xFFEAB308, false, null),
-        SectionSpec("tamil", "Tamil", 0xFF0D9488, false, "South Indian"),
         SectionSpec("topseries", "Top Series", 0xFFEC4899, true, "Top Series"),
         SectionSpec("trending", "Trending", 0xFFF59E0B, false, "Trending"),
+        SectionSpec("hollywood", "Hollywood", 0xFFDC2626, false, "Hollywood"),
+        SectionSpec("bollywood", "Bollywood", 0xFFF97316, false, "Bollywood"),
         SectionSpec("animation", "Animation", 0xFF3B82F6, false, null),
         SectionSpec("anime", "Anime", 0xFFA855F7, false, null),
+        SectionSpec("punjabi", "Punjabi", 0xFFEAB308, false, null),
+        SectionSpec("tamil", "South", 0xFF0D9488, false, "South Indian"),
     )
 
     private const val CAROUSEL_SIZE = 10
@@ -46,7 +46,38 @@ object HomeRepository {
      *  parallel so first paint isn't gated on serial network calls. */
     suspend fun buildSections(): List<HomeSection> = coroutineScope {
         val rows = runCatching { MovieBoxRepository.homeFeed() }.getOrDefault(emptyList())
-        SPECS.map { spec -> async { buildSection(spec, rows) } }.awaitAll()
+        val built = SPECS.map { spec -> async { buildSection(spec, rows) } }.awaitAll()
+        dedupeHeroes(built)
+    }
+
+    /** A stable identity for a card, used to keep each section's lead (hero) card
+     *  distinct across sections. */
+    private fun cardKey(c: HomeCard): String =
+        c.subject?.subjectId?.takeIf { it.isNotBlank() }
+            ?: c.tmdbId?.toString()
+            ?: c.title.trim().lowercase()
+
+    /**
+     * Ensure no two sections lead with the same title. A section's first card
+     * drives its hero banner, so if that card already leads an earlier section,
+     * rotate it (and any other already-used leads) to the back of the row so the
+     * next distinct title becomes the lead — keeping every banner unique.
+     */
+    private fun dedupeHeroes(sections: List<HomeSection>): List<HomeSection> {
+        val used = HashSet<String>()
+        return sections.map { section ->
+            val cards = section.cards
+            if (cards.isEmpty()) return@map section
+            val pick = cards.indexOfFirst { cardKey(it) !in used }.let { if (it >= 0) it else 0 }
+            used.add(cardKey(cards[pick]))
+            if (pick == 0) {
+                section
+            } else {
+                // chosen lead first, then the duplicates that preceded it (to the back)
+                val reordered = cards.drop(pick) + cards.take(pick)
+                section.copy(cards = reordered, heroTitle = reordered.first().title)
+            }
+        }
     }
 
     private suspend fun buildSection(spec: SectionSpec, rows: List<HomeRow>): HomeSection {
