@@ -249,6 +249,68 @@ object TmdbRepository {
             }.getOrDefault(emptyList())
         }
 
+    /** ISO date (yyyy-MM-dd, UTC) for today — for the discover "released-by-now" filter. */
+    private fun todayIso(): String {
+        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        fmt.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        return fmt.format(java.util.Date())
+    }
+
+    /**
+     * Discover a curated section from TMDB, mirroring `lib/tmdb.ts`'s per-provider
+     * queries. Used for the web home sections MovieBox's feed doesn't cover
+     * (Punjabi, Turkish, Animation, Anime) — and as a fallback for any section
+     * whose MovieBox row is absent.
+     */
+    suspend fun discoverSection(key: String): List<TmdbSearchHit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val today = todayIso()
+            val (isSeries, params) = when (key) {
+                "hollywood" -> false to listOf(
+                    "with_original_language" to "en", "with_origin_country" to "US",
+                    "sort_by" to "popularity.desc", "primary_release_date.lte" to today,
+                )
+                "bollywood" -> false to listOf(
+                    "with_original_language" to "hi",
+                    "sort_by" to "popularity.desc", "primary_release_date.lte" to today,
+                )
+                "punjabi" -> false to listOf(
+                    "with_original_language" to "pa",
+                    "sort_by" to "popularity.desc", "primary_release_date.lte" to today,
+                )
+                "tamil" -> false to listOf(
+                    "with_original_language" to "ta",
+                    "sort_by" to "popularity.desc", "primary_release_date.lte" to today,
+                )
+                "korean" -> true to listOf(
+                    "with_original_language" to "ko",
+                    "sort_by" to "popularity.desc", "first_air_date.lte" to today,
+                    "include_null_first_air_dates" to "false",
+                )
+                "turkish" -> true to listOf(
+                    "with_original_language" to "tr",
+                    "sort_by" to "popularity.desc", "first_air_date.lte" to today,
+                    "include_null_first_air_dates" to "false",
+                )
+                "animation" -> false to listOf(
+                    "with_genres" to "16",
+                    "sort_by" to "popularity.desc", "primary_release_date.lte" to today,
+                )
+                "anime" -> false to listOf(
+                    "with_genres" to "16", "with_original_language" to "ja",
+                    "sort_by" to "popularity.desc", "primary_release_date.lte" to today,
+                )
+                else -> false to emptyList()
+            }
+            if (params.isEmpty()) return@runCatching emptyList()
+            get(
+                if (isSeries) "/discover/tv" else "/discover/movie",
+                params,
+                TmdbSearchResponse.serializer(),
+            ).results.filter { it.poster_path != null }
+        }.getOrDefault(emptyList())
+    }
+
     /** Episodes for one season (used by the episodes carousel). */
     suspend fun season(id: Int, seasonNumber: Int): List<TmdbEpisode> = withContext(Dispatchers.IO) {
         runCatching {

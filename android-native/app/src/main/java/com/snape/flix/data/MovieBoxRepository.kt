@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit
 object MovieBoxRepository {
 
     private const val BASE = "https://api.inmoviebox.com"
+    private const val P_HOME = "/wefeed-mobile-bff/tab-operating"
     private const val P_SEARCH = "/wefeed-mobile-bff/subject-api/search"
     private const val P_SEASON = "/wefeed-mobile-bff/subject-api/season-info"
     private const val P_PLAY = "/wefeed-mobile-bff/subject-api/play-info"
@@ -82,6 +83,20 @@ object MovieBoxRepository {
         }
 
     // --- public API ---------------------------------------------------------
+
+    /**
+     * The MovieBox app home feed (`tab-operating`, tabId=0). Returns every row;
+     * the caller keeps the SUBJECTS_MOVIE rows (the only ones with subjects) and
+     * maps them onto the web app's curated sections. Subjects here carry a
+     * populated `detailUrl` (unlike search hits) and `hasResource`.
+     */
+    suspend fun homeFeed(): List<HomeRow> = withContext(Dispatchers.IO) {
+        val req = signedGet(
+            P_HOME,
+            listOf("tabId" to "0", "page" to "1", "version" to "3.0.03.0529.03"),
+        )
+        json.decodeFromString(TabOperatingResponse.serializer(), bodyString(req)).data?.items.orEmpty()
+    }
 
     private const val PER_PAGE = 24
 
