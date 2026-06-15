@@ -87,42 +87,45 @@ fun SearchScreen(
     var drawerOpen by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .statusBarsPadding(),
-        ) {
-            TopBar(
-                searchOpen = searchOpen,
-                query = state.query,
-                loading = state.loading,
-                onToggleSearch = {
-                    searchOpen = !searchOpen
-                    if (!searchOpen) viewModel.onQueryChange("")
-                },
-                onQueryChange = viewModel::onQueryChange,
-                onOpenMenu = { drawerOpen = true },
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
-
-            // No typed query → home; otherwise the search results grid.
-            Crossfade(
-                targetState = state.query.isNotBlank(),
-                modifier = Modifier.weight(1f),
-                label = "homeSearch",
-            ) { searching ->
-                if (!searching) {
-                    HomeScreen(onOpenDetail = onOpenDetail)
-                } else {
+        // Body fills from the very top: in home mode the hero sits behind the
+        // transparent status bar and the floating top bar (like the detail hero);
+        // in search mode the grid is padded down to clear the floating bar.
+        Crossfade(
+            targetState = state.query.isNotBlank(),
+            modifier = Modifier.fillMaxSize(),
+            label = "homeSearch",
+        ) { searching ->
+            if (!searching) {
+                HomeScreen(onOpenDetail = onOpenDetail)
+            } else {
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                        .padding(top = 56.dp, start = 16.dp, end = 16.dp),
+                ) {
                     SearchResults(
                         state = state,
                         onLoadMore = viewModel::loadMore,
                         onOpenDetail = onOpenDetail,
-                        modifier = Modifier.padding(horizontal = 16.dp),
                     )
                 }
             }
         }
+
+        // Floating top bar — overlays the hero, sitting below the status bar.
+        TopBar(
+            searchOpen = searchOpen,
+            query = state.query,
+            loading = state.loading,
+            onToggleSearch = {
+                searchOpen = !searchOpen
+                if (!searchOpen) viewModel.onQueryChange("")
+            },
+            onQueryChange = viewModel::onQueryChange,
+            onOpenMenu = { drawerOpen = true },
+            modifier = Modifier.statusBarsPadding().padding(horizontal = 16.dp),
+        )
 
         if (drawerOpen) {
             SideDrawer(onClose = { drawerOpen = false })

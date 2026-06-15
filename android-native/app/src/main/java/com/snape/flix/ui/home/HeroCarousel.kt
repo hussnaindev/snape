@@ -33,11 +33,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -171,7 +172,7 @@ fun HeroCarousel(
     Box(modifier.fillMaxWidth().height(heroH).background(PageBg)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
             val slide = SLIDES[page]
-            Box(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize().clipToBounds()) {
                 AsyncImage(
                     model = slide.bgAsset,
                     contentDescription = null,
@@ -196,7 +197,14 @@ fun HeroCarousel(
                                     this.player = player
                                 }
                             },
-                            modifier = Modifier.fillMaxSize().alpha(videoAlpha),
+                            // RESIZE_MODE_ZOOM already fills the box; the extra
+                            // over-scale crops residual letterbox bars / chrome
+                            // out of view (mirrors the detail trailer's scale 1.35).
+                            modifier = Modifier.fillMaxSize().graphicsLayer {
+                                scaleX = 1.35f
+                                scaleY = 1.35f
+                                alpha = videoAlpha
+                            },
                         )
                     }
                 }

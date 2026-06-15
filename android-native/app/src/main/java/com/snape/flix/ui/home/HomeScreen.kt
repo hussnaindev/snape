@@ -86,7 +86,7 @@ fun HomeScreen(
                 // history exists (recording deferred). Renders nothing for now.
                 item { ContinueWatchingRow(entries = emptyList(), onOpen = {}) }
 
-                items(state.sections, key = { it.key }) { section ->
+                items(state.sections, key = { it.key }, contentType = { "section" }) { section ->
                     ProviderSection(
                         section = section,
                         onOpenCard = ::openCard,
