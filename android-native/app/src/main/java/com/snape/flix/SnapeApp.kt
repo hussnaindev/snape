@@ -16,9 +16,11 @@ import coil.util.DebugLogger
  *  • crossfade OFF — the default 100ms fade re-invalidates every newly-decoded
  *    image for several frames; with a fast fling that's continuous redraw churn.
  *    Cached images should just appear.
- *  • RGB_565 — backdrops/posters are opaque, so 16-bit bitmaps halve the decode
- *    allocation + texture upload (the GC pauses from 32-bit bitmaps are a prime
- *    stutter source) with no visible quality loss on this artwork.
+ *  • bitmapConfig left at Coil's default (HARDWARE on API 26+) — hardware bitmaps
+ *    live in GPU memory and are sampled directly while scrolling with no per-frame
+ *    CPU→GPU texture upload. (We previously forced RGB_565, but that produces
+ *    *software* bitmaps the render thread must re-upload as they scroll into view
+ *    — the opposite of what an image-heavy scroller wants — so it's removed.)
  *  • generous in-memory + on-disk caches so scrolling back up is a cache hit and
  *    never re-decodes/re-downloads.
  *
@@ -29,7 +31,6 @@ class SnapeApp : Application(), ImageLoaderFactory {
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)
             .crossfade(false)
-            .allowRgb565(true)
             .respectCacheHeaders(false)
             .components { add(SvgDecoder.Factory()) }
             .memoryCache {
