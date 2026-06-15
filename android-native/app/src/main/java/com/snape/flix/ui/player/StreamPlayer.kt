@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,6 +28,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.List
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -39,6 +42,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,6 +79,14 @@ import kotlin.math.roundToInt
 /** One selectable audio/language variant of the same title. */
 data class AudioVariant(val id: String, val label: String)
 
+/** One episode shown in the in-player episodes carousel (series only). */
+data class PlayerEpisode(
+    val se: Int,
+    val ep: Int,
+    val label: String,
+    val stillUrl: String?,
+)
+
 /** Default playback preference: Original → English → Hindi → everything else. */
 fun audioPreferenceRank(label: String): Int = when {
     label.equals("Original", true) -> 0
@@ -90,7 +102,7 @@ fun audioPreferenceRank(label: String): Int = when {
  */
 @OptIn(UnstableApi::class)
 @Composable
-fun rememberStreamExoPlayer(ready: PlayerLoadState.Ready): ExoPlayer {
+fun rememberStreamExoPlayer(ready: PlayerLoadState.Ready, startPositionMs: Long = 0L): ExoPlayer {
     val context = LocalContext.current
     val exo = remember(ready.mpdUrl) {
         val httpFactory = DefaultHttpDataSource.Factory()
@@ -125,6 +137,8 @@ fun rememberStreamExoPlayer(ready: PlayerLoadState.Ready): ExoPlayer {
                 trackSelectionParameters = trackSelectionParameters.buildUpon()
                     .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
                     .build()
+                // Resume where the user left off (Continue Watching / re-entry).
+                if (startPositionMs > 0) seekTo(startPositionMs)
                 prepare()
                 playWhenReady = true
             }
@@ -149,6 +163,11 @@ fun StreamPlayerChrome(
     fullscreen: Boolean,
     onToggleFullscreen: () -> Unit,
     modifier: Modifier = Modifier,
+    episodes: List<PlayerEpisode> = emptyList(),
+    currentSe: Int = 0,
+    currentEp: Int = 0,
+    onSelectEpisode: (se: Int, ep: Int) -> Unit = { _, _ -> },
+    onProgress: (positionMs: Long, durationMs: Long) -> Unit = { _, _ -> },
 ) {
     var cueText by remember { mutableStateOf("") }
 
@@ -176,18 +195,36 @@ fun StreamPlayerChrome(
     }
 
     LaunchedEffect(exo) {
+        var sinceReport = 0
         while (true) {
             if (!scrubbing) {
                 positionMs = exo.currentPosition.coerceAtLeast(0L)
                 bufferedMs = exo.bufferedPosition.coerceAtLeast(0L)
                 if (durationMs <= 0L) durationMs = exo.duration.coerceAtLeast(0L)
             }
+            // Persist progress about every 5s while playing (and not scrubbing) so
+            // Continue Watching stays current without thrashing storage.
+            if (!scrubbing && playing && positionMs > 0) {
+                if (++sinceReport >= 20) {
+                    sinceReport = 0
+                    onProgress(positionMs, durationMs)
+                }
+            }
             delay(250)
         }
     }
 
+    // Capture the final position when the player leaves composition (back out of
+    // playback, switch episode, screen-off) so the resume point is exact.
+    val latestPos by rememberUpdatedState(positionMs)
+    val latestDur by rememberUpdatedState(durationMs)
+    DisposableEffect(Unit) {
+        onDispose { if (latestPos > 0) onProgress(latestPos, latestDur) }
+    }
+
     var controlsShown by remember { mutableStateOf(true) }
     var openMenu by remember { mutableStateOf(Menu.NONE) }
+    var episodesShown by remember { mutableStateOf(false) }
     var qualityHeight by remember { mutableStateOf<Int?>(null) }
     var subtitleLang by remember { mutableStateOf<String?>(null) }
     var speed by remember { mutableFloatStateOf(1f) }
@@ -353,6 +390,18 @@ fun StreamPlayerChrome(
 
                     Spacer(Modifier.weight(1f))
 
+                    if (episodes.isNotEmpty()) {
+                        Ctrl(
+                            Icons.AutoMirrored.Rounded.List,
+                            "Episodes",
+                            active = episodesShown,
+                            size = ctrlSize,
+                        ) {
+                            episodesShown = !episodesShown
+                            openMenu = Menu.NONE
+                        }
+                        Spacer(Modifier.width(gap))
+                    }
                     if (ready.captions.isNotEmpty()) {
                         Ctrl(
                             PlayerIcons.Captions,
@@ -376,6 +425,19 @@ fun StreamPlayerChrome(
                     )
                 }
             }
+        }
+
+        if (episodesShown && episodes.isNotEmpty()) {
+            EpisodesOverlay(
+                episodes = episodes,
+                currentSe = currentSe,
+                currentEp = currentEp,
+                modifier = Modifier.align(Alignment.BottomCenter),
+                onSelect = { se, ep ->
+                    episodesShown = false
+                    if (se != currentSe || ep != currentEp) onSelectEpisode(se, ep)
+                },
+            )
         }
 
         if (openMenu != Menu.NONE) {
@@ -576,6 +638,80 @@ private fun Ctrl(
                     .clip(CircleShape)
                     .background(Color(0xFFFF0000)),
             )
+        }
+    }
+}
+
+/**
+ * The in-player episodes carousel (web player's "Episodes" button). A horizontally
+ * scrolling strip of episode stills anchored above the controls bar; tapping one
+ * switches playback to that episode. The currently-playing episode is ringed.
+ */
+@Composable
+private fun EpisodesOverlay(
+    episodes: List<PlayerEpisode>,
+    currentSe: Int,
+    currentEp: Int,
+    modifier: Modifier = Modifier,
+    onSelect: (se: Int, ep: Int) -> Unit,
+) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .background(Brush.verticalGradient(0f to Color.Transparent, 1f to Color(0xF2000000)))
+            .navigationBarsPadding()
+            .padding(start = 12.dp, end = 12.dp, top = 28.dp, bottom = 84.dp),
+    ) {
+        Text(
+            "EPISODES",
+            color = Color.White,
+            fontSize = 11.sp,
+            letterSpacing = 2.sp,
+            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+        )
+        androidx.compose.foundation.lazy.LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            androidx.compose.foundation.lazy.items(episodes) { e ->
+                val current = e.se == currentSe && e.ep == currentEp
+                Column(
+                    Modifier
+                        .width(150.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { onSelect(e.se, e.ep) },
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(16f / 9f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0x1AFFFFFF))
+                            .border(
+                                width = if (current) 2.dp else 1.dp,
+                                color = if (current) Color(0xFFFF0000) else Color(0x33FFFFFF),
+                                shape = RoundedCornerShape(10.dp),
+                            ),
+                    ) {
+                        if (e.stillUrl != null) {
+                            coil.compose.AsyncImage(
+                                model = e.stillUrl,
+                                contentDescription = e.label,
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        e.label,
+                        color = if (current) Color.White else Color(0xB3FFFFFF),
+                        fontSize = 10.sp,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 2.dp),
+                    )
+                }
+            }
         }
     }
 }

@@ -133,6 +133,8 @@ fun DetailScreen(
     group: com.snape.flix.data.SubjectGroup,
     onOpenRecommendation: (TmdbSearchHit) -> Unit,
     onBack: () -> Unit,
+    resumeSe: Int = DetailActivity.NO_RESUME,
+    resumeEp: Int = DetailActivity.NO_RESUME,
     vm: DetailViewModel = viewModel(),
 ) {
     LaunchedEffect(group) { vm.start(group) }
@@ -174,9 +176,17 @@ fun DetailScreen(
     }
     val pState by playerVm.state.collectAsStateWithLifecycle()
     val ready = pState as? PlayerLoadState.Ready
+    // Resume from the last saved position for this exact title/season/episode.
+    val resumeFrom = remember(ready, currentSe, currentEp) {
+        if (ready != null) {
+            com.snape.flix.data.LocalStore.progressFor(s.group.primary.subjectId, currentSe, currentEp) ?: 0L
+        } else {
+            0L
+        }
+    }
     // Single ExoPlayer call-site so the inline ↔ fullscreen toggle keeps one
     // instance (no double audio); both placements just receive this value.
-    val exo = if (playerActive && ready != null) rememberStreamExoPlayer(ready) else null
+    val exo = if (playerActive && ready != null) rememberStreamExoPlayer(ready, resumeFrom) else null
 
     // Drive activity orientation + system bars from the fullscreen flag.
     LaunchedEffect(fullscreen) {
@@ -231,6 +241,36 @@ fun DetailScreen(
         playerActive = true
     }
 
+    // Continue Watching → autostart the saved episode on open (once).
+    LaunchedEffect(Unit) {
+        if (resumeSe != DetailActivity.NO_RESUME && resumeEp != DetailActivity.NO_RESUME) {
+            play(resumeSe, resumeEp)
+        }
+    }
+
+    // Make sure the playing season's episodes are loaded for the in-player carousel.
+    LaunchedEffect(playerActive, currentSe) {
+        if (playerActive && s.isSeries && currentSe > 0) vm.loadSeason(currentSe)
+    }
+
+    // Episodes shown inside the player (current season), used by the Episodes button.
+    val playerEpisodes = remember(s.episodesBySeason, currentSe, s.isSeries) {
+        if (!s.isSeries) {
+            emptyList()
+        } else {
+            (s.episodesBySeason[currentSe] ?: emptyList())
+                .filter { it.air_date != null && it.air_date <= TODAY }
+                .map { ep ->
+                    com.snape.flix.ui.player.PlayerEpisode(
+                        se = currentSe,
+                        ep = ep.episode_number,
+                        label = "E${ep.episode_number}: ${ep.name}",
+                        stillUrl = TmdbRepository.img(ep.still_path, "w500"),
+                    )
+                }
+        }
+    }
+
     val heroH by animateDpAsState(heroHeightDp(cfg.screenHeightDp, playerActive), label = "heroH")
     val metaMargin by animateDpAsState(if (playerActive) 16.dp else -MetaOverlap, label = "metaMargin")
 
@@ -258,6 +298,15 @@ fun DetailScreen(
                             fullscreen = false,
                             onToggleFullscreen = { fullscreen = true },
                             modifier = Modifier.fillMaxSize(),
+                            episodes = playerEpisodes,
+                            currentSe = currentSe,
+                            currentEp = currentEp,
+                            onSelectEpisode = { se, ep -> play(se, ep) },
+                            onProgress = { pos, dur ->
+                                com.snape.flix.data.LocalStore.recordProgress(
+                                    s.group.primary, currentSe, currentEp, pos, dur,
+                                )
+                            },
                         )
                         pState is PlayerLoadState.Error ->
                             HeroStatus((pState as PlayerLoadState.Error).message, onBack = { playerActive = false })
@@ -269,11 +318,13 @@ fun DetailScreen(
                         val webRef = remember { mutableStateOf<WebView?>(null) }
                         var trailerVisible by remember { mutableStateOf(false) }
                         var trailerMuted by remember { mutableStateOf(true) }
-                        // Mount immediately; reveal after a beat so the player has a frame
-                        // up — matches the web's fade-in of the backdrop trailer.
+                        // Start loading the YouTube embed immediately, but keep the
+                        // backdrop image on top and only reveal the trailer after 5s —
+                        // by then YouTube's start-up overlay (title card / watermark /
+                        // spinner) has cleared, so the reveal is straight into video.
                         LaunchedEffect(s.trailerKey) {
                             trailerVisible = false
-                            delay(700)
+                            delay(5000)
                             trailerVisible = true
                         }
                         val trailerAlpha by animateFloatAsState(if (trailerVisible) 1f else 0f, label = "trailer")
@@ -349,6 +400,15 @@ fun DetailScreen(
                 fullscreen = true,
                 onToggleFullscreen = { fullscreen = false },
                 modifier = Modifier.fillMaxSize().zIndex(10f),
+                episodes = playerEpisodes,
+                currentSe = currentSe,
+                currentEp = currentEp,
+                onSelectEpisode = { se, ep -> play(se, ep) },
+                onProgress = { pos, dur ->
+                    com.snape.flix.data.LocalStore.recordProgress(
+                        s.group.primary, currentSe, currentEp, pos, dur,
+                    )
+                },
             )
         }
     }
@@ -644,7 +704,7 @@ private fun MetaCard(s: DetailUiState, onWatch: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     WatchButton(modifier = Modifier.weight(1f), onClick = onWatch)
                     ActionIcon(Icons.Rounded.Download, "Download") { downloadOpen = true }
-                    WatchlistIcon()
+                    WatchlistIcon(item = s.group.primary)
                 }
             }
         }
@@ -813,15 +873,18 @@ private fun ActionIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, de
 }
 
 @Composable
-private fun WatchlistIcon() {
-    var inList by remember { mutableStateOf(false) }
+private fun WatchlistIcon(item: com.snape.flix.data.SubjectItem) {
+    // Backed by the on-device LocalStore so the state survives navigation and the
+    // title shows up on the Watchlist page (and is removable from there too).
+    val watchlist by com.snape.flix.data.LocalStore.watchlist.collectAsStateWithLifecycle()
+    val inList = watchlist.any { it.subjectId == item.subjectId }
     Box(
         Modifier
             .size(36.dp)
             .clip(CircleShape)
             .background(if (inList) Color.White else Color(0x99000000))
             .border(1.dp, if (inList) Color.White else Color(0x4DFFFFFF), CircleShape)
-            .clickable { inList = !inList },
+            .clickable { com.snape.flix.data.LocalStore.toggleWatchlist(item) },
         contentAlignment = Alignment.Center,
     ) {
         Icon(

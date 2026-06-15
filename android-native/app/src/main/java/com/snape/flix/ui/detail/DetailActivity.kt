@@ -32,16 +32,33 @@ class DetailActivity : ComponentActivity() {
 
     companion object {
         private const val EXTRA_VARIANTS_JSON = "variantsJson"
+        private const val EXTRA_RESUME_SE = "resumeSe"
+        private const val EXTRA_RESUME_EP = "resumeEp"
+        // Sentinel meaning "no autoplay on open" (a real resume always has se/ep
+        // set, with se=ep=0 being a valid movie target).
+        const val NO_RESUME = Int.MIN_VALUE
         private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
-        fun start(context: Context, group: SubjectGroup) {
+        /**
+         * Open the detail page. When [resumeSe]/[resumeEp] are provided (Continue
+         * Watching) the page autostarts that episode and seeks to the saved
+         * position; otherwise it opens idle on the backdrop/trailer.
+         */
+        fun start(
+            context: Context,
+            group: SubjectGroup,
+            resumeSe: Int = NO_RESUME,
+            resumeEp: Int = NO_RESUME,
+        ) {
             val payload = json.encodeToString(
                 ListSerializer(SubjectItem.serializer()),
                 group.variants,
             )
             context.startActivity(
                 Intent(context, DetailActivity::class.java)
-                    .putExtra(EXTRA_VARIANTS_JSON, payload),
+                    .putExtra(EXTRA_VARIANTS_JSON, payload)
+                    .putExtra(EXTRA_RESUME_SE, resumeSe)
+                    .putExtra(EXTRA_RESUME_EP, resumeEp),
             )
         }
 
@@ -73,6 +90,9 @@ class DetailActivity : ComponentActivity() {
             return
         }
 
+        val resumeSe = intent.getIntExtra(EXTRA_RESUME_SE, NO_RESUME)
+        val resumeEp = intent.getIntExtra(EXTRA_RESUME_EP, NO_RESUME)
+
         setContent {
             SnapeTheme {
                 Surface(Modifier.fillMaxSize().background(Color.Black), color = Color.Black) {
@@ -80,6 +100,8 @@ class DetailActivity : ComponentActivity() {
                         group = group,
                         onOpenRecommendation = ::openRecommendation,
                         onBack = ::finish,
+                        resumeSe = resumeSe,
+                        resumeEp = resumeEp,
                     )
                 }
             }

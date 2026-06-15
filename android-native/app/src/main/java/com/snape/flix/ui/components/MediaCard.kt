@@ -7,8 +7,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.BookmarkAdded
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -62,6 +68,10 @@ fun MediaCard(item: SubjectItem, onClick: () -> Unit, modifier: Modifier = Modif
  * this", and the home carousels): a 2:3 poster, faint white ring, a type chip
  * (top-left), a rating chip (top-right) and the gradient title overlay. Callers
  * size it via [modifier] (grid cell → fillMaxWidth, carousel → fixed width).
+ *
+ * On the watchlist page the rating chip is replaced by a filled watchlist icon:
+ * pass [onWatchlistRemove] (non-null) and tapping it removes the title from the
+ * list. When null the card shows the usual rating chip.
  */
 @Composable
 fun PosterCard(
@@ -71,6 +81,8 @@ fun PosterCard(
     title: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onWatchlistRemove: (() -> Unit)? = null,
+    progress: Float? = null,
 ) {
     Box(
         modifier = modifier
@@ -102,12 +114,33 @@ fun PosterCard(
             modifier = Modifier.align(Alignment.TopStart).padding(5.dp),
         )
 
-        // rating chip — top-right
-        rating?.let { r ->
-            Chip(
-                text = "★ ${"%.1f".format(r)}",
-                modifier = Modifier.align(Alignment.TopEnd).padding(5.dp),
-            )
+        // top-right — either the rating chip, or (watchlist page) a filled
+        // watchlist icon that removes the title when tapped.
+        if (onWatchlistRemove != null) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(5.dp)
+                    .size(26.dp)
+                    .clip(CircleShape)
+                    .background(Color.White)
+                    .clickable(onClick = onWatchlistRemove),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Rounded.BookmarkAdded,
+                    contentDescription = "Remove from watchlist",
+                    tint = Color.Black,
+                    modifier = Modifier.size(15.dp),
+                )
+            }
+        } else {
+            rating?.let { r ->
+                Chip(
+                    text = "★ ${"%.1f".format(r)}",
+                    modifier = Modifier.align(Alignment.TopEnd).padding(5.dp),
+                )
+            }
         }
 
         // gradient title bar — bottom. Padding-based band (matching the detail
@@ -132,6 +165,25 @@ fun PosterCard(
                 style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+
+        // resume progress bar — sits flush on the card's bottom edge (Continue
+        // Watching), drawn over the title scrim.
+        if (progress != null && progress > 0f) {
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .background(Color(0x40FFFFFF)),
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(progress.coerceIn(0f, 1f))
+                        .height(3.dp)
+                        .background(Color(0xFFFF0000)),
+                )
+            }
         }
     }
 }

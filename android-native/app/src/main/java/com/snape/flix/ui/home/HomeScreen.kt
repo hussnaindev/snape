@@ -1,11 +1,16 @@
 package com.snape.flix.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -16,13 +21,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.snape.flix.data.HistoryEntry
 import com.snape.flix.data.HomeCard
+import com.snape.flix.data.LocalStore
 import com.snape.flix.data.SubjectGroup
+import com.snape.flix.ui.components.PosterCard
 import com.snape.flix.ui.components.SnakeLoader
 import com.snape.flix.ui.theme.ChesnaGrotesk
 
@@ -37,11 +46,15 @@ private val PageBg = Color(0xFF070B08)
 @Composable
 fun HomeScreen(
     onOpenDetail: (SubjectGroup) -> Unit,
+    onExplore: (HomeSection) -> Unit,
+    onOpenContinue: (HistoryEntry) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val resolving by viewModel.resolving.collectAsStateWithLifecycle()
+    val history by LocalStore.history.collectAsStateWithLifecycle()
+    val continueWatching = remember(history) { LocalStore.continueWatching() }
     // A plain vertical scroll, NOT a LazyColumn. The feed is bounded (hero + 8
     // sections + banner), so we don't need virtualization — and virtualization is
     // exactly what caused the fling jank: a LazyColumn re-composes each heavy
@@ -87,19 +100,18 @@ fun HomeScreen(
                     scrolling = scrolling,
                 )
 
-                // Continue Watching row — built but hidden until local watch
-                // history exists (recording deferred). Renders nothing for now.
-                ContinueWatchingRow(entries = emptyList(), onOpen = {})
+                // Continue Watching row — populated from the on-device history.
+                ContinueWatchingRow(entries = continueWatching, onOpen = onOpenContinue)
 
                 for (section in state.sections) {
                     ProviderSection(
                         section = section,
                         onOpenCard = ::openCard,
-                        onExplore = { /* browse-by-provider not yet wired */ },
+                        onExplore = { onExplore(section) },
                     )
                 }
 
-                HomeBanner(onLogin = {}, onSignUp = {}, modifier = Modifier.navigationBarsPadding())
+                HomeBanner(modifier = Modifier.navigationBarsPadding())
             }
         }
 
@@ -115,12 +127,42 @@ fun HomeScreen(
 }
 
 /**
- * Continue Watching row (web `ContinueWatchingCarousel`). Watch-history recording
- * isn't wired natively yet, so this renders nothing while [entries] is empty —
- * the layout is in place for when local history lands.
+ * Continue Watching row (web `ContinueWatchingCarousel`). Renders the in-progress
+ * titles from the on-device history, newest first, each with a resume progress bar.
+ * Tapping a card reopens detail and resumes at the saved position.
  */
 @Composable
-private fun ContinueWatchingRow(entries: List<HomeCard>, onOpen: (HomeCard) -> Unit) {
+private fun ContinueWatchingRow(entries: List<HistoryEntry>, onOpen: (HistoryEntry) -> Unit) {
     if (entries.isEmpty()) return
-    // (Intentionally empty for now — populated once native history is recorded.)
+    Column(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp)) {
+        Text(
+            "CONTINUE WATCHING",
+            color = Color.White,
+            fontFamily = ChesnaGrotesk,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 12.sp,
+            letterSpacing = 2.sp,
+            modifier = Modifier.padding(start = 20.dp, bottom = 12.dp),
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp),
+        ) {
+            for (entry in entries) {
+                val item = entry.item
+                PosterCard(
+                    posterUrl = item.posterUrl,
+                    isSeries = item.isSeries,
+                    rating = item.rating?.takeIf { it > 0 },
+                    title = item.cleanTitle,
+                    onClick = { onOpen(entry) },
+                    progress = entry.fraction,
+                    modifier = Modifier.width(130.dp),
+                )
+            }
+        }
+    }
 }

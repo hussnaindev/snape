@@ -1,23 +1,16 @@
 package com.snape.flix.ui.home
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -28,11 +21,13 @@ import coil.compose.AsyncImage
 
 private val PageBg = Color(0xFF070B08)
 
-/** Bottom "Free streaming" banner — replica of the web `Banner` component. */
+/**
+ * Bottom "Free streaming" banner — replica of the web `Banner` component. This is
+ * a no-signup app, so the login / sign-up buttons are intentionally omitted; the
+ * banner is now just the marketing copy over the artwork.
+ */
 @Composable
 fun HomeBanner(
-    onLogin: () -> Unit,
-    onSignUp: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.fillMaxWidth().height(350.dp)) {
@@ -70,38 +65,7 @@ fun HomeBanner(
                 "Thousands of movies & shows, free.",
                 color = Color(0xCCFFFFFF),
                 fontSize = 14.sp,
-                modifier = Modifier.padding(bottom = 16.dp),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                BannerButton("LOGIN", primary = true, onClick = onLogin)
-                BannerButton("SIGN UP", primary = false, onClick = onSignUp)
-            }
         }
-    }
-}
-
-@Composable
-private fun BannerButton(label: String, primary: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(50)
-    Box(
-        Modifier
-            .height(36.dp)
-            .widthIn(min = 112.dp)
-            .clip(shape)
-            .then(
-                if (primary) Modifier.background(Color.White)
-                else Modifier.background(Color(0x1AFFFFFF)).border(1.dp, Color(0x33FFFFFF), shape),
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            color = if (primary) Color.Black else Color.White,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 1.5.sp,
-        )
     }
 }

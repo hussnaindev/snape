@@ -7,6 +7,7 @@ import coil.decode.SvgDecoder
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.util.DebugLogger
+import com.snape.flix.data.LocalStore
 
 /**
  * App-wide Coil configuration. The home screen scrolls through eight full-width
@@ -28,6 +29,12 @@ import coil.util.DebugLogger
  * load through this same tuned loader.
  */
 class SnapeApp : Application(), ImageLoaderFactory {
+    override fun onCreate() {
+        super.onCreate()
+        // Local-only persistence (watchlist + watch history) — no external DB.
+        LocalStore.init(this)
+    }
+
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)
             .crossfade(false)
