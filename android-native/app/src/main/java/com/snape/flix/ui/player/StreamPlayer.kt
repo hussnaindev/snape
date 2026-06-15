@@ -27,6 +27,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.List
@@ -669,10 +671,10 @@ private fun EpisodesOverlay(
             letterSpacing = 2.sp,
             modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
         )
-        androidx.compose.foundation.lazy.LazyRow(
+        LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            androidx.compose.foundation.lazy.items(episodes) { e ->
+            items(episodes) { e ->
                 val current = e.se == currentSe && e.ep == currentEp
                 Column(
                     Modifier
