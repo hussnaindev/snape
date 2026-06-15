@@ -38,12 +38,52 @@ All MovieBox request signing (`x-tr-signature` HMAC-MD5, `X-Client-Token`,
 device `X-Client-Info`) lives in `data/MovieBoxSign.kt`; the API surface is in
 `data/MovieBoxRepository.kt`.
 
+## Performance — never break these
+
+Hard-won rules for the home screen. Reverting any of these reintroduces the
+scroll jank they fixed, so leave them in place unless you have measured proof.
+
+1. **The home feed is a `Column` + `Modifier.verticalScroll`, NOT a `LazyColumn`**
+   (`ui/home/HomeScreen.kt`). The feed is bounded — hero + 8 sections + footer
+   (~10 children), each section ≤10 cards (`HomeRepository.CAROUSEL_SIZE`) — so
+   virtualization buys nothing and actively hurts: a `LazyColumn` **re-composes
+   each heavy 440 dp section as it scrolls into view**, on the fling's critical
+   frames, which caused severe *fling-only* jank (smooth on slow drag, stutter on
+   fast fling) even on a flagship. A `Column + verticalScroll` composes the whole
+   feed **once**, then scrolling is pure layer translation — the same model the
+   web home uses (browser lays out once, compositor just translates). Only reach
+   for lazy layouts if the feed becomes genuinely large/unbounded.
+2. **Each section's poster carousel is a `Row` + `horizontalScroll`, NOT a
+   `LazyRow`** (`ui/home/ProviderSection.kt`). With ≤10 cards the lazy machinery
+   is pure overhead — a nested `LazyRow` is a `SubcomposeLayout` instantiated per
+   section. Plain `Row` composes the tiny cards eagerly, cheaper.
+3. **The hero trailer `PlayerView` is a `TextureView`, NOT a `SurfaceView`**
+   (inflated from `res/layout/hero_trailer_view.xml` with
+   `app:surface_type="texture_view"`). A `SurfaceView` hole-punches the window and
+   forces a relayout when added/removed or scrolled — visible hitching. A
+   `TextureView` composites like an ordinary view.
+4. **Coil bitmaps stay at the default `HARDWARE` config** (`SnapeApp.kt`) — do not
+   re-add `allowRgb565(true)`. RGB_565 produces *software* bitmaps the render
+   thread must re-upload to the GPU as they scroll in; hardware bitmaps are
+   GPU-resident with no per-frame upload.
+5. **Judge scroll perf only on a release (non-debuggable) build.** Compose runs
+   5–10× slower in a debug build; the CI builds `assembleRelease` for this reason.
+
+**Incident:** home scroll stuttered badly on a flagship while the web home was
+smooth on the same phone. Three composable-level attempts (disable hero video,
+`LazyRow`→`Row`, cut gradient overdraw) did nothing. An on-screen `withFrameNanos`
+FPS meter + the "only fast fling" symptom localized it to **composition during
+fling** — i.e. `LazyColumn` virtualization. Switching to `Column + verticalScroll`
+fixed it.
+
 ## Build the APK
 
 ### GitHub Actions (recommended)
-Push to `main` (or run the **Build Snape Android APK** workflow manually). The
-workflow at `.github/workflows/android.yml` builds `:app:assembleDebug` and
-uploads the `snape-debug-apk` artifact. Download it from the run's *Artifacts*.
+Push to `main` or `feat/android-native` (or run the **Build Snape Android APK**
+workflow manually). The workflow at `.github/workflows/android.yml` builds
+`:app:assembleRelease` (non-debuggable — required for representative scroll perf;
+signed with the debug keystore so it installs without secrets) and uploads the
+`snape-release-apk` artifact. Download it from the run's *Artifacts*.
 
 ### Locally
 Open `android-native/` in **Android Studio** (Koala or newer) and Run, or from a
