@@ -41,11 +41,20 @@ import com.snape.flix.ui.theme.ChesnaGrotesk
 private val PageBg = Color(0xFF070B08)
 
 // Hoisted, content-independent brushes — allocated once, not per recomposition.
-private val LeftFade = Brush.horizontalGradient(0f to PageBg, 0.55f to Color.Transparent)
-private val TopFade = Brush.verticalGradient(0f to PageBg.copy(alpha = 0.65f), 0.18f to Color.Transparent)
+// Left fade is widened (solid page-bg across the metadata column, then a long
+// ramp out) so the label/logo/buttons stay fully legible over the artwork.
+private val LeftFade = Brush.horizontalGradient(
+    0f to PageBg,
+    0.34f to PageBg,
+    0.58f to PageBg.copy(alpha = 0.55f),
+    0.80f to Color.Transparent,
+)
+// Top/bottom fades reach full page-bg at the edges so the banner dissolves into
+// the rows above and below instead of showing a hard seam.
+private val TopFade = Brush.verticalGradient(0f to PageBg, 0.24f to Color.Transparent)
 private val BottomFade = Brush.verticalGradient(
-    0.45f to Color.Transparent,
-    0.78f to PageBg.copy(alpha = 0.75f),
+    0.40f to Color.Transparent,
+    0.74f to PageBg.copy(alpha = 0.80f),
     1f to PageBg,
 )
 private val ChipShape = RoundedCornerShape(50)
@@ -80,14 +89,18 @@ fun ProviderSection(
         // ── hero banner ──
         Box(Modifier.fillMaxWidth().height(HeroHeight)) {
 
-            // Full-width landscape backdrop, anchored right so the focal art sits
-            // away from the metadata (which lives on the faded-out left).
+            // Full-width landscape backdrop. The box is narrower than the 16:9
+            // source, so Crop pans horizontally; anchoring to the START shows the
+            // source's left ⅔, which lands a centred focal subject on the banner's
+            // right side — out in the exposed (un-faded) zone instead of buried
+            // under the metadata column on the left. (No mirror, so any text/logos
+            // baked into the artwork stay the right way round.)
             if (section.heroBackdropUrl != null) {
                 AsyncImage(
                     model = section.heroBackdropUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    alignment = Alignment.CenterEnd,
+                    alignment = Alignment.CenterStart,
                     modifier = Modifier.fillMaxSize(),
                 )
             }

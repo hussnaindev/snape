@@ -82,9 +82,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.ImageLoader
 import coil.compose.AsyncImage
-import coil.decode.SvgDecoder
 import com.snape.flix.data.TmdbCastMember
 import com.snape.flix.data.TmdbEpisode
 import com.snape.flix.data.TmdbRepository
@@ -309,7 +307,20 @@ fun DetailScreen(
 
             // ── everything below the hero — overlaps it, reclaiming the space ──
             Column(Modifier.fillMaxWidth().verticalShift(metaMargin)) {
-                MetaCard(s, onWatch = { play(0, 0) })
+                // Movies play with se=0/ep=0; series have no such "episode zero", so
+                // Watch must start the first real episode (first playable MovieBox
+                // season, falling back to the first TMDB season, then S1) at ep 1 —
+                // otherwise play-info returns no stream → "no episodes found".
+                MetaCard(s, onWatch = {
+                    if (s.isSeries) {
+                        val firstSe = s.playableSeasons.firstOrNull()?.se
+                            ?: s.seasons.firstOrNull()?.season_number
+                            ?: 1
+                        play(firstSe, 1)
+                    } else {
+                        play(0, 0)
+                    }
+                })
 
                 Spacer(Modifier.height(24.dp))
 
@@ -732,19 +743,15 @@ private fun StatusChip(status: String) {
 
 @Composable
 private fun WatchProvidersRow(providers: List<WatchProviderKey>) {
-    val ctx = LocalContext.current
-    // Dedicated loader with the SVG decoder; the bundled brand logos are vectors.
-    val svgLoader = remember {
-        ImageLoader.Builder(ctx).components { add(SvgDecoder.Factory()) }.build()
-    }
     Row(
         Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         providers.forEachIndexed { i, p ->
+            // The bundled brand logos are vectors; the app-wide ImageLoader
+            // (SnapeApp) registers the SVG decoder, so the default loader handles them.
             AsyncImage(
                 model = p.asset,
-                imageLoader = svgLoader,
                 contentDescription = p.label,
                 contentScale = ContentScale.Fit,
                 // Recolour the brand logo to white, like the web's invert filter.
