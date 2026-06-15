@@ -40,22 +40,17 @@ import com.snape.flix.ui.theme.ChesnaGrotesk
 
 private val PageBg = Color(0xFF070B08)
 
-// Hoisted, content-independent brushes — allocated once, not per recomposition.
-// Left fade is widened (solid page-bg across the metadata column, then a long
-// ramp out) so the label/logo/buttons stay fully legible over the artwork.
-private val LeftFade = Brush.horizontalGradient(
-    0f to PageBg,
-    0.34f to PageBg,
-    0.58f to PageBg.copy(alpha = 0.55f),
-    0.80f to Color.Transparent,
-)
-// Top/bottom fades reach full page-bg at the edges so the banner dissolves into
-// the rows above and below instead of showing a hard seam.
-private val TopFade = Brush.verticalGradient(0f to PageBg, 0.24f to Color.Transparent)
-private val BottomFade = Brush.verticalGradient(
-    0.40f to Color.Transparent,
+// Single hoisted vertical fade carrying BOTH the top and bottom vignettes, so the
+// banner dissolves into the rows above/below with one draw instead of two. The
+// horizontal fade (brand tint + left legibility ramp) is brand-dependent, so it's
+// built per section in drawWithCache below. Two gradient rects total, not four —
+// halving the overlay fill-rate that was dropping frames while scrolling.
+private val VFade = Brush.verticalGradient(
+    0.0f to PageBg,
+    0.24f to Color.Transparent,
+    0.55f to Color.Transparent,
     0.74f to PageBg.copy(alpha = 0.80f),
-    1f to PageBg,
+    1.0f to PageBg,
 )
 private val ChipShape = RoundedCornerShape(50)
 
@@ -105,19 +100,22 @@ fun ProviderSection(
                 )
             }
 
-            // One cached pass: brand tint on the right, fade to page-bg on the
-            // left, plus top/bottom vignettes — no per-layer composable nodes.
+            // One cached pass, two draws: a single horizontal gradient combining the
+            // left legibility ramp (solid page-bg across the metadata column, then a
+            // long fade out) with the brand tint fading in on the right, plus the
+            // hoisted top/bottom vertical fade. No per-layer composable nodes.
             Box(
                 Modifier.fillMaxSize().drawWithCache {
-                    val brandTint = Brush.horizontalGradient(
-                        0.45f to Color.Transparent,
-                        1f to brand.copy(alpha = 0.30f),
+                    val hFade = Brush.horizontalGradient(
+                        0.0f to PageBg,
+                        0.34f to PageBg,
+                        0.58f to PageBg.copy(alpha = 0.55f),
+                        0.72f to Color.Transparent,
+                        1.0f to brand.copy(alpha = 0.30f),
                     )
                     onDrawBehind {
-                        drawRect(brandTint)
-                        drawRect(LeftFade)
-                        drawRect(TopFade)
-                        drawRect(BottomFade)
+                        drawRect(hFade)
+                        drawRect(VFade)
                     }
                 },
             )

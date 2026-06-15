@@ -51,6 +51,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -134,11 +135,24 @@ fun HeroCarousel(
     val pagerState = rememberPagerState(pageCount = { slides.size })
 
     // One shared muted player; fed the current slide's trailer after a 2s dwell.
+    // The Apple trailer manifests advertise up to UHD; decoding/buffering 4K for a
+    // small muted hero needlessly loads the codec + GPU and competes with the list
+    // scroll, so cap the selected video to 720p and trim the buffer (we only ever
+    // play a few seconds before the user scrolls). Both cut steady-state jank.
     val player = remember {
-        ExoPlayer.Builder(context).build().apply {
-            volume = 0f
-            repeatMode = Player.REPEAT_MODE_OFF
-        }
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(2_000, 10_000, 1_000, 2_000)
+            .build()
+        ExoPlayer.Builder(context)
+            .setLoadControl(loadControl)
+            .build().apply {
+                volume = 0f
+                repeatMode = Player.REPEAT_MODE_OFF
+                trackSelectionParameters = trackSelectionParameters
+                    .buildUpon()
+                    .setMaxVideoSize(1280, 720)
+                    .build()
+            }
     }
     var videoReady by remember { mutableStateOf(false) }
 
