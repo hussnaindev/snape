@@ -300,6 +300,15 @@ object TmdbRepository {
                     "with_genres" to "16", "with_original_language" to "ja",
                     "sort_by" to "popularity.desc", "primary_release_date.lte" to today,
                 )
+                // Fallbacks for the MovieBox-sourced rows, used only if the live
+                // home feed is unavailable.
+                "trending" -> false to listOf(
+                    "sort_by" to "popularity.desc", "primary_release_date.lte" to today,
+                )
+                "topseries" -> true to listOf(
+                    "sort_by" to "popularity.desc", "first_air_date.lte" to today,
+                    "include_null_first_air_dates" to "false",
+                )
                 else -> false to emptyList()
             }
             if (params.isEmpty()) return@runCatching emptyList()

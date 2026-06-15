@@ -1,5 +1,9 @@
 package com.snape.flix.data
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+
 /**
  * Builds the native home screen's curated sections — a pixel-faithful match to
  * the web home (`app/page.tsx` → `CuratedProviderSection`). Catalogue data comes
@@ -29,18 +33,20 @@ object HomeRepository {
         SectionSpec("bollywood", "Bollywood", 0xFFF97316, false, "Bollywood"),
         SectionSpec("punjabi", "Punjabi", 0xFFEAB308, false, null),
         SectionSpec("tamil", "Tamil", 0xFF0D9488, false, "South Indian"),
-        SectionSpec("korean", "Korean", 0xFFEC4899, true, "Asian"),
-        SectionSpec("turkish", "Turkish", 0xFFF59E0B, true, null),
+        SectionSpec("topseries", "Top Series", 0xFFEC4899, true, "Top Series"),
+        SectionSpec("trending", "Trending", 0xFFF59E0B, false, "Trending"),
         SectionSpec("animation", "Animation", 0xFF3B82F6, false, null),
         SectionSpec("anime", "Anime", 0xFFA855F7, false, null),
     )
 
     private const val CAROUSEL_SIZE = 10
 
-    /** Build all sections (cards only). MovieBox feed is fetched once and shared. */
-    suspend fun buildSections(): List<HomeSection> {
+    /** Build all sections (cards only). MovieBox feed is fetched once and shared;
+     *  the per-section builds (incl. TMDB discover for fallback rows) run in
+     *  parallel so first paint isn't gated on serial network calls. */
+    suspend fun buildSections(): List<HomeSection> = coroutineScope {
         val rows = runCatching { MovieBoxRepository.homeFeed() }.getOrDefault(emptyList())
-        return SPECS.map { spec -> buildSection(spec, rows) }
+        SPECS.map { spec -> async { buildSection(spec, rows) } }.awaitAll()
     }
 
     private suspend fun buildSection(spec: SectionSpec, rows: List<HomeRow>): HomeSection {
@@ -100,22 +106,25 @@ object HomeRepository {
      */
     suspend fun enrichHero(section: HomeSection): HomeSection {
         val first = section.cards.firstOrNull() ?: return section
+        // Use the hero card's own type — these rows (Trending, Top Series) mix
+        // movies and series, so the section's nominal type isn't always right.
+        val isSeries = first.isSeries
         val id = first.tmdbId
-            ?: TmdbRepository.resolveId(section.isSeries, first.title, first.year)
+            ?: TmdbRepository.resolveId(isSeries, first.title, first.year)
             ?: return section
 
-        val detail = TmdbRepository.detail(section.isSeries, id) ?: return section
-        val logo = TmdbRepository.logoUrl(section.isSeries, id)
+        val detail = TmdbRepository.detail(isSeries, id) ?: return section
+        val logo = TmdbRepository.logoUrl(isSeries, id)
 
         val vote = detail.vote_average
-        val date = if (section.isSeries) detail.first_air_date else detail.release_date
+        val date = if (isSeries) detail.first_air_date else detail.release_date
         return section.copy(
             heroTitle = detail.title.ifBlank { detail.name }.ifBlank { section.heroTitle },
             heroYear = date.take(4).takeIf { it.isNotBlank() && it != "0000" },
             heroRating = if (vote > 0) "%.1f".format(vote) else null,
             rtScore = if (vote > 0) (vote * 10).toInt() else null,
             overview = detail.overview.ifBlank { null },
-            heroBackdropUrl = TmdbRepository.img(detail.backdrop_path, "w1280"),
+            heroBackdropUrl = TmdbRepository.img(detail.backdrop_path, "w780"),
             heroLogoUrl = logo,
         )
     }

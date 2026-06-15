@@ -28,12 +28,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.snape.flix.data.HomeCard
 import com.snape.flix.data.HomeSection
+import com.snape.flix.ui.components.PosterCard
 import com.snape.flix.ui.theme.ChesnaGrotesk
 
 private val PageBg = Color(0xFF070B08)
@@ -80,29 +77,32 @@ fun ProviderSection(
                 ),
             )
 
-            // TMDB backdrop on the right, masked to fade in from its left edge.
+            // TMDB backdrop on the right, faded into the page bg from its left
+            // edge. A plain gradient overlay (SrcOver) — no offscreen layer or
+            // per-frame blend pass, so it stays cheap while scrolling.
             section.heroBackdropUrl?.let { url ->
-                AsyncImage(
-                    model = url,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    alignment = Alignment.TopCenter,
-                    modifier = Modifier
+                Box(
+                    Modifier
                         .align(Alignment.CenterEnd)
                         .fillMaxHeight()
-                        .fillMaxWidth(0.62f)
-                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                        .drawWithContent {
-                            drawContent()
-                            drawRect(
-                                brush = Brush.horizontalGradient(
-                                    0.08f to Color.Transparent,
-                                    0.42f to Color.Black,
-                                ),
-                                blendMode = BlendMode.DstIn,
-                            )
-                        },
-                )
+                        .fillMaxWidth(0.62f),
+                ) {
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        alignment = Alignment.TopCenter,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    Box(
+                        Modifier.fillMaxSize().background(
+                            Brush.horizontalGradient(
+                                0.0f to PageBg,
+                                0.45f to Color.Transparent,
+                            ),
+                        ),
+                    )
+                }
             }
 
             // top + bottom vignettes blending into the page bg
@@ -139,44 +139,47 @@ fun ProviderSection(
                     letterSpacing = 4.sp,
                 )
 
-                if (section.heroLogoUrl != null) {
-                    AsyncImage(
-                        model = section.heroLogoUrl,
-                        contentDescription = section.heroTitle,
-                        contentScale = ContentScale.Fit,
-                        alignment = Alignment.CenterStart,
-                        modifier = Modifier.heightIn(max = 56.dp).widthIn(max = 170.dp),
-                    )
-                } else {
-                    Text(
-                        text = section.heroTitle,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                // Title logo — fixed footprint so every section's logo reserves
+                // the same space and is contained (never cropped/truncated).
+                Box(Modifier.height(48.dp).width(160.dp), contentAlignment = Alignment.CenterStart) {
+                    if (section.heroLogoUrl != null) {
+                        AsyncImage(
+                            model = section.heroLogoUrl,
+                            contentDescription = section.heroTitle,
+                            contentScale = ContentScale.Fit,
+                            alignment = Alignment.CenterStart,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        Text(
+                            text = section.heroTitle,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
 
-                // year chip (mobile shows only the year chip, like the web)
-                section.heroYear?.let { year ->
-                    Text(
-                        text = year,
-                        color = Color(0xB3FFFFFF),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .border(1.dp, Color(0x59FFFFFF), RoundedCornerShape(20.dp))
-                            .padding(horizontal = 10.dp, vertical = 2.dp),
-                    )
-                }
-
-                // HD · ★rating · 🍅rt%
+                // Year chip first, then HD · ★rating · 🍅rt% — one row.
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
+                    section.heroYear?.let { year ->
+                        Text(
+                            text = year,
+                            color = Color(0xCCFFFFFF),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0x1FFFFFFF))
+                                .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                        )
+                    }
                     Text("HD", color = Color(0xB3FFFFFF), fontSize = 11.sp, fontWeight = FontWeight.Medium)
                     section.heroRating?.let { r ->
                         Text("★ $r", color = Color(0xB3FFFFFF), fontSize = 11.sp, fontWeight = FontWeight.Medium)
@@ -216,78 +219,16 @@ fun ProviderSection(
                 .padding(bottom = 8.dp),
         ) {
             items(section.cards, key = { (it.subject?.subjectId ?: it.tmdbId.toString()) + it.title }) { card ->
-                HomePosterCard(card = card, onClick = { onOpenCard(card) })
+                PosterCard(
+                    posterUrl = card.posterUrl,
+                    isSeries = card.isSeries,
+                    rating = card.rating,
+                    title = card.title,
+                    onClick = { onOpenCard(card) },
+                    modifier = Modifier.width(130.dp),
+                )
             }
         }
-    }
-}
-
-/** Portrait poster card for the home carousels (web `ProviderCard`). */
-@Composable
-private fun HomePosterCard(card: HomeCard, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(16.dp)
-    Box(
-        Modifier
-            .width(130.dp)
-            .clip(shape)
-            .background(Color(0x0DFFFFFF))
-            .border(1.dp, Color(0x40FFFFFF), shape)
-            .clickable(onClick = onClick)
-            .aspectRatio(2f / 3f),
-    ) {
-        if (card.posterUrl != null) {
-            AsyncImage(
-                model = card.posterUrl,
-                contentDescription = card.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-        } else {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No Image", color = Color(0x33FFFFFF), fontSize = 11.sp)
-            }
-        }
-
-        // type chip — top-left
-        Chip(if (card.isSeries) "SERIES" else "FILM", Modifier.align(Alignment.TopStart).padding(6.dp))
-        // rating chip — top-right
-        card.rating?.let { r ->
-            Chip("★ ${"%.1f".format(r)}", Modifier.align(Alignment.TopEnd).padding(6.dp))
-        }
-
-        // title bar — bottom
-        Box(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .background(Brush.verticalGradient(0f to Color(0x80000000), 1f to Color(0xD9000000)))
-                .padding(horizontal = 8.dp, vertical = 5.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = card.title.uppercase(),
-                color = Color(0xE6FFFFFF),
-                fontFamily = ChesnaGrotesk,
-                fontWeight = FontWeight.Light,
-                fontSize = 10.sp,
-                letterSpacing = 1.5.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-@Composable
-private fun Chip(text: String, modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .clip(RoundedCornerShape(50))
-            .background(Color(0x99000000))
-            .border(0.5.dp, Color(0x66FFFFFF), RoundedCornerShape(50))
-            .padding(horizontal = 6.dp, vertical = 2.dp),
-    ) {
-        Text(text, color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp)
     }
 }
 

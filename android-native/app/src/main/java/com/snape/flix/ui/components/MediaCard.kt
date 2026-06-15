@@ -48,19 +48,43 @@ private val ChipBorder = Color(0x66FFFFFF) // white @ 40%    (web: border-white/
  */
 @Composable
 fun MediaCard(item: SubjectItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    PosterCard(
+        posterUrl = item.posterUrl,
+        isSeries = item.isSeries,
+        rating = item.rating?.takeIf { it > 0 },
+        title = item.cleanTitle,
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+    )
+}
+
+/**
+ * The canonical poster card used across the app (search results, "more like
+ * this", and the home carousels): a 2:3 poster, faint white ring, a type chip
+ * (top-left), a rating chip (top-right) and the gradient title overlay. Callers
+ * size it via [modifier] (grid cell → fillMaxWidth, carousel → fixed width).
+ */
+@Composable
+fun PosterCard(
+    posterUrl: String?,
+    isSeries: Boolean,
+    rating: Double?,
+    title: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Box(
         modifier = modifier
             .clip(CardShape)
             .background(CardSurface)
             .border(1.dp, CardRing, CardShape) // web mobile: ring-1
             .clickable(onClick = onClick)
-            .fillMaxWidth()
             .aspectRatio(2f / 3f),
     ) {
-        if (item.posterUrl != null) {
+        if (posterUrl != null) {
             AsyncImage(
-                model = item.posterUrl,
-                contentDescription = item.title,
+                model = posterUrl,
+                contentDescription = title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -75,18 +99,16 @@ fun MediaCard(item: SubjectItem, onClick: () -> Unit, modifier: Modifier = Modif
 
         // type chip — top-left (Film / Series), mirroring the web card
         Chip(
-            text = if (item.isSeries) "SERIES" else "FILM",
+            text = if (isSeries) "SERIES" else "FILM",
             modifier = Modifier.align(Alignment.TopStart).padding(5.dp),
         )
 
         // rating chip — top-right
-        item.rating?.let { r ->
-            if (r > 0) {
-                Chip(
-                    text = "★ ${"%.1f".format(r)}",
-                    modifier = Modifier.align(Alignment.TopEnd).padding(5.dp),
-                )
-            }
+        rating?.let { r ->
+            Chip(
+                text = "★ ${"%.1f".format(r)}",
+                modifier = Modifier.align(Alignment.TopEnd).padding(5.dp),
+            )
         }
 
         // gradient title bar — bottom. A taller band with the title vertically
@@ -101,7 +123,7 @@ fun MediaCard(item: SubjectItem, onClick: () -> Unit, modifier: Modifier = Modif
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = item.cleanTitle.uppercase(),
+                text = title.uppercase(),
                 color = Color(0xE6FFFFFF),
                 fontFamily = ChesnaGrotesk,
                 fontSize = 9.sp,
