@@ -23,14 +23,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.snape.flix.data.HomeCard
 import com.snape.flix.data.SubjectGroup
-import com.snape.flix.ui.components.FrameStatsOverlay
 import com.snape.flix.ui.components.SnakeLoader
 import com.snape.flix.ui.theme.ChesnaGrotesk
 
 private val PageBg = Color(0xFF070B08)
-
-// Temporary: show the live frame-time meter while we localize the home jank.
-private const val SHOW_FRAME_STATS = true
 
 /**
  * The native home screen — a pixel replica of the web mobile home: hero carousel,
@@ -114,14 +110,6 @@ fun HomeScreen(
             ) {
                 SnakeLoader(size = 56.dp)
             }
-        }
-
-        if (SHOW_FRAME_STATS) {
-            FrameStatsOverlay(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 36.dp, end = 8.dp),
-            )
         }
     }
 }
