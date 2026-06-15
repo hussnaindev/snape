@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -111,30 +110,25 @@ fun PosterCard(
             )
         }
 
-        // gradient title bar — bottom. A taller band with the title vertically
-        // centered (contentAlignment) so it reads as a proper overlay strip.
+        // gradient title bar — bottom. Padding-based band (matching the detail
+        // page's "More Like This" cards) so the strip scales with the title.
         Box(
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .height(20.dp)
                 .background(TitleScrim)
-                .padding(horizontal = 6.dp),
-            contentAlignment = Alignment.Center,
+                .padding(horizontal = 6.dp, vertical = 5.dp),
         ) {
             Text(
                 text = title.uppercase(),
                 color = Color(0xE6FFFFFF),
                 fontFamily = ChesnaGrotesk,
                 fontSize = 9.sp,
-                lineHeight = 9.sp,
                 fontWeight = FontWeight.Light,
                 letterSpacing = 1.2.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
-                // Drop the font's built-in top/bottom padding so it sits exactly
-                // on the band's vertical center.
                 style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -149,14 +143,13 @@ private fun Chip(text: String, modifier: Modifier = Modifier) {
             .clip(ChipShape)
             .background(ChipBg)
             .border(0.5.dp, ChipBorder, ChipShape)
-            // slim pill: vertical padding ~half the horizontal and kept minimal.
-            .padding(horizontal = 6.dp, vertical = 1.dp),
+            // matches the detail page's "More Like This" MiniChip ratio.
+            .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
         Text(
             text = text,
             color = Color.White,
-            fontSize = 7.sp,
-            lineHeight = 7.sp,
+            fontSize = 8.sp,
             fontWeight = FontWeight.SemiBold,
             letterSpacing = 0.3.sp,
             // No font padding → the pill hugs the text, so it reads slim not round.

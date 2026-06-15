@@ -70,6 +70,7 @@ import androidx.compose.animation.shrinkHorizontally
 import com.snape.flix.R
 import com.snape.flix.data.SubjectGroup
 import com.snape.flix.ui.components.MediaCard
+import com.snape.flix.ui.components.SnakeLoader
 import com.snape.flix.ui.home.HomeScreen
 import com.snape.flix.ui.theme.ChesnaGrotesk
 
@@ -88,10 +89,11 @@ fun SearchScreen(
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         // Body fills from the very top: in home mode the hero sits behind the
-        // transparent status bar and the floating top bar (like the detail hero);
-        // in search mode the grid is padded down to clear the floating bar.
+        // transparent status bar and the floating top bar (like the detail hero).
+        // Tapping the magnifier opens the search screen immediately (empty prompt
+        // until the user types); closing the bar returns to the home screen.
         Crossfade(
-            targetState = state.query.isNotBlank(),
+            targetState = searchOpen,
             modifier = Modifier.fillMaxSize(),
             label = "homeSearch",
         ) { searching ->
@@ -142,12 +144,13 @@ private fun SearchResults(
 ) {
     Box(modifier.fillMaxSize()) {
         when {
+            state.query.isBlank() -> CenterNote("Search for any movie or series.")
             state.error != null -> CenterNote(state.error!!)
             state.results.isEmpty() && state.loading -> Box(
                 Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(22.dp))
+                SnakeLoader(size = 48.dp)
             }
             state.results.isEmpty() && !state.loading && state.searched ->
                 CenterNote("No results for “${state.query}”.")
@@ -186,11 +189,7 @@ private fun SearchResults(
                                 Modifier.fillMaxWidth().padding(vertical = 20.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                CircularProgressIndicator(
-                                    color = Color.White,
-                                    strokeWidth = 2.dp,
-                                    modifier = Modifier.size(22.dp),
-                                )
+                                SnakeLoader(size = 40.dp)
                             }
                         }
                     }
