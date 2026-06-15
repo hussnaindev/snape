@@ -117,6 +117,15 @@ private val SLIDES = listOf(
 
 private val PageBg = Color(0xFF070B08)
 
+// DIAGNOSTIC BISECT (home scroll jank): when false, the hero shows only the still
+// image — no ExoPlayer is created, no PlayerView/SurfaceView is mounted, and the
+// scroll-driven mount/unmount path is gone entirely. This isolates the video
+// subsystem (a SurfaceView hole-punched into the window + continuous decode, both
+// torn down/rebuilt on every scroll) from the rest of the home screen's cost.
+//   smooth with this false  → video is the culprit; re-enable as a TextureView.
+//   still janky with false   → video is exonerated; cost is section composition.
+private const val HERO_TRAILER_ENABLED = false
+
 @OptIn(UnstableApi::class)
 @Composable
 fun HeroCarousel(
@@ -140,6 +149,7 @@ fun HeroCarousel(
     // scroll, so cap the selected video to 720p and trim the buffer (we only ever
     // play a few seconds before the user scrolls). Both cut steady-state jank.
     val player = remember {
+        if (!HERO_TRAILER_ENABLED) return@remember null
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(2_000, 10_000, 1_000, 2_000)
             .build()
@@ -157,34 +167,36 @@ fun HeroCarousel(
     var videoReady by remember { mutableStateOf(false) }
 
     DisposableEffect(player) {
+        val p = player ?: return@DisposableEffect onDispose { }
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_READY) videoReady = true
             }
         }
-        player.addListener(listener)
+        p.addListener(listener)
         onDispose {
-            player.removeListener(listener)
-            player.release()
+            p.removeListener(listener)
+            p.release()
         }
     }
 
     // Reset + re-arm the trailer whenever the slide settles or playback toggles.
     LaunchedEffect(pagerState.currentPage, playbackEnabled) {
+        val p = player ?: return@LaunchedEffect
         videoReady = false
-        player.stop()
-        player.clearMediaItems()
+        p.stop()
+        p.clearMediaItems()
         if (!playbackEnabled) return@LaunchedEffect
         delay(2000)
         val slide = slides[pagerState.currentPage]
-        player.setMediaItem(
+        p.setMediaItem(
             MediaItem.Builder()
                 .setUri(slide.trailerUrl)
                 .setMimeType(MimeTypes.APPLICATION_M3U8)
                 .build(),
         )
-        player.prepare()
-        player.playWhenReady = true
+        p.prepare()
+        p.playWhenReady = true
     }
 
     Box(modifier.fillMaxWidth().height(heroH).background(PageBg)) {
@@ -200,7 +212,7 @@ fun HeroCarousel(
                 )
 
                 // Trailer video on the active page, crossfaded over the still.
-                if (page == pagerState.currentPage) {
+                if (HERO_TRAILER_ENABLED && player != null && page == pagerState.currentPage) {
                     val videoAlpha by animateFloatAsState(
                         targetValue = if (videoReady && playbackEnabled) 1f else 0f,
                         label = "heroVideoAlpha",
