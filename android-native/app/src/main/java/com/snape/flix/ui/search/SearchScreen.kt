@@ -51,6 +51,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -68,11 +69,15 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import com.snape.flix.R
+import com.snape.flix.data.LocalStore
 import com.snape.flix.data.SubjectGroup
+import com.snape.flix.ui.browse.BrowseActivity
 import com.snape.flix.ui.components.MediaCard
 import com.snape.flix.ui.components.SnakeLoader
+import com.snape.flix.ui.detail.DetailActivity
 import com.snape.flix.ui.home.HomeScreen
 import com.snape.flix.ui.theme.ChesnaGrotesk
+import com.snape.flix.ui.watchlist.WatchlistActivity
 
 @Composable
 fun SearchScreen(
@@ -80,6 +85,7 @@ fun SearchScreen(
     viewModel: SearchViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     // Home shows by default; the magnifier opens the search bar, and as soon as
     // the user types, the body crossfades to the results grid. Drawer mirrors the
@@ -98,7 +104,21 @@ fun SearchScreen(
             label = "homeSearch",
         ) { searching ->
             if (!searching) {
-                HomeScreen(onOpenDetail = onOpenDetail)
+                HomeScreen(
+                    onOpenDetail = onOpenDetail,
+                    onExplore = { section ->
+                        // Explore = MovieBox keyword search for the section label.
+                        BrowseActivity.start(context, section.label, section.label)
+                    },
+                    onOpenContinue = { entry ->
+                        DetailActivity.start(
+                            context,
+                            SubjectGroup(entry.item, listOf(entry.item)),
+                            resumeSe = entry.se,
+                            resumeEp = entry.ep,
+                        )
+                    },
+                )
             } else {
                 Column(
                     Modifier
@@ -130,7 +150,12 @@ fun SearchScreen(
         )
 
         if (drawerOpen) {
-            SideDrawer(onClose = { drawerOpen = false })
+            SideDrawer(
+                onClose = { drawerOpen = false },
+                onOpenGenre = { genre -> BrowseActivity.start(context, genre, genre) },
+                onOpenWatchlist = { WatchlistActivity.start(context) },
+                onClearHistory = { LocalStore.clearHistory() },
+            )
         }
     }
 }
@@ -381,7 +406,9 @@ private fun SearchBar(
 
 // ── side drawer (mirrors the web mobile menu; links wired up later) ───────────
 
-private data class MenuItem(val label: String, val danger: Boolean = false)
+/** A drawer link. [kind] decides what tapping it does (see [SideDrawer]). */
+private enum class MenuKind { GENRE, WATCHLIST, CLEAR_HISTORY, NONE }
+private data class MenuItem(val label: String, val kind: MenuKind = MenuKind.NONE, val danger: Boolean = false)
 private data class MenuSection(val title: String, val items: List<MenuItem>)
 
 private val GENRES = listOf(
@@ -389,24 +416,20 @@ private val GENRES = listOf(
     "Fantasy", "History", "Horror", "Romance", "Sci-Fi", "Thriller",
 )
 
+// No-signup app: the menu carries no login/sign-out/account links.
 private val MENU_SECTIONS = listOf(
-    MenuSection("Streaming", listOf(MenuItem("Streaming Providers"))),
-    MenuSection("Browse", GENRES.map { MenuItem(it) }),
-    MenuSection("Continue watching", listOf(MenuItem("Clear watch history"))),
-    MenuSection(
-        "Account",
-        listOf(
-            MenuItem("Downloads"),
-            MenuItem("Profile"),
-            MenuItem("My Watchlist"),
-            MenuItem("Settings"),
-            MenuItem("Sign out", danger = true),
-        ),
-    ),
+    MenuSection("Browse", GENRES.map { MenuItem(it, MenuKind.GENRE) }),
+    MenuSection("Continue watching", listOf(MenuItem("Clear watch history", MenuKind.CLEAR_HISTORY))),
+    MenuSection("Library", listOf(MenuItem("My Watchlist", MenuKind.WATCHLIST))),
 )
 
 @Composable
-private fun SideDrawer(onClose: () -> Unit) {
+private fun SideDrawer(
+    onClose: () -> Unit,
+    onOpenGenre: (String) -> Unit,
+    onOpenWatchlist: () -> Unit,
+    onClearHistory: () -> Unit,
+) {
     Box(Modifier.fillMaxSize()) {
         // scrim
         Box(
@@ -424,8 +447,8 @@ private fun SideDrawer(onClose: () -> Unit) {
             Modifier
                 .align(Alignment.CenterEnd)
                 .fillMaxHeight()
-                .fillMaxWidth(0.85f)
-                .widthIn(max = 320.dp)
+                .fillMaxWidth(0.66f)
+                .widthIn(max = 264.dp)
                 .background(Color(0xFF0F0F10))
                 .border(1.dp, Color(0x1AFFFFFF))
                 // swallow taps so they don't reach the scrim
@@ -494,7 +517,17 @@ private fun SideDrawer(onClose: () -> Unit) {
                             .fillMaxWidth()
                             .padding(start = 20.dp, end = 16.dp, top = 14.dp, bottom = 8.dp),
                     )
-                    section.items.forEach { item -> DrawerRow(item, onClose) }
+                    section.items.forEach { item ->
+                        DrawerRow(item) {
+                            when (item.kind) {
+                                MenuKind.GENRE -> onOpenGenre(item.label)
+                                MenuKind.WATCHLIST -> onOpenWatchlist()
+                                MenuKind.CLEAR_HISTORY -> onClearHistory()
+                                MenuKind.NONE -> Unit
+                            }
+                            onClose()
+                        }
+                    }
                 }
                 Spacer(Modifier.height(16.dp))
             }
@@ -503,11 +536,13 @@ private fun SideDrawer(onClose: () -> Unit) {
 }
 
 @Composable
-private fun DrawerRow(item: MenuItem, onClose: () -> Unit) {
+private fun DrawerRow(item: MenuItem, onClick: () -> Unit) {
+    // Label and chevron sit side-by-side (no `weight(1f)` pushing them apart) so
+    // the gap between them stays minimal regardless of the panel width.
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClose) // links wired up later
+            .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -516,10 +551,10 @@ private fun DrawerRow(item: MenuItem, onClose: () -> Unit) {
             color = if (item.danger) Color(0xFFF87171) else Color(0xB3FFFFFF),
             fontFamily = ChesnaGrotesk,
             fontSize = 12.sp,
-            letterSpacing = 2.sp,
-            modifier = Modifier.weight(1f),
+            letterSpacing = 1.5.sp,
         )
         if (!item.danger) {
+            Spacer(Modifier.width(4.dp))
             Icon(
                 Icons.Rounded.KeyboardArrowRight,
                 contentDescription = null,

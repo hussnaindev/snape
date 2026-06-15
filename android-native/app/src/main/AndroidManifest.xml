@@ -30,5 +30,17 @@
             android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|uiMode"
             android:supportsPictureInPicture="false"
             android:theme="@style/Theme.Snape" />
+
+        <activity
+            android:name=".ui.browse.BrowseActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:theme="@style/Theme.Snape" />
+
+        <activity
+            android:name=".ui.watchlist.WatchlistActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:theme="@style/Theme.Snape" />
     </application>
 </manifest>
