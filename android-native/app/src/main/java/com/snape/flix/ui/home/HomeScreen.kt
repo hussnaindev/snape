@@ -29,6 +29,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.snape.flix.data.HistoryEntry
 import com.snape.flix.data.HomeCard
+import com.snape.flix.data.HomeSection
 import com.snape.flix.data.LocalStore
 import com.snape.flix.data.SubjectGroup
 import com.snape.flix.ui.components.PosterCard
