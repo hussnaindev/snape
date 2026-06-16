@@ -312,7 +312,7 @@ private fun DownloadIndicator() {
         contentAlignment = Alignment.Center,
     ) {
         ProgressRing(progress = avg, modifier = Modifier.size(36.dp), strokeWidth = 2.5.dp)
-        Icon(DownloadGlyph, "Downloads", tint = Color(0xCCFFFFFF), modifier = Modifier.size(18.dp))
+        DownloadGlyph(modifier = Modifier.size(18.dp), tint = Color(0xCCFFFFFF))
         if (active.size > 1) {
             Box(
                 Modifier
