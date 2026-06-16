@@ -33,7 +33,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Search
@@ -76,6 +75,7 @@ import com.snape.flix.data.Downloads
 import com.snape.flix.data.LocalStore
 import com.snape.flix.data.SubjectGroup
 import com.snape.flix.ui.browse.BrowseActivity
+import com.snape.flix.ui.components.DownloadGlyph
 import com.snape.flix.ui.components.MediaCard
 import com.snape.flix.ui.components.ProgressRing
 import com.snape.flix.ui.components.SnakeLoader
@@ -160,6 +160,7 @@ fun SearchScreen(
                 onClose = { drawerOpen = false },
                 onOpenGenre = { genre -> BrowseActivity.start(context, genre, genre) },
                 onOpenWatchlist = { WatchlistActivity.start(context) },
+                onOpenDownloads = { DownloadsActivity.start(context) },
                 onClearHistory = { LocalStore.clearHistory() },
             )
         }
@@ -311,7 +312,7 @@ private fun DownloadIndicator() {
         contentAlignment = Alignment.Center,
     ) {
         ProgressRing(progress = avg, modifier = Modifier.size(36.dp), strokeWidth = 2.5.dp)
-        Icon(Icons.Rounded.Download, "Downloads", tint = Color(0xCCFFFFFF), modifier = Modifier.size(18.dp))
+        Icon(DownloadGlyph, "Downloads", tint = Color(0xCCFFFFFF), modifier = Modifier.size(18.dp))
         if (active.size > 1) {
             Box(
                 Modifier
@@ -461,7 +462,7 @@ private fun SearchBar(
 // ── side drawer (mirrors the web mobile menu; links wired up later) ───────────
 
 /** A drawer link. [kind] decides what tapping it does (see [SideDrawer]). */
-private enum class MenuKind { GENRE, WATCHLIST, CLEAR_HISTORY, NONE }
+private enum class MenuKind { GENRE, WATCHLIST, DOWNLOADS, CLEAR_HISTORY, NONE }
 private data class MenuItem(val label: String, val kind: MenuKind = MenuKind.NONE, val danger: Boolean = false)
 private data class MenuSection(val title: String, val items: List<MenuItem>)
 
@@ -474,7 +475,13 @@ private val GENRES = listOf(
 private val MENU_SECTIONS = listOf(
     MenuSection("Browse", GENRES.map { MenuItem(it, MenuKind.GENRE) }),
     MenuSection("Continue watching", listOf(MenuItem("Clear watch history", MenuKind.CLEAR_HISTORY))),
-    MenuSection("Library", listOf(MenuItem("My Watchlist", MenuKind.WATCHLIST))),
+    MenuSection(
+        "Library",
+        listOf(
+            MenuItem("My Watchlist", MenuKind.WATCHLIST),
+            MenuItem("Downloads", MenuKind.DOWNLOADS),
+        ),
+    ),
 )
 
 @Composable
@@ -482,6 +489,7 @@ private fun SideDrawer(
     onClose: () -> Unit,
     onOpenGenre: (String) -> Unit,
     onOpenWatchlist: () -> Unit,
+    onOpenDownloads: () -> Unit,
     onClearHistory: () -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
@@ -576,6 +584,7 @@ private fun SideDrawer(
                             when (item.kind) {
                                 MenuKind.GENRE -> onOpenGenre(item.label)
                                 MenuKind.WATCHLIST -> onOpenWatchlist()
+                                MenuKind.DOWNLOADS -> onOpenDownloads()
                                 MenuKind.CLEAR_HISTORY -> onClearHistory()
                                 MenuKind.NONE -> Unit
                             }

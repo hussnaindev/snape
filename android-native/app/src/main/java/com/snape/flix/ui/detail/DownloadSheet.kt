@@ -201,6 +201,7 @@ private fun enqueue(
         quality = quality,
         url = ready.url,
         signCookie = ready.signCookie,
+        format = ready.format,
     )
 }
 

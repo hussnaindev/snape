@@ -867,36 +867,42 @@ private fun WatchButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
 }
 
 /**
- * The detail-page download button. When a download for any audio variant of this
- * title is in flight, a green-gradient progress ring sweeps around the circular
- * button (no percentage text); a completed download shows a solid green ring.
- * Tapping always opens the download options sheet.
+ * The detail-page download button — identical footprint to the watchlist icon
+ * (36dp circle). When a download for any audio variant of this title is in flight,
+ * a green-gradient ring sweeps around the button edge (no percentage text); once
+ * complete it turns solid green with a check, mirroring the web button. Tapping
+ * always opens the download options sheet.
  */
 @Composable
 private fun DownloadActionIcon(group: com.snape.flix.data.SubjectGroup, onClick: () -> Unit) {
     val items by com.snape.flix.data.Downloads.items.collectAsStateWithLifecycle()
     val variantIds = remember(group) { group.variants.map { it.subjectId }.toSet() }
     val match = items.firstOrNull { it.subjectId in variantIds }
-    Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
-        if (match != null) {
-            val fraction = if (match.status == com.snape.flix.data.DownloadStatus.COMPLETED) 1f else match.fraction
+    val completed = match?.status == com.snape.flix.data.DownloadStatus.COMPLETED
+    Box(
+        Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(if (completed) Color(0xFF10B981) else Color(0x99000000))
+            .border(1.dp, if (completed) Color(0xFF10B981) else Color(0x4DFFFFFF), CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (match != null && !completed) {
+            // Ring overlays the button edge (web: absolute inset-0), so the button
+            // keeps its 36dp size rather than shrinking to make room.
             com.snape.flix.ui.components.ProgressRing(
-                progress = fraction,
+                progress = match.fraction,
                 modifier = Modifier.fillMaxSize(),
                 strokeWidth = 2.5.dp,
             )
         }
-        Box(
-            Modifier
-                .size(30.dp)
-                .clip(CircleShape)
-                .background(Color(0x99000000))
-                .border(1.dp, if (match == null) Color(0x4DFFFFFF) else Color.Transparent, CircleShape)
-                .clickable(onClick = onClick),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Rounded.Download, contentDescription = "Download", tint = Color.White, modifier = Modifier.size(16.dp))
-        }
+        Icon(
+            imageVector = if (completed) Icons.Rounded.Check else com.snape.flix.ui.components.DownloadGlyph,
+            contentDescription = "Download",
+            tint = Color.White,
+            modifier = Modifier.size(16.dp),
+        )
     }
 }
 

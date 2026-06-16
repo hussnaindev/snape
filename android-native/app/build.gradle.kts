@@ -83,4 +83,8 @@ dependencies {
     // built into media3-exoplayer.)
     implementation("androidx.media3:media3-exoplayer-hls:$media3")
     implementation("androidx.media3:media3-ui:$media3")
+    // Offline downloads: StandaloneDatabaseProvider lives in media3-database; the
+    // SimpleCache / CacheDataSource / DownloadManager / DownloadService classes
+    // come transitively via media3-datasource + media3-exoplayer.
+    implementation("androidx.media3:media3-database:$media3")
 }
