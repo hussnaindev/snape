@@ -27,6 +27,7 @@ import com.snape.flix.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -144,6 +145,14 @@ object Downloads {
         // Don't silently resume after a cold start — present them as paused.
         dm.setStopReason(null, STOP_REASON_PAUSE)
         refresh()
+        // Media3 only notifies on state *changes*, not on byte progress. Poll once a
+        // second while anything is actively downloading so the UI ring/size update live.
+        scope.launch {
+            while (true) {
+                delay(1000)
+                if (_items.value.any { it.status == DownloadStatus.RUNNING }) refresh()
+            }
+        }
     }
 
     // --- Media3 singletons --------------------------------------------------
