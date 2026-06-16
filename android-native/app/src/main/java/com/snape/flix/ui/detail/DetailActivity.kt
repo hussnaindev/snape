@@ -100,12 +100,17 @@ class DetailActivity : ComponentActivity() {
                         group = group,
                         onOpenRecommendation = ::openRecommendation,
                         onBack = ::finish,
+                        onOpenPerson = ::openPerson,
                         resumeSe = resumeSe,
                         resumeEp = resumeEp,
                     )
                 }
             }
         }
+    }
+
+    private fun openPerson(personId: Int) {
+        PersonActivity.start(this, personId)
     }
 
     /**
