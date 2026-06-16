@@ -133,6 +133,7 @@ fun DetailScreen(
     group: com.snape.flix.data.SubjectGroup,
     onOpenRecommendation: (TmdbSearchHit) -> Unit,
     onBack: () -> Unit,
+    onOpenPerson: (Int) -> Unit = {},
     resumeSe: Int = DetailActivity.NO_RESUME,
     resumeEp: Int = DetailActivity.NO_RESUME,
     vm: DetailViewModel = viewModel(),
@@ -379,7 +380,7 @@ fun DetailScreen(
                     EpisodesCarousel(s, vm, onPlay = { se, ep -> play(se, ep) })
                 }
 
-                StarringRail(s.cast)
+                StarringRail(s.cast, onOpenPerson)
 
                 if (s.recommendations.isNotEmpty()) {
                     MoreLikeThis(s.recommendations, onOpen = onOpenRecommendation)
@@ -973,7 +974,7 @@ private fun SectionDivider(label: String) {
 // ── starring (cast rail) ──────────────────────────────────────────────────────
 
 @Composable
-private fun StarringRail(cast: List<TmdbCastMember>) {
+private fun StarringRail(cast: List<TmdbCastMember>, onOpenPerson: (Int) -> Unit = {}) {
     val visible = cast.take(12)
     if (visible.isEmpty()) return
     SectionDivider("Starring")
@@ -983,7 +984,10 @@ private fun StarringRail(cast: List<TmdbCastMember>) {
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         visible.forEach { member ->
-            Column(Modifier.width(96.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                Modifier.width(96.dp).clickable { onOpenPerson(member.id) },
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
                 Box(
                     Modifier
                         .size(96.dp)
