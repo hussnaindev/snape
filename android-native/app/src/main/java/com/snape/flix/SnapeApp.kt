@@ -7,6 +7,7 @@ import coil.decode.SvgDecoder
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.util.DebugLogger
+import com.snape.flix.data.Downloads
 import com.snape.flix.data.LocalStore
 
 /**
@@ -33,6 +34,8 @@ class SnapeApp : Application(), ImageLoaderFactory {
         super.onCreate()
         // Local-only persistence (watchlist + watch history) — no external DB.
         LocalStore.init(this)
+        // Offline downloads store + engine (resumes paused rows after a restart).
+        Downloads.init(this)
     }
 
     override fun newImageLoader(): ImageLoader =

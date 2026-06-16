@@ -1,9 +1,5 @@
 package com.snape.flix.ui.detail
 
-import android.app.DownloadManager
-import android.content.Context
-import android.net.Uri
-import android.os.Environment
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -45,14 +41,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.snape.flix.data.Downloads
 import com.snape.flix.data.SubjectGroup
 import com.snape.flix.ui.theme.ChesnaGrotesk
 
 /**
  * The web's Download button → options modal, ported to a bottom sheet: Quality /
- * Audio / Subtitles chips + a Download CTA. Confirming hands the resolved stream
- * to Android's DownloadManager (Cookie-signed) — the native equivalent of the
- * web's offline save.
+ * Audio / Subtitles chips + a Download CTA. Confirming hands the resolved (Cookie-
+ * signed) stream to the in-app [Downloads] engine, which streams it to local
+ * storage with pause/resume — the native equivalent of the web's offline save.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -60,6 +57,10 @@ fun DownloadSheet(
     group: SubjectGroup,
     isSeries: Boolean,
     onDismiss: () -> Unit,
+    posterUrl: String? = null,
+    logoUrl: String? = null,
+    year: String = "",
+    rating: Double? = null,
     vm: DownloadViewModel = viewModel(),
 ) {
     val se = if (isSeries) 1 else 0
@@ -155,7 +156,7 @@ fun DownloadSheet(
                             .clip(RoundedCornerShape(50))
                             .background(Color.White)
                             .clickable {
-                                enqueue(context, st, group, audioIdx, isSeries, se, ep)
+                                enqueue(st, group, audioIdx, isSeries, se, ep, quality, posterUrl, logoUrl, year, rating)
                                 Toast.makeText(context, "Download started", Toast.LENGTH_SHORT).show()
                                 onDismiss()
                             },
@@ -174,26 +175,33 @@ fun DownloadSheet(
 }
 
 private fun enqueue(
-    context: Context,
     ready: DownloadState.Ready,
     group: SubjectGroup,
     audioIdx: Int,
     isSeries: Boolean,
     se: Int,
     ep: Int,
+    quality: String,
+    posterUrl: String?,
+    logoUrl: String?,
+    year: String,
+    rating: Double?,
 ) {
-    val base = group.primary.title.replace(Regex("\\s*\\[[^]]*]\\s*$"), "")
-        .replace(Regex("[^A-Za-z0-9 ._-]"), "").trim().ifBlank { "video" }
-    val name = if (isSeries) "$base S${se}E$ep" else base
-    val req = DownloadManager.Request(Uri.parse(ready.url))
-        .addRequestHeader("Cookie", ready.signCookie)
-        .addRequestHeader("User-Agent", com.snape.flix.data.MovieBoxSign.USER_AGENT)
-        .setTitle(name)
-        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-        .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "$name.mp4")
-    runCatching {
-        (context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager).enqueue(req)
-    }
+    val variant = group.variants.getOrNull(audioIdx) ?: group.primary
+    Downloads.enqueue(
+        subjectId = variant.subjectId,
+        se = se,
+        ep = ep,
+        title = group.primary.cleanTitle,
+        isSeries = isSeries,
+        posterUrl = posterUrl ?: group.primary.posterUrl,
+        logoUrl = logoUrl,
+        year = year.ifBlank { group.primary.year },
+        rating = rating ?: group.primary.rating,
+        quality = quality,
+        url = ready.url,
+        signCookie = ready.signCookie,
+    )
 }
 
 @Composable
