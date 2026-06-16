@@ -897,12 +897,11 @@ private fun DownloadActionIcon(group: com.snape.flix.data.SubjectGroup, onClick:
                 strokeWidth = 2.5.dp,
             )
         }
-        Icon(
-            imageVector = if (completed) Icons.Rounded.Check else com.snape.flix.ui.components.DownloadGlyph,
-            contentDescription = "Download",
-            tint = Color.White,
-            modifier = Modifier.size(16.dp),
-        )
+        if (completed) {
+            Icon(Icons.Rounded.Check, contentDescription = "Downloaded", tint = Color.White, modifier = Modifier.size(16.dp))
+        } else {
+            com.snape.flix.ui.components.DownloadGlyph(modifier = Modifier.size(16.dp), tint = Color.White)
+        }
     }
 }
 
