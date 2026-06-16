@@ -10,7 +10,7 @@ const TARGET_WORDS = new Set([
   'slayed', 'milfy', 'wifey', 'deeper',
 ]);
 const SEARCH_PAGES_PER_TITLE = 5;
-const MAX_TOTAL_SEARCHES = 500;
+const MAX_TOTAL_SEARCHES = 2000;
 const SAVE_INTERVAL = 20;
 const RESULTS_FILE = 'scripts/moviebox-results.json';
 
@@ -72,30 +72,40 @@ async function mobileSearch(keyword, subjectType, page=1) {
 function getFirstWord(t) { return (t||'').trim().split(/\s+/)[0].toLowerCase(); }
 function isMatch(item) { return TARGET_WORDS.has(getFirstWord(item.title)); }
 
-function save(known) {
+function save(known, searchedTitles) {
   const matches=[...known.values()].sort((a,b)=>a.title.localeCompare(b.title));
   writeFileSync(RESULTS_FILE, JSON.stringify({
     generatedAt:new Date().toISOString(),targetStudios:[...TARGET_WORDS],
     totalMatches:matches.length,matches,
+    searchedTitles:[...searchedTitles],
   },null,2));
 }
 
 async function main() {
   console.log(`=== MovieBox Discovery (BFS, max ${MAX_TOTAL_SEARCHES} searches) ===`);
 
-  // Load or init
+  // Load or init; backfill missing fields for legacy entries
   const known=new Map();
   const searchedTitles=new Set();
   if (existsSync(RESULTS_FILE)) {
     const existing=JSON.parse(readFileSync(RESULTS_FILE,'utf-8'));
-    for (const m of existing.matches) known.set(String(m.subjectId),m);
-    console.log(`Loaded ${known.size} existing matches`);
+    for (const m of existing.matches) {
+      if (m.hasResource === undefined) m.hasResource = true;
+      if (m.coverUrl === undefined) m.coverUrl = null;
+      known.set(String(m.subjectId),m);
+    }
+    if (existing.searchedTitles) {
+      for (const t of existing.searchedTitles) searchedTitles.add(t);
+    }
+    console.log(`Loaded ${known.size} existing matches, ${searchedTitles.size} already searched`);
   }
 
+  // Queue only titles not yet searched
   const queue=[];
   for (const m of known.values()) {
-    queue.push(m.title);
+    if (!searchedTitles.has(m.title.toLowerCase())) queue.push(m.title);
   }
+  console.log(`${queue.length} titles remaining to search`);
 
   let searchesDone=0;
   let newInRound=0;
@@ -120,22 +130,37 @@ async function main() {
 
         for (const item of items) {
           const id=String(item.subjectId);
-          if (!known.has(id) && isMatch(item)) {
-            known.set(id,{
-              subjectId:id,title:item.title,postTitle:item.postTitle??null,
-              releaseDate:item.releaseDate??null,subjectType:item.subjectType,
-              duration:item.duration??item.durationSeconds??null,
-              discoveredBy:title,
-            });
-            const fw=getFirstWord(item.title);
-            console.log(`  + ${fw.toUpperCase()} [${id}] ${item.title}`);
-            // Queue new title for further searching
-            if (!searchedTitles.has(item.title.toLowerCase())) {
-              queue.push(item.title);
-              searchedTitles.add(item.title.toLowerCase());
+          const hasResource = item.hasResource === true;
+          if (!hasResource) continue;
+          if (!isMatch(item)) continue;
+
+          const coverUrl = item.cover?.url || null;
+
+          if (known.has(id)) {
+            // Fill in missing coverUrl for existing matches
+            const existing = known.get(id);
+            if (!existing.coverUrl && coverUrl) {
+              existing.coverUrl = coverUrl;
+              console.log(`  📷 [${id}] ${item.title}`);
             }
-            newInRound++;
+            continue;
           }
+
+          known.set(id,{
+            subjectId:id,title:item.title,postTitle:item.postTitle??null,
+            releaseDate:item.releaseDate??null,subjectType:item.subjectType,
+            duration:item.duration??item.durationSeconds??null,
+            hasResource,coverUrl,
+            discoveredBy:title,
+          });
+          const fw=getFirstWord(item.title);
+          console.log(`  + ${fw.toUpperCase()} [${id}] ${item.title}`);
+          // Queue new title for further searching
+          if (!searchedTitles.has(item.title.toLowerCase())) {
+            queue.push(item.title);
+            searchedTitles.add(item.title.toLowerCase());
+          }
+          newInRound++;
         }
         if (items.length<20) break;
       }
@@ -145,14 +170,14 @@ async function main() {
 
     // Periodic save
     if (newInRound>=SAVE_INTERVAL) {
-      save(known);
+      save(known, searchedTitles);
       console.log(`  [saved ${known.size} matches after ${searchesDone} searches]`);
       newInRound=0;
     }
   }
 
   // Final save
-  save(known);
+  save(known, searchedTitles);
   const byStudio={};
   for (const m of known.values()) {
     const s=getFirstWord(m.title);
