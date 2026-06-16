@@ -52,13 +52,14 @@ private val ChipBorder = Color(0x66FFFFFF) // white @ 40%    (web: border-white/
  * (Film/Series) is replaced by the audio-language chip (Original/Hindi/Tamil…).
  */
 @Composable
-fun MediaCard(item: SubjectItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun MediaCard(item: SubjectItem, onClick: () -> Unit, modifier: Modifier = Modifier, chipText: String? = null) {
     PosterCard(
         posterUrl = item.posterUrl,
         isSeries = item.isSeries,
         rating = item.rating?.takeIf { it > 0 },
         title = item.cleanTitle,
         onClick = onClick,
+        chipText = chipText,
         modifier = modifier.fillMaxWidth(),
     )
 }
@@ -83,6 +84,7 @@ fun PosterCard(
     modifier: Modifier = Modifier,
     onWatchlistRemove: (() -> Unit)? = null,
     progress: Float? = null,
+    chipText: String? = null,
 ) {
     Box(
         modifier = modifier
@@ -108,9 +110,9 @@ fun PosterCard(
             }
         }
 
-        // type chip — top-left (Film / Series), mirroring the web card
+        // type chip — top-left (Film / Series / studio name), mirroring the web card
         Chip(
-            text = if (isSeries) "SERIES" else "FILM",
+            text = chipText ?: if (isSeries) "SERIES" else "FILM",
             modifier = Modifier.align(Alignment.TopStart).padding(5.dp),
         )
 
