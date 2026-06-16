@@ -24,9 +24,13 @@ import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
 import androidx.media3.exoplayer.offline.DownloadService
 import com.snape.flix.R
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -107,6 +111,9 @@ object Downloads {
     private const val STOP_REASON_PAUSE = 1
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+    // Off-main work: re-resolving a fresh signed stream when resuming a download.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private lateinit var appContext: Context
     private lateinit var prefs: SharedPreferences
@@ -246,13 +253,30 @@ object Downloads {
         DownloadService.sendSetStopReason(appContext, SnapeDownloadService::class.java, id, STOP_REASON_PAUSE, false)
     }
 
+    /**
+     * Resume a paused/failed download. CloudFront signed cookies are time-limited,
+     * so a download resumed long after a restart would 403 with its stale cookie.
+     * Because MovieBox authorizes by *cookie* (the manifest/segment URLs are stable),
+     * we re-resolve play-info to mint a fresh cookie for the host, then resume —
+     * already-cached segments are reused and the rest download with the new cookie.
+     * Re-resolution is best-effort: if it fails (offline), we resume with what we have.
+     */
     fun resume(id: String) {
         val download = downloadById(id) ?: return
-        if (download.state == Download.STATE_FAILED) {
-            // A failed download restarts from its stored request.
-            DownloadService.sendAddDownload(appContext, SnapeDownloadService::class.java, download.request, false)
-        } else {
-            DownloadService.sendSetStopReason(appContext, SnapeDownloadService::class.java, id, Download.STOP_REASON_NONE, false)
+        val meta = runCatching { json.decodeFromString(DownloadMeta.serializer(), String(download.request.data)) }.getOrNull()
+        scope.launch {
+            if (meta != null) {
+                runCatching { MovieBoxRepository.playInfo(meta.subjectId, meta.se, meta.ep) }
+                    .getOrNull()
+                    ?.takeIf { it.url.isNotBlank() && it.signCookie.isNotBlank() }
+                    ?.let { fresh -> rememberCookie(fresh.url, fresh.signCookie) }
+            }
+            if (download.state == Download.STATE_FAILED) {
+                // A failed download restarts from its stored request (now with a fresh cookie).
+                DownloadService.sendAddDownload(appContext, SnapeDownloadService::class.java, download.request, false)
+            } else {
+                DownloadService.sendSetStopReason(appContext, SnapeDownloadService::class.java, id, Download.STOP_REASON_NONE, false)
+            }
         }
     }
 
