@@ -19,10 +19,11 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -162,10 +163,8 @@ private fun DownloadRow(item: DownloadItem) {
 
             Spacer(Modifier.height(8.dp))
 
-            // chips: size · year · rating
+            // chips: year · rating · quality (size is shown with the progress below)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                val sizeBytes = if (item.contentLength > 0) item.contentLength else item.bytesDownloaded
-                if (sizeBytes > 0) Chip(formatSize(sizeBytes))
                 if (item.year.isNotBlank()) Chip(item.year)
                 item.rating?.takeIf { it > 0 }?.let { Chip("★ ${"%.1f".format(it)}") }
                 item.quality.takeIf { it.isNotBlank() }?.let { Chip(it) }
@@ -173,17 +172,30 @@ private fun DownloadRow(item: DownloadItem) {
 
             Spacer(Modifier.height(8.dp))
 
+            // "120 MB / 450 MB" — bytes done over total (total unknown until probed).
+            val done = formatSize(item.bytesDownloaded)
+            val sizeLabel = if (item.contentLength > 0) "$done / ${formatSize(item.contentLength)}" else done
+
             when (item.status) {
-                DownloadStatus.COMPLETED -> Text(
-                    "Downloaded",
-                    color = Color(0xFF34D399),
-                    fontFamily = ChesnaGrotesk,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 11.sp,
-                    letterSpacing = 0.5.sp,
-                )
+                DownloadStatus.COMPLETED -> Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        Icons.Rounded.CheckCircle,
+                        contentDescription = "Downloaded",
+                        tint = Color(0xFF34D399),
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        formatSize(if (item.contentLength > 0) item.contentLength else item.bytesDownloaded),
+                        color = Color(0x99FFFFFF),
+                        fontFamily = ChesnaGrotesk,
+                        fontSize = 11.sp,
+                    )
+                }
                 else -> {
-                    // thin green progress bar + percentage
+                    // thin green progress bar + bytes/percentage
                     val pct = (item.fraction * 100).toInt()
                     Box(
                         Modifier
@@ -203,9 +215,9 @@ private fun DownloadRow(item: DownloadItem) {
                     Spacer(Modifier.height(4.dp))
                     Text(
                         when (item.status) {
-                            DownloadStatus.PAUSED -> "Paused · $pct%"
+                            DownloadStatus.PAUSED -> "Paused · $sizeLabel · $pct%"
                             DownloadStatus.FAILED -> "Failed · tap to retry"
-                            else -> "$pct%"
+                            else -> "$sizeLabel · $pct%"
                         },
                         color = if (item.status == DownloadStatus.FAILED) Color(0xFFF87171) else Color(0x99FFFFFF),
                         fontFamily = ChesnaGrotesk,
@@ -215,43 +227,63 @@ private fun DownloadRow(item: DownloadItem) {
             }
         }
 
-        // controls
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        // controls — icon + label buttons, vertically centered against the row
+        Column(
+            modifier = Modifier.align(Alignment.CenterVertically),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.End,
+        ) {
             when (item.status) {
-                DownloadStatus.COMPLETED -> {
-                    CircleButton(Icons.Rounded.PlayArrow, "Play", filled = true) {
+                DownloadStatus.COMPLETED ->
+                    LabelButton(Icons.Rounded.PlayArrow, "Play", accent = true) {
                         OfflinePlayerActivity.start(context, item.id)
                     }
-                }
-                DownloadStatus.RUNNING, DownloadStatus.QUEUED -> {
-                    CircleButton(Icons.Rounded.Pause, "Pause") { Downloads.pause(item.id) }
-                }
-                DownloadStatus.PAUSED, DownloadStatus.FAILED -> {
-                    CircleButton(Icons.Rounded.Download, "Resume") { Downloads.resume(item.id) }
-                }
+                DownloadStatus.RUNNING, DownloadStatus.QUEUED ->
+                    LabelButton(Icons.Rounded.Pause, "Pause") { Downloads.pause(item.id) }
+                DownloadStatus.PAUSED, DownloadStatus.FAILED ->
+                    LabelButton(Icons.Rounded.Download, "Resume", accent = true) { Downloads.resume(item.id) }
             }
-            CircleButton(Icons.Rounded.Close, "Cancel") { Downloads.cancel(item.id) }
+            if (item.status == DownloadStatus.COMPLETED) {
+                LabelButton(Icons.Rounded.DeleteOutline, "Delete", danger = true) { Downloads.cancel(item.id) }
+            } else {
+                LabelButton(Icons.Rounded.Close, "Cancel") { Downloads.cancel(item.id) }
+            }
         }
     }
 }
 
 @Composable
-private fun CircleButton(
+private fun LabelButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    desc: String,
-    filled: Boolean = false,
+    label: String,
+    accent: Boolean = false,
+    danger: Boolean = false,
     onClick: () -> Unit,
 ) {
-    Box(
+    val content = when {
+        accent -> Color.Black
+        danger -> Color(0xFFF87171)
+        else -> Color.White
+    }
+    Row(
         Modifier
-            .size(34.dp)
-            .clip(CircleShape)
-            .background(if (filled) Color.White else Color(0x14FFFFFF))
-            .border(1.dp, if (filled) Color.White else Color(0x26FFFFFF), CircleShape)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
+            .clip(RoundedCornerShape(50))
+            .background(if (accent) Color.White else Color(0x14FFFFFF))
+            .border(1.dp, if (accent) Color.White else Color(0x26FFFFFF), RoundedCornerShape(50))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        Icon(icon, contentDescription = desc, tint = if (filled) Color.Black else Color.White, modifier = Modifier.size(17.dp))
+        Icon(icon, contentDescription = label, tint = content, modifier = Modifier.size(15.dp))
+        Text(
+            label,
+            color = content,
+            fontFamily = ChesnaGrotesk,
+            fontWeight = FontWeight.Medium,
+            fontSize = 11.sp,
+            letterSpacing = 0.3.sp,
+        )
     }
 }
 
