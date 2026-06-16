@@ -330,6 +330,29 @@ object TmdbRepository {
             ).episodes
         }.getOrDefault(emptyList())
     }
+
+    // --- person / actor page -------------------------------------------------
+
+    /** Person bio/details for the actor page (web `getPerson`). */
+    suspend fun person(id: Int): TmdbPerson? = withContext(Dispatchers.IO) {
+        runCatching {
+            get("/person/$id", emptyList(), TmdbPerson.serializer())
+        }.getOrNull()
+    }
+
+    /** The person's movie credits (cast), web `getPersonMovieCredits`. */
+    suspend fun personMovieCredits(id: Int): List<TmdbPersonCredit> = withContext(Dispatchers.IO) {
+        runCatching {
+            get("/person/$id/movie_credits", emptyList(), TmdbPersonCreditsResponse.serializer()).cast
+        }.getOrDefault(emptyList())
+    }
+
+    /** The person's TV credits (cast), web `getPersonSeriesCredits`. */
+    suspend fun personSeriesCredits(id: Int): List<TmdbPersonCredit> = withContext(Dispatchers.IO) {
+        runCatching {
+            get("/person/$id/tv_credits", emptyList(), TmdbPersonCreditsResponse.serializer()).cast
+        }.getOrDefault(emptyList())
+    }
 }
 
 // --- models -----------------------------------------------------------------
@@ -456,3 +479,46 @@ data class TmdbEpisode(
     val runtime: Int? = null,
     val vote_average: Double = 0.0,
 )
+
+@Serializable
+data class TmdbPerson(
+    val id: Int = 0,
+    val name: String = "",
+    val biography: String = "",
+    val birthday: String? = null,
+    val deathday: String? = null,
+    val place_of_birth: String? = null,
+    val profile_path: String? = null,
+    val known_for_department: String = "",
+    val popularity: Double = 0.0,
+)
+
+@Serializable
+data class TmdbPersonCreditsResponse(val cast: List<TmdbPersonCredit> = emptyList())
+
+/**
+ * One acting credit from `/person/{id}/movie_credits` or `/tv_credits`. Movies
+ * carry [title] + [release_date]; series carry [name] + [first_air_date], so the
+ * derived helpers below unify them for the actor page (which mixes both).
+ */
+@Serializable
+data class TmdbPersonCredit(
+    val id: Int = 0,
+    val title: String = "", // movie
+    val name: String = "", // tv
+    val character: String = "",
+    val poster_path: String? = null,
+    val backdrop_path: String? = null,
+    val release_date: String = "", // movie
+    val first_air_date: String = "", // tv
+    val vote_average: Double = 0.0,
+    val popularity: Double = 0.0,
+) {
+    val displayTitle: String get() = title.ifBlank { name }
+
+    /** Release/air date, whichever this credit type carries. */
+    val date: String get() = release_date.ifBlank { first_air_date }
+
+    /** Same "has both images" rule the homepage/web `filterHasImages` uses. */
+    val hasImages: Boolean get() = !backdrop_path.isNullOrBlank() && !poster_path.isNullOrBlank()
+}
