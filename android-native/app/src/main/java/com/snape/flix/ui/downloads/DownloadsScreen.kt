@@ -164,7 +164,7 @@ private fun DownloadRow(item: DownloadItem) {
 
             // chips: size · year · rating
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                val sizeBytes = if (item.totalBytes > 0) item.totalBytes else item.bytesDownloaded
+                val sizeBytes = if (item.contentLength > 0) item.contentLength else item.bytesDownloaded
                 if (sizeBytes > 0) Chip(formatSize(sizeBytes))
                 if (item.year.isNotBlank()) Chip(item.year)
                 item.rating?.takeIf { it > 0 }?.let { Chip("★ ${"%.1f".format(it)}") }
@@ -202,8 +202,12 @@ private fun DownloadRow(item: DownloadItem) {
                     }
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        if (item.status == DownloadStatus.PAUSED) "Paused · $pct%" else "$pct%",
-                        color = Color(0x99FFFFFF),
+                        when (item.status) {
+                            DownloadStatus.PAUSED -> "Paused · $pct%"
+                            DownloadStatus.FAILED -> "Failed · tap to retry"
+                            else -> "$pct%"
+                        },
+                        color = if (item.status == DownloadStatus.FAILED) Color(0xFFF87171) else Color(0x99FFFFFF),
                         fontFamily = ChesnaGrotesk,
                         fontSize = 10.sp,
                     )
@@ -216,13 +220,13 @@ private fun DownloadRow(item: DownloadItem) {
             when (item.status) {
                 DownloadStatus.COMPLETED -> {
                     CircleButton(Icons.Rounded.PlayArrow, "Play", filled = true) {
-                        Downloads.filePath(item.id)?.let { OfflinePlayerActivity.start(context, it) }
+                        OfflinePlayerActivity.start(context, item.id)
                     }
                 }
                 DownloadStatus.RUNNING, DownloadStatus.QUEUED -> {
                     CircleButton(Icons.Rounded.Pause, "Pause") { Downloads.pause(item.id) }
                 }
-                DownloadStatus.PAUSED -> {
+                DownloadStatus.PAUSED, DownloadStatus.FAILED -> {
                     CircleButton(Icons.Rounded.Download, "Resume") { Downloads.resume(item.id) }
                 }
             }

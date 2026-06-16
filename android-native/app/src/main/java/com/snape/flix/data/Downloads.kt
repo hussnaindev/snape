@@ -1,43 +1,52 @@
 package com.snape.flix.data
 
+import android.app.Notification
 import android.content.Context
 import android.content.SharedPreferences
-import android.os.SystemClock
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
+import androidx.annotation.OptIn
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
+import androidx.media3.common.util.NotificationUtil
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.database.DatabaseProvider
+import androidx.media3.database.StandaloneDatabaseProvider
+import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.ResolvingDataSource
+import androidx.media3.datasource.cache.Cache
+import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.datasource.cache.NoOpCacheEvictor
+import androidx.media3.datasource.cache.SimpleCache
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.offline.Download
+import androidx.media3.exoplayer.offline.DownloadHelper
+import androidx.media3.exoplayer.offline.DownloadManager
+import androidx.media3.exoplayer.offline.DownloadNotificationHelper
+import androidx.media3.exoplayer.offline.DownloadService
+import com.snape.flix.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
+import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
-import kotlin.coroutines.cancellation.CancellationException
+import java.util.concurrent.Executors
 
-/** Where a download is in its lifecycle. */
-@Serializable
-enum class DownloadStatus { QUEUED, RUNNING, PAUSED, COMPLETED }
+/** Where a download is in its lifecycle (mapped from Media3's [Download] states). */
+enum class DownloadStatus { QUEUED, RUNNING, PAUSED, COMPLETED, FAILED }
 
 /**
- * One offline download. Carries enough card metadata (poster/logo/year/rating) to
- * render the downloads list without re-hitting TMDB, plus the resolved signed
- * stream URL so a paused/interrupted download can resume via an HTTP Range request.
+ * Card metadata carried alongside a Media3 download (serialized into the
+ * [Download]'s opaque `data` blob) so the downloads list can render poster / logo
+ * / chips without re-hitting TMDB, and so we can reopen the right stream.
  */
 @Serializable
-data class DownloadItem(
-    val id: String, // "$subjectId/$se/$ep" — one row per movie/episode
+data class DownloadMeta(
     val subjectId: String,
     val se: Int,
     val ep: Int,
@@ -48,60 +57,67 @@ data class DownloadItem(
     val year: String = "",
     val rating: Double? = null,
     val quality: String = "",
-    val url: String,
-    val signCookie: String = "",
-    val fileName: String,
-    val bytesDownloaded: Long = 0,
-    val totalBytes: Long = 0,
-    val status: DownloadStatus = DownloadStatus.QUEUED,
+)
+
+/** A flattened, UI-facing view of one Media3 download (rebuilt on every change). */
+data class DownloadItem(
+    val id: String,
+    val subjectId: String,
+    val se: Int,
+    val ep: Int,
+    val title: String,
+    val isSeries: Boolean,
+    val posterUrl: String?,
+    val logoUrl: String?,
+    val year: String,
+    val rating: Double?,
+    val quality: String,
+    val percent: Float, // 0..100
+    val bytesDownloaded: Long,
+    val contentLength: Long, // -1 until known (adaptive)
+    val status: DownloadStatus,
 ) {
-    /** 0f‥1f downloaded fraction for the progress ring (0 until size is known). */
-    val fraction: Float
-        get() = if (totalBytes > 0) (bytesDownloaded.toFloat() / totalBytes).coerceIn(0f, 1f) else 0f
-
-    /** Still on the way down (shown on the home indicator + the active section). */
-    val inProgress: Boolean
-        get() = status != DownloadStatus.COMPLETED
-
-    /** Episode label suffix, e.g. "S1 · E2" (blank for movies). */
+    val fraction: Float get() = (percent / 100f).coerceIn(0f, 1f)
+    val inProgress: Boolean get() = status != DownloadStatus.COMPLETED
     val episodeLabel: String get() = if (isSeries) "S$se · E$ep" else ""
 }
 
 /**
- * On-device download manager — NO external service, NO Android DownloadManager.
- * Streams the signed MovieBox URL to the app's external files dir over OkHttp with
- * our own progress accounting so the UI can render a precise ring + pause/resume.
+ * Offline downloads, built on Media3's offline download stack so **every** stream
+ * format works — progressive MP4, adaptive DASH, and HLS alike. Media3 parses the
+ * manifest, downloads the segments into a [SimpleCache], and the offline player
+ * reads them back through a [CacheDataSource] (no network). Persistence, resume
+ * after a restart, and progress accounting are handled by Media3's download index.
  *
- *  • Runs on an application-scoped coroutine scope, so a download keeps going while
- *    the user navigates between screens (background "as long as the app is open").
- *  • State is persisted to [SharedPreferences] as JSON. If the process is killed
- *    mid-download, [init] flips any RUNNING/QUEUED row back to PAUSED so the user
- *    can resume it on next launch (we never silently keep downloading once closed).
- *  • Resume re-issues the request with `Range: bytes=<partial>-` and appends to the
- *    partial file; servers that ignore the range (200 instead of 206) restart clean.
+ *  • Per-download CloudFront `Cookie`s are injected for the manifest AND every
+ *    segment request via a [ResolvingDataSource] keyed by URL host.
+ *  • [SnapeDownloadService] is the foreground service that keeps downloads running.
+ *  • On process restart we pause any still-active downloads (so nothing silently
+ *    resumes) — the user resumes them from the downloads page.
  *
  * [init] must be called once from [com.snape.flix.SnapeApp.onCreate].
  */
+@OptIn(UnstableApi::class)
 object Downloads {
 
+    const val CHANNEL_ID = "downloads"
     private const val PREFS = "snape_downloads"
-    private const val KEY = "downloads_v1"
+    private const val KEY_COOKIES = "cookies_v1"
+    // Any non-zero stop reason marks a download as user-paused.
+    private const val STOP_REASON_PAUSE = 1
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
-    private lateinit var prefs: SharedPreferences
+
     private lateinit var appContext: Context
+    private lateinit var prefs: SharedPreferences
 
-    // Application-scoped: survives Activity teardown so downloads continue while the
-    // app is alive. Dies with the process (→ partial files resume as PAUSED).
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val jobs = ConcurrentHashMap<String, Job>()
+    private var cache: Cache? = null
+    private var dbProvider: DatabaseProvider? = null
+    @Volatile private var manager: DownloadManager? = null
+    private var notificationHelper: DownloadNotificationHelper? = null
 
-    // Long read timeout (big files); no call timeout so a slow download isn't aborted.
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(20, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
-        .retryOnConnectionFailure(true)
-        .build()
+    // host -> CloudFront Cookie. Applied to the manifest and all of its segments.
+    private val cookieByHost = ConcurrentHashMap<String, String>()
 
     private val _items = MutableStateFlow<List<DownloadItem>>(emptyList())
     val items: StateFlow<List<DownloadItem>> = _items.asStateFlow()
@@ -109,21 +125,65 @@ object Downloads {
     fun init(context: Context) {
         appContext = context.applicationContext
         prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        // A RUNNING/QUEUED row can only be stale here (the process just started), so
-        // present it as PAUSED — resumable, never silently resumed.
-        _items.value = decode().map {
-            if (it.status == DownloadStatus.RUNNING || it.status == DownloadStatus.QUEUED) {
-                it.copy(status = DownloadStatus.PAUSED)
-            } else {
-                it
-            }
+        loadCookies()
+        NotificationUtil.createNotificationChannel(
+            appContext,
+            CHANNEL_ID,
+            R.string.download_channel_name,
+            0,
+            NotificationUtil.IMPORTANCE_LOW,
+        )
+        val dm = downloadManager(appContext)
+        // Don't silently resume after a cold start — present them as paused.
+        dm.setStopReason(null, STOP_REASON_PAUSE)
+        refresh()
+    }
+
+    // --- Media3 singletons --------------------------------------------------
+
+    @Synchronized
+    fun downloadManager(context: Context): DownloadManager {
+        manager?.let { return it }
+        val ctx = context.applicationContext
+        val db = StandaloneDatabaseProvider(ctx).also { dbProvider = it }
+        val c = SimpleCache(downloadDir(ctx), NoOpCacheEvictor(), db).also { cache = it }
+        val dm = DownloadManager(ctx, db, c, upstreamFactory(), Executors.newFixedThreadPool(3)).apply {
+            maxParallelDownloads = 2
+            addListener(object : DownloadManager.Listener {
+                override fun onInitialized(downloadManager: DownloadManager) = refresh()
+                override fun onDownloadChanged(downloadManager: DownloadManager, download: Download, finalException: Exception?) = refresh()
+                override fun onDownloadRemoved(downloadManager: DownloadManager, download: Download) = refresh()
+                override fun onIdle(downloadManager: DownloadManager) = refresh()
+            })
         }
-        persist()
+        manager = dm
+        return dm
+    }
+
+    /** Cache-backed (read-through) factory for offline playback of finished items. */
+    fun playbackFactory(context: Context): DataSource.Factory {
+        downloadManager(context) // ensure the cache exists
+        return CacheDataSource.Factory()
+            .setCache(cache!!)
+            .setUpstreamDataSourceFactory(upstreamFactory())
+            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+    }
+
+    /** The stored [MediaItem] (uri + mime + stream keys) for offline playback. */
+    fun mediaItem(id: String): MediaItem? = downloadById(id)?.request?.toMediaItem()
+
+    private fun upstreamFactory(): DataSource.Factory {
+        val http = DefaultHttpDataSource.Factory()
+            .setUserAgent(MovieBoxSign.USER_AGENT)
+            .setAllowCrossProtocolRedirects(true)
+        return ResolvingDataSource.Factory(http) { dataSpec ->
+            val cookie = dataSpec.uri.host?.let { cookieByHost[it] }
+            if (!cookie.isNullOrBlank()) dataSpec.withAdditionalHeaders(mapOf("Cookie" to cookie)) else dataSpec
+        }
     }
 
     // --- public API ---------------------------------------------------------
 
-    /** Begin (or restart) a download for the chosen variant/episode. */
     fun enqueue(
         subjectId: String,
         se: Int,
@@ -137,157 +197,146 @@ object Downloads {
         quality: String,
         url: String,
         signCookie: String,
+        format: String,
     ) {
+        val ctx = appContext
+        rememberCookie(url, signCookie)
+        downloadManager(ctx) // ensure ready
         val id = "$subjectId/$se/$ep"
-        val safeBase = title.replace(Regex("[^A-Za-z0-9 ._-]"), "").trim().ifBlank { "video" }
-        val fileName = (if (isSeries) "$safeBase S${se}E$ep" else safeBase) + ".mp4"
-        // Fresh start: drop any stale partial file for this id.
-        fileFor(fileName).delete()
-        val item = DownloadItem(
-            id = id,
-            subjectId = subjectId,
-            se = se,
-            ep = ep,
-            title = title,
-            isSeries = isSeries,
-            posterUrl = posterUrl,
-            logoUrl = logoUrl,
-            year = year,
-            rating = rating,
-            quality = quality,
-            url = url,
-            signCookie = signCookie,
-            fileName = fileName,
-            status = DownloadStatus.QUEUED,
-        )
-        _items.update { list -> listOf(item) + list.filterNot { it.id == id } }
-        persist()
-        start(id)
+        val mime = when (format.uppercase()) {
+            "HLS" -> MimeTypes.APPLICATION_M3U8
+            "MP4" -> MimeTypes.VIDEO_MP4
+            "DASH" -> MimeTypes.APPLICATION_MPD
+            else -> null
+        }
+        val meta = DownloadMeta(subjectId, se, ep, title, isSeries, posterUrl, logoUrl, year, rating, quality)
+        val data = json.encodeToString(DownloadMeta.serializer(), meta).toByteArray()
+        val mediaItem = MediaItem.Builder().setUri(url)
+            .apply { if (mime != null) setMimeType(mime) }
+            .build()
+
+        // Probe the manifest, pick the chosen quality (highest ≤ target), then queue.
+        val helper = DownloadHelper.forMediaItem(ctx, mediaItem, DefaultRenderersFactory(ctx), upstreamFactory())
+        helper.prepare(object : DownloadHelper.Callback {
+            override fun onPrepared(helper: DownloadHelper) {
+                try {
+                    quality.removeSuffix("p").toIntOrNull()?.let { targetHeight ->
+                        val params = DownloadHelper.getDefaultTrackSelectorParameters(ctx).buildUpon()
+                            .setMaxVideoSize(Int.MAX_VALUE, targetHeight)
+                            .build()
+                        for (period in 0 until helper.periodCount) {
+                            helper.clearTrackSelections(period)
+                            helper.addTrackSelection(period, params)
+                        }
+                    }
+                    val request = helper.getDownloadRequest(id, data)
+                    DownloadService.sendAddDownload(ctx, SnapeDownloadService::class.java, request, /* foreground = */ false)
+                } finally {
+                    helper.release()
+                }
+            }
+
+            override fun onPrepareError(helper: DownloadHelper, e: IOException) {
+                helper.release()
+            }
+        })
     }
 
     fun pause(id: String) {
-        jobs.remove(id)?.cancel()
-        update(id) { if (it.status == DownloadStatus.RUNNING || it.status == DownloadStatus.QUEUED) it.copy(status = DownloadStatus.PAUSED) else it }
-        persist()
+        DownloadService.sendSetStopReason(appContext, SnapeDownloadService::class.java, id, STOP_REASON_PAUSE, false)
     }
 
     fun resume(id: String) {
-        val item = current(id) ?: return
-        if (item.status == DownloadStatus.RUNNING || item.status == DownloadStatus.COMPLETED) return
-        start(id)
-    }
-
-    fun cancel(id: String) {
-        jobs.remove(id)?.cancel()
-        current(id)?.let { fileFor(it.fileName).delete() }
-        _items.update { list -> list.filterNot { it.id == id } }
-        persist()
-    }
-
-    /** Absolute path of a completed download's file (for offline playback). */
-    fun filePath(id: String): String? =
-        current(id)?.let { fileFor(it.fileName) }?.takeIf { it.exists() }?.absolutePath
-
-    // --- engine -------------------------------------------------------------
-
-    private fun start(id: String) {
-        jobs.remove(id)?.cancel()
-        jobs[id] = scope.launch { runDownload(id) }
-    }
-
-    private suspend fun runDownload(id: String) {
-        update(id) { it.copy(status = DownloadStatus.RUNNING) }
-        val item = current(id) ?: return
-        val file = fileFor(item.fileName)
-        val existing = if (file.exists()) file.length() else 0L
-
-        val builder = Request.Builder()
-            .url(item.url)
-            .header("User-Agent", MovieBoxSign.USER_AGENT)
-        if (item.signCookie.isNotBlank()) builder.header("Cookie", item.signCookie)
-        if (existing > 0) builder.header("Range", "bytes=$existing-")
-
-        try {
-            client.newCall(builder.build()).execute().use { resp ->
-                val partial = resp.code == 206
-                if (!resp.isSuccessful) throw IOException("HTTP ${resp.code}")
-                val body = resp.body ?: throw IOException("empty body")
-                val remaining = body.contentLength()
-                // 206 → contentLength is the remaining tail; 200 → it's the whole file.
-                val total = when {
-                    partial && remaining > 0 -> existing + remaining
-                    remaining > 0 -> remaining
-                    else -> 0L
-                }
-                val append = partial && existing > 0
-                var downloaded = if (append) existing else 0L
-                update(id) { it.copy(totalBytes = total, bytesDownloaded = downloaded) }
-
-                FileOutputStream(file, append).use { os ->
-                    body.byteStream().use { ins ->
-                        val buf = ByteArray(64 * 1024)
-                        var lastUi = 0L
-                        var lastDisk = 0L
-                        while (true) {
-                            // Checks THIS download's coroutine (not the parent scope),
-                            // so pause()/cancel() breaks the loop cleanly.
-                            currentCoroutineContext().ensureActive()
-                            val n = ins.read(buf)
-                            if (n < 0) break
-                            os.write(buf, 0, n)
-                            downloaded += n
-                            val now = SystemClock.elapsedRealtime()
-                            if (now - lastUi >= 150) {
-                                update(id) { it.copy(bytesDownloaded = downloaded) }
-                                lastUi = now
-                            }
-                            if (now - lastDisk >= 1500) {
-                                update(id) { it.copy(bytesDownloaded = downloaded) }
-                                persist()
-                                lastDisk = now
-                            }
-                        }
-                    }
-                }
-                update(id) {
-                    val size = if (it.totalBytes > 0) it.totalBytes else file.length()
-                    it.copy(status = DownloadStatus.COMPLETED, bytesDownloaded = size, totalBytes = size)
-                }
-                persist()
-            }
-        } catch (ce: CancellationException) {
-            // Paused/cancelled: bytes already on disk, status set by pause()/cancel().
-            update(id) { it.copy(bytesDownloaded = file.length()) }
-            persist()
-            throw ce
-        } catch (_: Exception) {
-            // Network/IO failure: keep the partial file and let the user resume.
-            update(id) { if (it.status == DownloadStatus.RUNNING) it.copy(status = DownloadStatus.PAUSED, bytesDownloaded = file.length()) else it }
-            persist()
-        } finally {
-            jobs.remove(id)
+        val download = downloadById(id) ?: return
+        if (download.state == Download.STATE_FAILED) {
+            // A failed download restarts from its stored request.
+            DownloadService.sendAddDownload(appContext, SnapeDownloadService::class.java, download.request, false)
+        } else {
+            DownloadService.sendSetStopReason(appContext, SnapeDownloadService::class.java, id, Download.STOP_REASON_NONE, false)
         }
     }
 
-    // --- io -----------------------------------------------------------------
-
-    private fun dir(): File = File(appContext.getExternalFilesDir(null), "downloads").apply { mkdirs() }
-    private fun fileFor(fileName: String): File = File(dir(), fileName)
-
-    private fun current(id: String): DownloadItem? = _items.value.firstOrNull { it.id == id }
-
-    private inline fun update(id: String, crossinline fn: (DownloadItem) -> DownloadItem) {
-        _items.update { list -> list.map { if (it.id == id) fn(it) else it } }
+    fun cancel(id: String) {
+        DownloadService.sendRemoveDownload(appContext, SnapeDownloadService::class.java, id, false)
     }
 
-    private fun decode(): List<DownloadItem> {
-        val raw = prefs.getString(KEY, null) ?: return emptyList()
-        return runCatching { json.decodeFromString(ListSerializer(DownloadItem.serializer()), raw) }
-            .getOrDefault(emptyList())
+    // --- foreground notification (called by the service) --------------------
+
+    fun buildForegroundNotification(context: Context, downloads: List<Download>, notMetRequirements: Int): Notification {
+        val helper = notificationHelper
+            ?: DownloadNotificationHelper(context, CHANNEL_ID).also { notificationHelper = it }
+        return helper.buildProgressNotification(
+            context,
+            android.R.drawable.stat_sys_download,
+            /* contentIntent = */ null,
+            /* message = */ null,
+            downloads,
+            notMetRequirements,
+        )
     }
 
-    private fun persist() {
-        val raw = runCatching { json.encodeToString(ListSerializer(DownloadItem.serializer()), _items.value) }.getOrNull()
-        prefs.edit().apply { if (raw != null) putString(KEY, raw) else remove(KEY) }.apply()
+    // --- internals ----------------------------------------------------------
+
+    private fun downloadDir(context: Context): File =
+        File(context.getExternalFilesDir(null), "downloads").apply { mkdirs() }
+
+    private fun downloadById(id: String): Download? =
+        runCatching { manager?.downloadIndex?.getDownload(id) }.getOrNull()
+
+    private fun refresh() {
+        val dm = manager ?: return
+        val list = runCatching {
+            val acc = mutableListOf<DownloadItem>()
+            dm.downloadIndex.getDownloads().use { cursor ->
+                while (cursor.moveToNext()) acc += cursor.download.toItem()
+            }
+            acc
+        }.getOrNull() ?: return
+        _items.value = list
+    }
+
+    private fun Download.toItem(): DownloadItem {
+        val meta = runCatching { json.decodeFromString(DownloadMeta.serializer(), String(request.data)) }.getOrNull()
+        val pct = percentDownloaded.takeIf { it in 0f..100f } ?: 0f
+        return DownloadItem(
+            id = request.id,
+            subjectId = meta?.subjectId ?: "",
+            se = meta?.se ?: 0,
+            ep = meta?.ep ?: 0,
+            title = meta?.title ?: request.id,
+            isSeries = meta?.isSeries ?: false,
+            posterUrl = meta?.posterUrl,
+            logoUrl = meta?.logoUrl,
+            year = meta?.year ?: "",
+            rating = meta?.rating,
+            quality = meta?.quality ?: "",
+            percent = pct,
+            bytesDownloaded = bytesDownloaded,
+            contentLength = contentLength,
+            status = mapState(state, stopReason),
+        )
+    }
+
+    private fun mapState(state: Int, stopReason: Int): DownloadStatus = when (state) {
+        Download.STATE_COMPLETED -> DownloadStatus.COMPLETED
+        Download.STATE_DOWNLOADING, Download.STATE_REMOVING, Download.STATE_RESTARTING -> DownloadStatus.RUNNING
+        Download.STATE_STOPPED -> DownloadStatus.PAUSED
+        Download.STATE_FAILED -> DownloadStatus.FAILED
+        Download.STATE_QUEUED -> if (stopReason != Download.STOP_REASON_NONE) DownloadStatus.PAUSED else DownloadStatus.QUEUED
+        else -> DownloadStatus.QUEUED
+    }
+
+    // --- cookie persistence (best-effort; signed cookies are time-limited) ---
+
+    private fun rememberCookie(url: String, cookie: String) {
+        if (cookie.isBlank()) return
+        val host = runCatching { URI(url).host }.getOrNull() ?: return
+        cookieByHost[host] = cookie
+        runCatching { prefs.edit().putString(KEY_COOKIES, json.encodeToString(cookieByHost.toMap())).apply() }
+    }
+
+    private fun loadCookies() {
+        val raw = prefs.getString(KEY_COOKIES, null) ?: return
+        runCatching { json.decodeFromString<Map<String, String>>(raw) }.getOrNull()?.let { cookieByHost.putAll(it) }
     }
 }
