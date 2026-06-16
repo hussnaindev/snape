@@ -24,6 +24,10 @@ data class AdultItem(
     val subjectType: Int? = null,
     val duration: String? = null,
     val discoveredBy: String? = null,
+    val coverUrl: String? = null,
+    val description: String? = null,
+    val genre: String? = null,
+    val imdbRatingValue: String? = null,
 ) {
     /** First word of the title, upper-cased — used as the studio badge. */
     val studioName: String get() = title.trim().split(Regex("\\s+")).firstOrNull()?.uppercase() ?: ""
@@ -42,6 +46,11 @@ object AdultRepository {
                 subjectType = item.subjectType ?: 1,
                 title = item.title,
                 releaseDate = item.releaseDate ?: "",
+                description = item.description ?: "",
+                genre = item.genre ?: "",
+                duration = item.duration ?: "",
+                imdbRatingValue = item.imdbRatingValue ?: "",
+                cover = item.coverUrl?.let { Cover(it) },
                 hasResource = true,
             )
             SubjectGroup(primary = subject, variants = listOf(subject))

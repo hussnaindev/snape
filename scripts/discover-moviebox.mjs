@@ -150,6 +150,8 @@ async function main() {
             subjectId:id,title:item.title,postTitle:item.postTitle??null,
             releaseDate:item.releaseDate??null,subjectType:item.subjectType,
             duration:item.duration??item.durationSeconds??null,
+            genre:item.genre??null,
+            imdbRatingValue:item.imdbRatingValue??null,
             hasResource,coverUrl,
             discoveredBy:title,
           });
