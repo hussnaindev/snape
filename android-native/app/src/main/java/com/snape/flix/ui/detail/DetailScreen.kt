@@ -319,12 +319,12 @@ fun DetailScreen(
                         var trailerVisible by remember { mutableStateOf(false) }
                         var trailerMuted by remember { mutableStateOf(true) }
                         // Start loading the YouTube embed immediately, but keep the
-                        // backdrop image on top and only reveal the trailer after 5s —
+                        // backdrop image on top and only reveal the trailer after 8s —
                         // by then YouTube's start-up overlay (title card / watermark /
                         // spinner) has cleared, so the reveal is straight into video.
                         LaunchedEffect(s.trailerKey) {
                             trailerVisible = false
-                            delay(5000)
+                            delay(8000)
                             trailerVisible = true
                         }
                         val trailerAlpha by animateFloatAsState(if (trailerVisible) 1f else 0f, label = "trailer")
@@ -616,7 +616,15 @@ private fun HeroStatus(message: String, spinner: Boolean = false, onBack: (() ->
 private fun MetaCard(s: DetailUiState, onWatch: () -> Unit) {
     var downloadOpen by remember { mutableStateOf(false) }
     if (downloadOpen) {
-        DownloadSheet(group = s.group, isSeries = s.isSeries, onDismiss = { downloadOpen = false })
+        DownloadSheet(
+            group = s.group,
+            isSeries = s.isSeries,
+            onDismiss = { downloadOpen = false },
+            posterUrl = s.posterUrl,
+            logoUrl = s.logoUrl,
+            year = s.year,
+            rating = s.rating,
+        )
     }
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -703,7 +711,7 @@ private fun MetaCard(s: DetailUiState, onWatch: () -> Unit) {
                 // actions: Watch + Download + Watchlist
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     WatchButton(modifier = Modifier.weight(1f), onClick = onWatch)
-                    ActionIcon(Icons.Rounded.Download, "Download") { downloadOpen = true }
+                    DownloadActionIcon(group = s.group) { downloadOpen = true }
                     WatchlistIcon(item = s.group.primary)
                 }
             }
@@ -857,18 +865,37 @@ private fun WatchButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
     }
 }
 
+/**
+ * The detail-page download button. When a download for any audio variant of this
+ * title is in flight, a green-gradient progress ring sweeps around the circular
+ * button (no percentage text); a completed download shows a solid green ring.
+ * Tapping always opens the download options sheet.
+ */
 @Composable
-private fun ActionIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, desc: String, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .size(36.dp)
-            .clip(CircleShape)
-            .background(Color(0x99000000))
-            .border(1.dp, Color(0x4DFFFFFF), CircleShape)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription = desc, tint = Color.White, modifier = Modifier.size(16.dp))
+private fun DownloadActionIcon(group: com.snape.flix.data.SubjectGroup, onClick: () -> Unit) {
+    val items by com.snape.flix.data.Downloads.items.collectAsStateWithLifecycle()
+    val variantIds = remember(group) { group.variants.map { it.subjectId }.toSet() }
+    val match = items.firstOrNull { it.subjectId in variantIds }
+    Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
+        if (match != null) {
+            val fraction = if (match.status == com.snape.flix.data.DownloadStatus.COMPLETED) 1f else match.fraction
+            com.snape.flix.ui.components.ProgressRing(
+                progress = fraction,
+                modifier = Modifier.fillMaxSize(),
+                strokeWidth = 2.5.dp,
+            )
+        }
+        Box(
+            Modifier
+                .size(30.dp)
+                .clip(CircleShape)
+                .background(Color(0x99000000))
+                .border(1.dp, if (match == null) Color(0x4DFFFFFF) else Color.Transparent, CircleShape)
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Rounded.Download, contentDescription = "Download", tint = Color.White, modifier = Modifier.size(16.dp))
+        }
     }
 }
 

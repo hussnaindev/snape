@@ -42,5 +42,17 @@
             android:exported="false"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:theme="@style/Theme.Snape" />
+
+        <activity
+            android:name=".ui.downloads.DownloadsActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:theme="@style/Theme.Snape" />
+
+        <activity
+            android:name=".ui.downloads.OfflinePlayerActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|uiMode"
+            android:theme="@style/Theme.Snape" />
     </application>
 </manifest>

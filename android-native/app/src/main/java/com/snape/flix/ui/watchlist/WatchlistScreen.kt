@@ -53,7 +53,7 @@ fun WatchlistScreen(
                     Modifier
                         .fillMaxWidth()
                         .statusBarsPadding()
-                        .padding(top = 16.dp, bottom = 12.dp),
+                        .padding(top = 16.dp, bottom = 20.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     LinedHeading("Watchlist", modifier = Modifier.padding(horizontal = 56.dp))

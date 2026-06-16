@@ -26,12 +26,14 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Search
@@ -69,11 +71,15 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import com.snape.flix.R
+import com.snape.flix.data.DownloadStatus
+import com.snape.flix.data.Downloads
 import com.snape.flix.data.LocalStore
 import com.snape.flix.data.SubjectGroup
 import com.snape.flix.ui.browse.BrowseActivity
 import com.snape.flix.ui.components.MediaCard
+import com.snape.flix.ui.components.ProgressRing
 import com.snape.flix.ui.components.SnakeLoader
+import com.snape.flix.ui.downloads.DownloadsActivity
 import com.snape.flix.ui.detail.DetailActivity
 import com.snape.flix.ui.home.HomeScreen
 import com.snape.flix.ui.theme.ChesnaGrotesk
@@ -263,6 +269,8 @@ private fun TopBar(
         if (!searchOpen) {
             BarIcon(icon = Icons.Rounded.Search, desc = "Search", onClick = onToggleSearch)
         }
+        // Download indicator — only present while one or more downloads are in flight.
+        DownloadIndicator()
         Spacer(Modifier.width(4.dp))
         // Hamburger sits in a rounded chip, like the web's mobile menu button.
         Box(
@@ -275,6 +283,52 @@ private fun TopBar(
             contentAlignment = Alignment.Center,
         ) {
             Icon(Icons.Rounded.Menu, "Open menu", tint = Color(0xCCFFFFFF), modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
+/**
+ * Home top-bar download status button. Hidden entirely when nothing is
+ * downloading; otherwise a circular green-gradient progress ring (averaged across
+ * the in-flight downloads) wraps the download icon, with a count badge in the
+ * top-right when more than one download is active. Opens the downloads page.
+ */
+@Composable
+private fun DownloadIndicator() {
+    val items by Downloads.items.collectAsStateWithLifecycle()
+    val active = items.filter { it.inProgress }
+    if (active.isEmpty()) return
+    val context = LocalContext.current
+    val running = active.filter { it.status == DownloadStatus.RUNNING }
+    val progressItems = if (running.isNotEmpty()) running else active
+    val avg = progressItems.map { it.fraction }.average().toFloat()
+
+    Box(
+        Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .clickable { DownloadsActivity.start(context) },
+        contentAlignment = Alignment.Center,
+    ) {
+        ProgressRing(progress = avg, modifier = Modifier.size(36.dp), strokeWidth = 2.5.dp)
+        Icon(Icons.Rounded.Download, "Downloads", tint = Color(0xCCFFFFFF), modifier = Modifier.size(18.dp))
+        if (active.size > 1) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .size(16.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF059669)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    active.size.toString(),
+                    color = Color.White,
+                    fontFamily = ChesnaGrotesk,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 9.sp,
+                )
+            }
         }
     }
 }
@@ -447,8 +501,8 @@ private fun SideDrawer(
             Modifier
                 .align(Alignment.CenterEnd)
                 .fillMaxHeight()
-                .fillMaxWidth(0.66f)
-                .widthIn(max = 264.dp)
+                .fillMaxWidth(0.55f)
+                .widthIn(max = 220.dp)
                 .background(Color(0xFF0F0F10))
                 .border(1.dp, Color(0x1AFFFFFF))
                 // swallow taps so they don't reach the scrim
@@ -537,29 +591,30 @@ private fun SideDrawer(
 
 @Composable
 private fun DrawerRow(item: MenuItem, onClick: () -> Unit) {
-    // Label and chevron sit side-by-side (no `weight(1f)` pushing them apart) so
-    // the gap between them stays minimal regardless of the panel width.
+    // Label hugs the left edge, chevron the right — space-between across the
+    // (now narrower) panel. Font sizing trimmed to fit the reduced width.
     Row(
         Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(
             text = item.label,
             color = if (item.danger) Color(0xFFF87171) else Color(0xB3FFFFFF),
             fontFamily = ChesnaGrotesk,
-            fontSize = 12.sp,
-            letterSpacing = 1.5.sp,
+            fontSize = 11.5.sp,
+            letterSpacing = 0.8.sp,
+            modifier = Modifier.weight(1f, fill = false),
         )
         if (!item.danger) {
-            Spacer(Modifier.width(4.dp))
             Icon(
                 Icons.Rounded.KeyboardArrowRight,
                 contentDescription = null,
                 tint = Color(0x59FFFFFF),
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(16.dp),
             )
         }
     }
