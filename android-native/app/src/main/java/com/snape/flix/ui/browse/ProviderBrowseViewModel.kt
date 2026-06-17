@@ -37,8 +37,8 @@ class ProviderBrowseViewModel : ViewModel() {
     private fun load() {
         viewModelScope.launch {
             _state.value = _state.value.copy(loading = true)
-            val movies = TmdbRepository.discoverMoviesByProvider(providerId, page = 1)
-            val series = TmdbRepository.discoverSeriesByProvider(providerId, page = 1)
+            val movies = runCatching { TmdbRepository.discoverMoviesByProvider(providerId, page = 1) }.getOrDefault(emptyList())
+            val series = runCatching { TmdbRepository.discoverSeriesByProvider(providerId, page = 1) }.getOrDefault(emptyList())
             _state.value = ProviderBrowseState(
                 movies = movies,
                 series = series,
@@ -56,8 +56,8 @@ class ProviderBrowseViewModel : ViewModel() {
             val nextMoviePage = cur.moviePage + 1
             val nextSeriesPage = cur.seriesPage + 1
 
-            val newMovies = TmdbRepository.discoverMoviesByProvider(providerId, page = nextMoviePage)
-            val newSeries = TmdbRepository.discoverSeriesByProvider(providerId, page = nextSeriesPage)
+            val newMovies = runCatching { TmdbRepository.discoverMoviesByProvider(providerId, page = nextMoviePage) }.getOrDefault(emptyList())
+            val newSeries = runCatching { TmdbRepository.discoverSeriesByProvider(providerId, page = nextSeriesPage) }.getOrDefault(emptyList())
 
             _state.value = _state.value.copy(
                 movies = _state.value.movies + newMovies,

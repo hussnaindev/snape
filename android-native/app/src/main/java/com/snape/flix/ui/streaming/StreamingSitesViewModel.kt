@@ -6,6 +6,8 @@ import com.snape.flix.data.HomeCard
 import com.snape.flix.data.HomeSection
 import com.snape.flix.data.TmdbRepository
 import com.snape.flix.data.WatchProviderKey
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +23,6 @@ class StreamingSitesViewModel : ViewModel() {
     private val _state = MutableStateFlow(StreamingSitesState())
     val state: StateFlow<StreamingSitesState> = _state.asStateFlow()
 
-    // Hero metadata matching web provider-section.tsx
     private data class HeroMeta(
         val title: String,
         val year: String,
@@ -76,19 +77,26 @@ class StreamingSitesViewModel : ViewModel() {
             val sections = WatchProviderKey.entries.map { provider ->
                 val meta = HERO_META[provider] ?: return@map null
 
-                val (movies, series, logoUrl) = try {
-                    val mv = TmdbRepository.discoverMoviesByProvider(provider.tmdbId)
-                    val sv = TmdbRepository.discoverSeriesByProvider(provider.tmdbId)
-                    val logo = TmdbRepository.logoUrl(provider.heroIsSeries, provider.heroId)
-                    Triple(mv, sv, logo)
-                } catch (_: Exception) {
-                    Triple(emptyList(), emptyList(), null)
+                val moviesDeferred = async {
+                    runCatching { TmdbRepository.discoverMoviesByProvider(provider.tmdbId) }.getOrDefault(emptyList())
+                }
+                val seriesDeferred = async {
+                    runCatching { TmdbRepository.discoverSeriesByProvider(provider.tmdbId) }.getOrDefault(emptyList())
+                }
+                val logoDeferred = async {
+                    runCatching { TmdbRepository.logoUrl(provider.heroIsSeries, provider.heroId) }.getOrNull()
+                }
+                val backdropDeferred = async {
+                    if (meta.backdropAsset != null) null
+                    else runCatching {
+                        TmdbRepository.img(TmdbRepository.detail(provider.heroIsSeries, provider.heroId)?.backdrop_path, "w1280")
+                    }.getOrNull()
                 }
 
-                // Fetch TMDB backdrop for providers that don't have a bundled asset
-                val backdrop = meta.backdropAsset ?: runCatching {
-                    TmdbRepository.img(TmdbRepository.detail(provider.heroIsSeries, provider.heroId)?.backdrop_path, "w1280")
-                }.getOrNull()
+                val movies = moviesDeferred.await()
+                val series = seriesDeferred.await()
+                val logoUrl = logoDeferred.await()
+                val backdrop = backdropDeferred.await()
 
                 val cards = buildList {
                     movies.forEach { m ->

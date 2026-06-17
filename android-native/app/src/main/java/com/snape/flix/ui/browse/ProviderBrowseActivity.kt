@@ -41,7 +41,7 @@ class ProviderBrowseActivity : ComponentActivity() {
 
         val title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
         val providerKey = intent.getStringExtra(EXTRA_PROVIDER).orEmpty()
-        val provider = runCatching { WatchProviderKey.valueOf(providerKey) }.getOrNull()
+        val provider = WatchProviderKey.entries.find { it.name == providerKey }
         if (provider == null) {
             finish()
             return
