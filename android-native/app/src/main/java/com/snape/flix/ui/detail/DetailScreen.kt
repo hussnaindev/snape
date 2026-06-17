@@ -616,6 +616,7 @@ private fun HeroStatus(message: String, spinner: Boolean = false, onBack: (() ->
 
 @Composable
 private fun MetaCard(s: DetailUiState, onWatch: () -> Unit) {
+    val context = LocalContext.current
     var downloadOpen by remember { mutableStateOf(false) }
     if (downloadOpen) {
         DownloadSheet(
