@@ -36,27 +36,27 @@ class StreamingSitesViewModel : ViewModel() {
         WatchProviderKey.NETFLIX to HeroMeta(
             "Stranger Things", "2016", "5 Seasons", "8.7",
             "When a young boy vanishes, a small town uncovers a mystery involving secret experiments, terrifying supernatural forces, and one strange little girl.",
-            90, "file:///android_asset/backdrop-netflix.avif",
+            90, null,
         ),
         WatchProviderKey.MAX to HeroMeta(
             "House of the Dragon", "2022", "2 Seasons", "8.4",
             "The Targaryen dynasty is at the absolute apex of its power, with more than 15 dragons under their yoke.",
-            87, "file:///android_asset/backdrop-max.avif",
+            87, null,
         ),
         WatchProviderKey.PRIMEVIDEO to HeroMeta(
             "The Boys", "2019", "5 Seasons", "8.6",
             "A group of vigilantes known informally as \"The Boys\" set out to take down corrupt superheroes.",
-            93, "file:///android_asset/backdrop-primevideo.avif",
+            93, null,
         ),
         WatchProviderKey.DISNEYPLUS to HeroMeta(
             "Loki", "2021", "2 Seasons", "8.5",
             "After stealing the Tesseract during the events of \"Avengers: Endgame,\" an alternate version of Loki is brought to the mysterious Time Variance Authority.",
-            87, "file:///android_asset/backdrop-disneyplus.avif",
+            87, null,
         ),
         WatchProviderKey.PARAMOUNTPLUS to HeroMeta(
             "Yellowstone", "2018", "5 Seasons", "8.6",
             "Follow the violent world of the Dutton family, who controls the largest contiguous ranch in the United States.",
-            83, "file:///android_asset/backdrop-paramountplus.avif",
+            83, null,
         ),
         WatchProviderKey.APPLETV to HeroMeta(
             "Dune", "2021", "2h 35m", "8.6",
