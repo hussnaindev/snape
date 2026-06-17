@@ -26,6 +26,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +43,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.snape.flix.data.Downloads
+import com.snape.flix.data.MovieBoxRepository
+import com.snape.flix.data.SeasonItem
 import com.snape.flix.data.SubjectGroup
 import com.snape.flix.ui.theme.ChesnaGrotesk
 
@@ -63,22 +66,42 @@ fun DownloadSheet(
     rating: Double? = null,
     vm: DownloadViewModel = viewModel(),
 ) {
-    val se = if (isSeries) 1 else 0
-    val ep = if (isSeries) 1 else 0
     val context = LocalContext.current
 
     var audioIdx by remember { mutableIntStateOf(0) }
     var quality by remember { mutableStateOf("") }
     var subIdx by remember { mutableIntStateOf(-1) }
+    var selectedSeason by remember { mutableIntStateOf(1) }
+    var selectedEpisode by remember { mutableIntStateOf(1) }
+    var seasonItems by remember { mutableStateOf<List<SeasonItem>>(emptyList()) }
+    var seasonsLoading by remember { mutableStateOf(true) }
 
-    androidx.compose.runtime.LaunchedEffect(audioIdx) {
+    // Fetch season info for series
+    LaunchedEffect(isSeries, audioIdx) {
+        if (!isSeries) {
+            seasonsLoading = false
+            return@LaunchedEffect
+        }
+        val sid = group.variants.getOrNull(audioIdx)?.subjectId ?: group.primary.subjectId
+        seasonsLoading = true
+        val items = runCatching { MovieBoxRepository.seasonInfo(sid) }
+            .getOrDefault(emptyList())
+        seasonItems = items
+        seasonsLoading = false
+        if (items.isNotEmpty()) {
+            selectedSeason = items.first().se
+            selectedEpisode = 1
+        }
+    }
+
+    LaunchedEffect(audioIdx, selectedSeason, selectedEpisode) {
         val variant = group.variants.getOrNull(audioIdx) ?: return@LaunchedEffect
-        vm.load(variant.subjectId, se, ep)
+        vm.load(variant.subjectId, if (isSeries) selectedSeason else 0, if (isSeries) selectedEpisode else 0)
     }
     val state by vm.state.collectAsStateWithLifecycle()
 
-    // Reset the quality default whenever a freshly-resolved stream arrives.
-    androidx.compose.runtime.LaunchedEffect(state) {
+    // Reset quality default when stream arrives.
+    LaunchedEffect(state) {
         val ready = state as? DownloadState.Ready ?: return@LaunchedEffect
         quality = ready.qualities.firstOrNull { it == "720p" }
             ?: ready.qualities.firstOrNull { it == "480p" }
@@ -88,7 +111,7 @@ fun DownloadSheet(
     }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val heading = if (isSeries) "${group.primary.title} · S$se E$ep" else group.primary.title
+    val heading = if (isSeries) "${group.primary.title} · S$selectedSeason E$selectedEpisode" else group.primary.title
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -125,6 +148,23 @@ fun DownloadSheet(
                     Text("This title isn't available to download right now.", color = Color(0x80FFFFFF), fontSize = 13.sp)
                 }
                 is DownloadState.Ready -> {
+                    if (isSeries && seasonItems.isNotEmpty()) {
+                        Field("Season") {
+                            ChipRow(seasonItems.map { it.se.toString() }, selectedSeason.toString()) { v ->
+                                val newSeason = v.toIntOrNull() ?: return@ChipRow
+                                selectedSeason = newSeason
+                                selectedEpisode = 1
+                            }
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        val maxEp = seasonItems.firstOrNull { it.se == selectedSeason }?.maxEp ?: 0
+                        Field("Episode") {
+                            ChipRow((1..maxEp).map { it.toString() }, selectedEpisode.toString()) { v ->
+                                selectedEpisode = v.toIntOrNull() ?: return@ChipRow
+                            }
+                        }
+                        Spacer(Modifier.height(16.dp))
+                    }
                     if (st.qualities.isNotEmpty()) {
                         Field("Quality") {
                             ChipRow(st.qualities, quality) { quality = it }
@@ -156,7 +196,7 @@ fun DownloadSheet(
                             .clip(RoundedCornerShape(50))
                             .background(Color.White)
                             .clickable {
-                                enqueue(st, group, audioIdx, isSeries, se, ep, quality, posterUrl, logoUrl, year, rating)
+                                enqueue(st, group, audioIdx, isSeries, selectedSeason, selectedEpisode, quality, posterUrl, logoUrl, year, rating)
                                 Toast.makeText(context, "Download started", Toast.LENGTH_SHORT).show()
                                 onDismiss()
                             },

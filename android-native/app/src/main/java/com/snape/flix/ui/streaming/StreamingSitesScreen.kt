@@ -1,30 +1,26 @@
 package com.snape.flix.ui.streaming
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.snape.flix.data.HomeCard
+import com.snape.flix.ui.components.BackChip
+import com.snape.flix.ui.components.LinedHeading
 import com.snape.flix.ui.components.SnakeLoader
 import com.snape.flix.ui.home.ProviderSection
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -35,6 +31,7 @@ private val PageBg = Color(0xFF070B08)
 @Composable
 fun StreamingSitesScreen(
     onOpenDetail: (HomeCard) -> Unit,
+    onExplore: (providerKey: String, label: String) -> Unit,
     onBack: () -> Unit,
     viewModel: StreamingSitesViewModel = viewModel(),
 ) {
@@ -51,34 +48,29 @@ fun StreamingSitesScreen(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState()),
             ) {
+                Spacer(Modifier.height(56.dp))
                 for (section in state.sections) {
                     ProviderSection(
                         section = section,
                         onOpenCard = onOpenDetail,
-                        onExplore = { },
+                        onExplore = { onExplore(section.key, section.label) },
                     )
                 }
                 Spacer(Modifier.height(24.dp))
             }
         }
 
-        Box(
-            modifier = Modifier
-                .statusBarsPadding()
-                .padding(start = 12.dp, top = 8.dp)
-                .size(36.dp)
-                .clip(RoundedCornerShape(50))
-                .background(Color(0x99000000))
-                .border(1.dp, Color(0x4DFFFFFF), RoundedCornerShape(50))
-                .clickable(onClick = onBack),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = "Back",
-                tint = Color.White,
-                modifier = Modifier.size(18.dp),
-            )
+        Box(Modifier.fillMaxWidth().background(PageBg)) {
+            BackChip(onClick = onBack, modifier = Modifier.align(Alignment.TopStart))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(top = 16.dp, bottom = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                LinedHeading("Streaming Sites", modifier = Modifier.padding(horizontal = 56.dp))
+            }
         }
     }
 }

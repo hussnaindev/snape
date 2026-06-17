@@ -83,19 +83,19 @@ fun ProviderSection(
         // ── hero banner ──
         Box(Modifier.fillMaxWidth().height(HeroHeight)) {
 
-            // Full-width landscape backdrop. The box is narrower than the 16:9
-            // source, so Crop pans horizontally; anchoring to the START shows the
-            // source's left ⅔, which lands a centred focal subject on the banner's
-            // right side — out in the exposed (un-faded) zone instead of buried
-            // under the metadata column on the left. (No mirror, so any text/logos
-            // baked into the artwork stay the right way round.)
             if (section.heroBackdropUrl != null) {
                 AsyncImage(
                     model = section.heroBackdropUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     alignment = Alignment.CenterStart,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(
+                            if (section.backdropOffsetX != 0f)
+                                Modifier.offset(x = section.backdropOffsetX.dp)
+                            else Modifier
+                        ),
                 )
             }
 
@@ -128,14 +128,25 @@ fun ProviderSection(
                     .padding(start = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(
-                    text = section.label.uppercase(),
-                    color = Color.White,
-                    fontFamily = ChesnaGrotesk,
-                    fontWeight = FontWeight.Light,
-                    fontSize = 22.sp,
-                    letterSpacing = 4.sp,
-                )
+                // Provider logo SVG (bundled asset) or text fallback
+                if (section.logoAsset != null) {
+                    AsyncImage(
+                        model = section.logoAsset,
+                        contentDescription = section.label,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.height(24.dp).width(120.dp),
+                        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White),
+                    )
+                } else {
+                    Text(
+                        text = section.label.uppercase(),
+                        color = Color.White,
+                        fontFamily = ChesnaGrotesk,
+                        fontWeight = FontWeight.Light,
+                        fontSize = 22.sp,
+                        letterSpacing = 4.sp,
+                    )
+                }
 
                 // Title logo — fixed footprint so every section's logo reserves
                 // the same space and is contained (never cropped/truncated).

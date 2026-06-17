@@ -150,6 +150,8 @@ data class HomeSection(
     val overview: String? = null,
     val heroBackdropUrl: String? = null,
     val heroLogoUrl: String? = null,
+    val logoAsset: String? = null,
+    val backdropOffsetX: Float = 0f,
 )
 
 // --- season-info ------------------------------------------------------------

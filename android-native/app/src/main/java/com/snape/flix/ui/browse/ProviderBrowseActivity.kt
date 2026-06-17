@@ -1,4 +1,4 @@
-package com.snape.flix.ui.streaming
+package com.snape.flix.ui.browse
 
 import android.content.Context
 import android.content.Intent
@@ -15,16 +15,23 @@ import androidx.lifecycle.lifecycleScope
 import com.snape.flix.data.HomeCard
 import com.snape.flix.data.MovieBoxRepository
 import com.snape.flix.data.SubjectGroup
-import com.snape.flix.ui.browse.ProviderBrowseActivity
+import com.snape.flix.data.WatchProviderKey
 import com.snape.flix.ui.detail.DetailActivity
 import com.snape.flix.ui.theme.SnapeTheme
 import kotlinx.coroutines.launch
 
-class StreamingSitesActivity : ComponentActivity() {
+class ProviderBrowseActivity : ComponentActivity() {
 
     companion object {
-        fun start(context: Context) {
-            context.startActivity(Intent(context, StreamingSitesActivity::class.java))
+        private const val EXTRA_TITLE = "title"
+        private const val EXTRA_PROVIDER = "provider"
+
+        fun start(context: Context, title: String, providerKey: String) {
+            context.startActivity(
+                Intent(context, ProviderBrowseActivity::class.java)
+                    .putExtra(EXTRA_TITLE, title)
+                    .putExtra(EXTRA_PROVIDER, providerKey),
+            )
         }
     }
 
@@ -32,20 +39,27 @@ class StreamingSitesActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
+        val title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
+        val providerKey = intent.getStringExtra(EXTRA_PROVIDER).orEmpty()
+        val provider = runCatching { WatchProviderKey.valueOf(providerKey) }.getOrNull()
+        if (provider == null) {
+            finish()
+            return
+        }
+
         setContent {
             SnapeTheme {
                 Surface(Modifier.fillMaxSize().background(Color.Black), color = Color.Black) {
-                    StreamingSitesScreen(
+                    ProviderBrowseScreen(
+                        title = title,
+                        providerId = provider.tmdbId,
                         onOpenDetail = { card ->
                             lifecycleScope.launch {
                                 val group = runCatching {
                                     MovieBoxRepository.search(card.title)
                                 }.getOrNull()?.groups?.firstOrNull()
-                                if (group != null) DetailActivity.start(this@StreamingSitesActivity, group)
+                                if (group != null) DetailActivity.start(this@ProviderBrowseActivity, group)
                             }
-                        },
-                        onExplore = { key, label ->
-                            ProviderBrowseActivity.start(this@StreamingSitesActivity, label, key)
                         },
                         onBack = ::finish,
                     )

@@ -322,9 +322,9 @@ object TmdbRepository {
 
     /**
      * Discover movies available on a given watch provider (TMDB provider id).
-     * Mirrors the web `getMoviesByProvider` in `lib/tmdb.ts`.
+     * Mirrors the web `getMoviesByProviderPage` in `lib/tmdb.ts`.
      */
-    suspend fun discoverMoviesByProvider(providerId: Int, region: String = "US"): List<TmdbSearchHit> =
+    suspend fun discoverMoviesByProvider(providerId: Int, region: String = "US", page: Int = 1): List<TmdbSearchHit> =
         withContext(Dispatchers.IO) {
             runCatching {
                 val today = todayIso()
@@ -335,6 +335,7 @@ object TmdbRepository {
                         "watch_region" to region,
                         "sort_by" to "popularity.desc",
                         "primary_release_date.lte" to today,
+                        "page" to page.toString(),
                     ),
                     TmdbSearchResponse.serializer(),
                 ).results.filter { it.poster_path != null }
@@ -343,9 +344,9 @@ object TmdbRepository {
 
     /**
      * Discover TV series available on a given watch provider (TMDB provider id).
-     * Mirrors the web `getSeriesByProvider` in `lib/tmdb.ts`.
+     * Mirrors the web `getSeriesByProviderPage` in `lib/tmdb.ts`.
      */
-    suspend fun discoverSeriesByProvider(providerId: Int, region: String = "US"): List<TmdbSearchHit> =
+    suspend fun discoverSeriesByProvider(providerId: Int, region: String = "US", page: Int = 1): List<TmdbSearchHit> =
         withContext(Dispatchers.IO) {
             runCatching {
                 val today = todayIso()
@@ -357,6 +358,7 @@ object TmdbRepository {
                         "sort_by" to "popularity.desc",
                         "first_air_date.lte" to today,
                         "include_null_first_air_dates" to "false",
+                        "page" to page.toString(),
                     ),
                     TmdbSearchResponse.serializer(),
                 ).results.filter { it.poster_path != null }

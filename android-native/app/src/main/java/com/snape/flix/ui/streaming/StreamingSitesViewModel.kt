@@ -85,6 +85,11 @@ class StreamingSitesViewModel : ViewModel() {
                     Triple(emptyList(), emptyList(), null)
                 }
 
+                // Fetch TMDB backdrop for providers that don't have a bundled asset
+                val backdrop = meta.backdropAsset ?: runCatching {
+                    TmdbRepository.img(TmdbRepository.detail(provider.heroIsSeries, provider.heroId)?.backdrop_path, "w1280")
+                }.getOrNull()
+
                 val cards = buildList {
                     movies.forEach { m ->
                         add(
@@ -127,8 +132,10 @@ class StreamingSitesViewModel : ViewModel() {
                     heroRating = meta.rating,
                     rtScore = meta.rtScore,
                     overview = meta.overview,
-                    heroBackdropUrl = meta.backdropAsset,
+                    heroBackdropUrl = backdrop ?: meta.backdropAsset,
                     heroLogoUrl = logoUrl,
+                    logoAsset = provider.asset,
+                    backdropOffsetX = if (provider == WatchProviderKey.DISNEYPLUS) -48f else 0f,
                 )
             }.filterNotNull()
 
