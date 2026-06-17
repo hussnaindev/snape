@@ -63,9 +63,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -148,7 +148,8 @@ fun DetailScreen(
         return
     }
 
-    val activity = LocalContext.current as? Activity
+    val context = LocalContext.current
+    val activity = context as? Activity
     val cfg = LocalConfiguration.current
 
     // Playback state. The Watch button (movies) and episode taps (series) start the
@@ -712,7 +713,11 @@ private fun MetaCard(s: DetailUiState, onWatch: () -> Unit) {
                 // actions: Watch + Download + Watchlist
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     WatchButton(modifier = Modifier.weight(1f), onClick = onWatch)
-                    DownloadActionIcon(group = s.group) { downloadOpen = true }
+                    DownloadActionIcon(
+                        group = s.group,
+                        onDownload = { downloadOpen = true },
+                        onNavigateToDownloads = { com.snape.flix.ui.downloads.DownloadsActivity.start(context) },
+                    )
                     WatchlistIcon(item = s.group.primary)
                 }
             }
@@ -868,13 +873,17 @@ private fun WatchButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
 
 /**
  * The detail-page download button — identical footprint to the watchlist icon
- * (36dp circle). When a download for any audio variant of this title is in flight,
- * a green-gradient ring sweeps around the button edge (no percentage text); once
- * complete it turns solid green with a check, mirroring the web button. Tapping
- * always opens the download options sheet.
+ * (36dp circle). When a download for any audio variant of this title exists (in
+ * flight or complete), tapping navigates to the downloads page instead of
+ * re-opening the download options sheet.
  */
 @Composable
-private fun DownloadActionIcon(group: com.snape.flix.data.SubjectGroup, onClick: () -> Unit) {
+private fun DownloadActionIcon(
+    group: com.snape.flix.data.SubjectGroup,
+    onDownload: () -> Unit,
+    onNavigateToDownloads: () -> Unit,
+) {
+    val context = LocalContext.current
     val items by com.snape.flix.data.Downloads.items.collectAsStateWithLifecycle()
     val variantIds = remember(group) { group.variants.map { it.subjectId }.toSet() }
     val match = items.firstOrNull { it.subjectId in variantIds }
@@ -885,12 +894,10 @@ private fun DownloadActionIcon(group: com.snape.flix.data.SubjectGroup, onClick:
             .clip(CircleShape)
             .background(if (completed) Color(0xFF10B981) else Color(0x99000000))
             .border(1.dp, if (completed) Color(0xFF10B981) else Color(0x4DFFFFFF), CircleShape)
-            .clickable(onClick = onClick),
+            .clickable(onClick = if (match != null) { { com.snape.flix.ui.downloads.DownloadsActivity.start(context) } } else onDownload),
         contentAlignment = Alignment.Center,
     ) {
         if (match != null && !completed) {
-            // Ring overlays the button edge (web: absolute inset-0), so the button
-            // keeps its 36dp size rather than shrinking to make room.
             com.snape.flix.ui.components.ProgressRing(
                 progress = match.fraction,
                 modifier = Modifier.fillMaxSize(),

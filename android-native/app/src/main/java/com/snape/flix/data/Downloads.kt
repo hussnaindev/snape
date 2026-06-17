@@ -43,7 +43,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 /** Where a download is in its lifecycle (mapped from Media3's [Download] states). */
-enum class DownloadStatus { QUEUED, RUNNING, PAUSED, COMPLETED, FAILED }
+enum class DownloadStatus { QUEUED, RUNNING, PAUSED, COMPLETED, FAILED, REMOVING }
 
 /**
  * Card metadata carried alongside a Media3 download (serialized into the
@@ -130,6 +130,12 @@ object Downloads {
     private val _items = MutableStateFlow<List<DownloadItem>>(emptyList())
     val items: StateFlow<List<DownloadItem>> = _items.asStateFlow()
 
+    private val _removingIds = MutableStateFlow<Set<String>>(emptySet())
+    val removingIds: StateFlow<Set<String>> = _removingIds.asStateFlow()
+
+    private val _resumingIds = MutableStateFlow<Set<String>>(emptySet())
+    val resumingIds: StateFlow<Set<String>> = _resumingIds.asStateFlow()
+
     fun init(context: Context) {
         appContext = context.applicationContext
         prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -145,12 +151,14 @@ object Downloads {
         // Don't silently resume after a cold start — present them as paused.
         dm.setStopReason(null, STOP_REASON_PAUSE)
         refresh()
-        // Media3 only notifies on state *changes*, not on byte progress. Poll once a
-        // second while anything is actively downloading so the UI ring/size update live.
+        // Media3 only notifies on state *changes*, not on byte progress. Poll rapidly
+        // (~60 fps) while anything is actively downloading so the UI progress bar and
+        // size labels update in real time.
         scope.launch {
             while (true) {
-                delay(1000)
-                if (_items.value.any { it.status == DownloadStatus.RUNNING }) refresh()
+                val active = _items.value.any { it.status == DownloadStatus.RUNNING || it.status == DownloadStatus.REMOVING }
+                if (active) refresh()
+                delay(if (active) 50 else 1000)
             }
         }
     }
@@ -273,6 +281,9 @@ object Downloads {
     fun resume(id: String) {
         val download = downloadById(id) ?: return
         val meta = runCatching { json.decodeFromString(DownloadMeta.serializer(), String(download.request.data)) }.getOrNull()
+        // Immediately mark as resuming so the UI shows a loading spinner.
+        _resumingIds.value = _resumingIds.value + id
+        refresh()
         scope.launch {
             if (meta != null) {
                 runCatching { MovieBoxRepository.playInfo(meta.subjectId, meta.se, meta.ep) }
@@ -281,15 +292,20 @@ object Downloads {
                     ?.let { fresh -> rememberCookie(fresh.url, fresh.signCookie) }
             }
             if (download.state == Download.STATE_FAILED) {
-                // A failed download restarts from its stored request (now with a fresh cookie).
                 DownloadService.sendAddDownload(appContext, SnapeDownloadService::class.java, download.request, false)
             } else {
                 DownloadService.sendSetStopReason(appContext, SnapeDownloadService::class.java, id, Download.STOP_REASON_NONE, false)
             }
+            _resumingIds.value = _resumingIds.value - id
         }
     }
 
     fun cancel(id: String) {
+        // Immediately mark as removing so the UI shows "Deleting…" + spinner.
+        _removingIds.value = _removingIds.value + id
+        refresh()
+        // After the remove completes (onDownloadRemoved → refresh) the item will
+        // disappear from the list, which is how the UI knows to stop rendering it.
         DownloadService.sendRemoveDownload(appContext, SnapeDownloadService::class.java, id, false)
     }
 
@@ -352,7 +368,8 @@ object Downloads {
 
     private fun mapState(state: Int, stopReason: Int): DownloadStatus = when (state) {
         Download.STATE_COMPLETED -> DownloadStatus.COMPLETED
-        Download.STATE_DOWNLOADING, Download.STATE_REMOVING, Download.STATE_RESTARTING -> DownloadStatus.RUNNING
+        Download.STATE_DOWNLOADING, Download.STATE_RESTARTING -> DownloadStatus.RUNNING
+        Download.STATE_REMOVING -> DownloadStatus.REMOVING
         Download.STATE_STOPPED -> DownloadStatus.PAUSED
         Download.STATE_FAILED -> DownloadStatus.FAILED
         Download.STATE_QUEUED -> if (stopReason != Download.STOP_REASON_NONE) DownloadStatus.PAUSED else DownloadStatus.QUEUED
