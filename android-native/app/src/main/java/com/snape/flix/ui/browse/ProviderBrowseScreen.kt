@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.snape.flix.data.HomeCard
+import com.snape.flix.data.TmdbRepository
+import com.snape.flix.data.TmdbSearchHit
 import com.snape.flix.ui.components.BackChip
 import com.snape.flix.ui.components.LinedHeading
 import com.snape.flix.ui.components.PosterCard
