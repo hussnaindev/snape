@@ -215,13 +215,19 @@ function ProgressRing({ pct, paused }: { pct: number; paused: boolean }) {
   );
 }
 
+interface TMDBSeasonSummary {
+  season_number: number;
+  episode_count: number;
+  name: string;
+}
+
 function DownloadModal({
   type,
   tmdbId,
   title,
   posterPath,
-  season,
-  episode,
+  season: propSeason,
+  episode: propEpisode,
   onClose,
 }: {
   type: 'movie' | 'series';
@@ -238,6 +244,9 @@ function DownloadModal({
   const [lang, setLang] = useState('');
   const [quality, setQuality] = useState('');
   const [subIndex, setSubIndex] = useState(-1); // -1 = none
+  const [seriesSeasons, setSeriesSeasons] = useState<TMDBSeasonSummary[]>([]);
+  const [selectedSeason, setSelectedSeason] = useState(propSeason ?? 1);
+  const [selectedEpisode, setSelectedEpisode] = useState(propEpisode ?? 1);
   // Portal to <body> so the modal escapes the detail hero's parallax/transform
   // containers (which create a stacking context that would otherwise trap z-index
   // below fixed overlays like the PWA install banner).
@@ -262,10 +271,35 @@ function DownloadModal({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  // Fetch series details for season/episode picker
+  useEffect(() => {
+    if (type !== 'series') return;
+    let aborted = false;
+    fetch(`/api/tmdb/tv/${tmdbId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (aborted) return;
+        const seasons: TMDBSeasonSummary[] = (data.seasons ?? []).filter(
+          (s: TMDBSeasonSummary) => s.season_number > 0 && s.episode_count > 0,
+        );
+        setSeriesSeasons(seasons);
+        if (!propSeason && seasons.length > 0) {
+          setSelectedSeason(seasons[0]!.season_number);
+          setSelectedEpisode(1);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      aborted = true;
+    };
+  }, [type, tmdbId, propSeason]);
+
   useEffect(() => {
     let aborted = false;
     const streamType = type === 'series' ? 'tv' : 'movie';
-    const qs = type === 'series' ? `?season=${season}&episode=${episode}` : '';
+    const s = type === 'series' ? selectedSeason : undefined;
+    const e = type === 'series' ? selectedEpisode : undefined;
+    const qs = type === 'series' ? `?season=${s}&episode=${e}` : '';
     fetch(`/api/stream/${streamType}/${tmdbId}${qs}`, { cache: 'no-store' })
       .then((r) => r.json() as Promise<StreamResponse>)
       .then((json) => {
@@ -286,7 +320,7 @@ function DownloadModal({
     return () => {
       aborted = true;
     };
-  }, [type, tmdbId, season, episode]);
+  }, [type, tmdbId, selectedSeason, selectedEpisode]);
 
   const languages = useMemo(() => {
     const seen = new Set<string>();
@@ -343,8 +377,7 @@ function DownloadModal({
     void startDownload({
       type,
       tmdbId,
-      ...(season !== undefined ? { season } : {}),
-      ...(episode !== undefined ? { episode } : {}),
+      ...(type === 'series' ? { season: selectedSeason, episode: selectedEpisode } : {}),
       title,
       posterPath,
       quality,
@@ -358,10 +391,7 @@ function DownloadModal({
     onClose();
   }
 
-  const heading =
-    type === 'series' && season !== undefined && episode !== undefined
-      ? `${title} · S${season} E${episode}`
-      : title;
+  const heading = type === 'series' ? `${title} · S${selectedSeason} E${selectedEpisode}` : title;
 
   if (!mounted) return null;
 
@@ -413,6 +443,43 @@ function DownloadModal({
 
           {status === 'ready' && (
             <>
+              {type === 'series' && seriesSeasons.length > 0 && (
+                <>
+                  <Field label="Season">
+                    <ChipGroup
+                      options={seriesSeasons.map((s) => String(s.season_number))}
+                      value={String(selectedSeason)}
+                      onChange={(v) => {
+                        const newSeason = Number(v);
+                        setSelectedSeason(newSeason);
+                        setSelectedEpisode(1);
+                        setStatus('loading');
+                        setSources([]);
+                        setSubtitles([]);
+                      }}
+                    />
+                  </Field>
+                  <Field label="Episode">
+                    <ChipGroup
+                      options={Array.from(
+                        {
+                          length:
+                            seriesSeasons.find((s) => s.season_number === selectedSeason)
+                              ?.episode_count ?? 0,
+                        },
+                        (_, i) => String(i + 1),
+                      )}
+                      value={String(selectedEpisode)}
+                      onChange={(v) => {
+                        setSelectedEpisode(Number(v));
+                        setStatus('loading');
+                        setSources([]);
+                        setSubtitles([]);
+                      }}
+                    />
+                  </Field>
+                </>
+              )}
               <Field label="Quality">
                 <ChipGroup options={qualities} value={quality} onChange={setQuality} />
               </Field>
