@@ -130,7 +130,7 @@ class StreamingSitesViewModel : ViewModel() {
                     .take(10)
 
                 HomeSection(
-                    key = provider.name,
+                    key = provider.tmdbId.toString(),
                     label = provider.label,
                     brandColor = provider.brandColor,
                     isSeries = false,

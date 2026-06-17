@@ -15,7 +15,6 @@ import androidx.lifecycle.lifecycleScope
 import com.snape.flix.data.HomeCard
 import com.snape.flix.data.MovieBoxRepository
 import com.snape.flix.data.SubjectGroup
-import com.snape.flix.data.WatchProviderKey
 import com.snape.flix.ui.detail.DetailActivity
 import com.snape.flix.ui.theme.SnapeTheme
 import kotlinx.coroutines.launch
@@ -41,8 +40,8 @@ class ProviderBrowseActivity : ComponentActivity() {
 
         val title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
         val providerKey = intent.getStringExtra(EXTRA_PROVIDER).orEmpty()
-        val provider = WatchProviderKey.entries.find { it.name == providerKey }
-        if (provider == null) {
+        val tmdbId = providerKey.toIntOrNull()
+        if (tmdbId == null) {
             finish()
             return
         }
@@ -52,7 +51,7 @@ class ProviderBrowseActivity : ComponentActivity() {
                 Surface(Modifier.fillMaxSize().background(Color.Black), color = Color.Black) {
                     ProviderBrowseScreen(
                         title = title,
-                        providerId = provider.tmdbId,
+                        providerId = tmdbId,
                         onOpenDetail = { card ->
                             lifecycleScope.launch {
                                 val group = runCatching {
