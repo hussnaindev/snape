@@ -92,6 +92,7 @@ function DownloadRow({
   const paused = record.status === 'paused';
   const downloadingNow = record.status === 'downloading' || record.status === 'queued';
   const failed = record.status === 'failed' || record.status === 'canceled';
+  const removing = record.status === 'removing';
 
   return (
     <div className="flex gap-3 rounded-xl bg-white/5 border border-white/10 p-2.5">
@@ -107,8 +108,8 @@ function DownloadRow({
         )}
       </div>
 
-      {/* Info — title/badges/progress on top, Play pinned bottom-left */}
-      <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+      {/* Info — title/badges/progress */}
+      <div className="flex-1 min-w-0 flex flex-col justify-center py-0.5 gap-1">
         <div className="min-w-0">
           <Link
             href={href}
@@ -122,80 +123,132 @@ function DownloadRow({
             {record.lang && record.lang !== 'Default' && <Badge>{record.lang}</Badge>}
             {record.subtitleLang && <Badge>CC {record.subtitleLang}</Badge>}
           </div>
-
-          {active && (
-            <div className="mt-2">
-              <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-                <div
-                  className={cn(
-                    'h-full transition-[width] duration-300',
-                    paused
-                      ? 'bg-white/40'
-                      : 'bg-gradient-to-r from-emerald-500 via-green-400 to-emerald-300',
-                  )}
-                  style={{ width: `${record.progress}%` }}
-                />
-              </div>
-              <p className="text-white/40 text-[11px] mt-1">
-                {record.status === 'queued'
-                  ? 'Queued…'
-                  : paused
-                    ? record.totalBytes > 0
-                      ? `Paused · ${record.progress}% of ${formatBytes(record.totalBytes)}`
-                      : `Paused · ${formatBytes(record.receivedBytes)}`
-                    : record.totalBytes > 0
-                      ? `${record.progress}% · ${formatBytes(record.receivedBytes)} / ${formatBytes(record.totalBytes)}`
-                      : `${formatBytes(record.receivedBytes)} downloaded`}
-              </p>
-            </div>
-          )}
-
-          {failed && (
-            <p className="text-red-400/80 text-[11px] mt-1.5">
-              {record.status === 'canceled'
-                ? 'Canceled'
-                : `Failed${record.error ? ` · ${record.error}` : ''}`}
-            </p>
-          )}
         </div>
 
-        {/* Bottom-left: Play (completed) + size */}
-        {completed && (
-          <div className="flex items-center gap-2.5 mt-2">
-            <button
-              type="button"
-              onClick={() => onPlay(record)}
-              className="inline-flex items-center gap-1.5 rounded-full bg-white text-black px-4 h-8 text-xs font-semibold hover:bg-white/85 transition-colors cursor-pointer"
-            >
-              <PlayIcon /> Play
-            </button>
-            <span className="text-white/40 text-[11px]">{formatBytes(record.totalBytes)}</span>
+        {active && (
+          <div>
+            <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+              <div
+                className={cn(
+                  'h-full transition-[width] duration-75',
+                  paused
+                    ? 'bg-white/40'
+                    : 'bg-gradient-to-r from-emerald-500 via-green-400 to-emerald-300',
+                )}
+                style={{ width: `${record.progress}%` }}
+              />
+            </div>
+            <p className="text-white/40 text-[11px] mt-1">
+              {record.status === 'queued'
+                ? 'Queued…'
+                : paused
+                  ? record.totalBytes > 0
+                    ? `Paused · ${Math.floor(record.progress)}% of ${formatBytes(record.totalBytes)}`
+                    : `Paused · ${formatBytes(record.receivedBytes)}`
+                  : record.totalBytes > 0
+                    ? `${Math.floor(record.progress)}% · ${formatBytes(record.receivedBytes)} / ${formatBytes(record.totalBytes)}`
+                    : `${formatBytes(record.receivedBytes)} downloaded`}
+            </p>
           </div>
+        )}
+
+        {failed && (
+          <p className="text-red-400/80 text-[11px]">
+            {record.status === 'canceled'
+              ? 'Canceled'
+              : `Failed${record.error ? ` · ${record.error}` : ''}`}
+          </p>
+        )}
+
+        {completed && (
+          <span className="text-white/40 text-[11px]">{formatBytes(record.totalBytes)}</span>
         )}
       </div>
 
-      {/* Right-side icon actions */}
-      <div className="flex-none flex flex-col items-end justify-center gap-1.5">
-        {downloadingNow && (
-          <IconAction label="Pause" onClick={() => void pauseDownload(record.id)}>
-            <PauseIcon />
-          </IconAction>
+      {/* Right-side fixed-size action buttons */}
+      <div className="flex-none flex flex-col items-center justify-center gap-2">
+        {!removing && (
+          <>
+            {downloadingNow && (
+              <ActionButton onClick={() => void pauseDownload(record.id)} aria-label="Pause">
+                <PauseIcon />
+              </ActionButton>
+            )}
+            {paused && (
+              <ActionButton onClick={() => void resumeDownload(record.id)} aria-label="Resume">
+                <PlayIcon />
+              </ActionButton>
+            )}
+            {completed && (
+              <ActionButton onClick={() => onPlay(record)}>
+                <PlayIcon /> <span>Play</span>
+              </ActionButton>
+            )}
+            {failed && (
+              <ActionButton onClick={() => void retryDownload(record.id)} aria-label="Retry">
+                <RetryIcon />
+              </ActionButton>
+            )}
+          </>
         )}
-        {paused && (
-          <IconAction label="Resume" onClick={() => void resumeDownload(record.id)}>
-            <PlayIcon />
-          </IconAction>
+
+        {removing ? (
+          <ActionButton loading>Deleting&hellip;</ActionButton>
+        ) : (
+          <ActionButton onClick={() => void removeDownload(record.id)} aria-label="Delete">
+            <TrashIcon />
+          </ActionButton>
         )}
-        {failed && (
-          <IconAction label="Retry" onClick={() => void retryDownload(record.id)}>
-            <RetryIcon />
-          </IconAction>
-        )}
-        <IconAction label="Delete" onClick={() => void removeDownload(record.id)}>
-          <TrashIcon />
-        </IconAction>
       </div>
     </div>
+  );
+}
+
+function ActionButton({
+  onClick,
+  loading,
+  children,
+  ...props
+}: {
+  onClick?: () => void;
+  loading?: boolean;
+  children: React.ReactNode;
+} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={loading}
+      {...props}
+      className="w-20 h-9 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center gap-1.5 text-white/50 text-xs font-medium transition-colors disabled:opacity-60 disabled:cursor-wait cursor-pointer hover:text-white hover:bg-white/10"
+    >
+      {loading ? (
+        <>
+          <SpinnerIcon />
+          <span className="text-white/70">{children}</span>
+        </>
+      ) : (
+        children
+      )}
+    </button>
+  );
+}
+
+function SpinnerIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      className="animate-spin"
+      aria-hidden="true"
+    >
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
   );
 }
 
@@ -204,27 +257,6 @@ function Badge({ children }: { children: React.ReactNode }) {
     <span className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-white/60">
       {children}
     </span>
-  );
-}
-
-function IconAction({
-  label,
-  onClick,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-    >
-      {children}
-    </button>
   );
 }
 

@@ -8,7 +8,6 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-
 const schema = z.object({
   email: z.string().email().toLowerCase().trim(),
   password: z.string().min(1),

@@ -7,7 +7,6 @@ import { and, desc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-
 const addSchema = z.object({
   tmdbId: z.number().int().positive(),
   mediaType: z.enum(['movie', 'series', 'collection']),

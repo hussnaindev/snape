@@ -54,11 +54,7 @@
       "indexes": {
         "collection_items_unique": {
           "name": "collection_items_unique",
-          "columns": [
-            "collection_id",
-            "tmdb_id",
-            "media_type"
-          ],
+          "columns": ["collection_id", "tmdb_id", "media_type"],
           "isUnique": true
         }
       },
@@ -67,12 +63,8 @@
           "name": "collection_items_collection_id_collections_id_fk",
           "tableFrom": "collection_items",
           "tableTo": "collections",
-          "columnsFrom": [
-            "collection_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["collection_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -133,12 +125,8 @@
           "name": "collections_profile_id_profiles_id_fk",
           "tableFrom": "collections",
           "tableTo": "profiles",
-          "columnsFrom": [
-            "profile_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["profile_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -178,12 +166,8 @@
           "name": "passwords_user_id_users_id_fk",
           "tableFrom": "passwords",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -260,9 +244,7 @@
       "indexes": {
         "preferences_profile_id_unique": {
           "name": "preferences_profile_id_unique",
-          "columns": [
-            "profile_id"
-          ],
+          "columns": ["profile_id"],
           "isUnique": true
         }
       },
@@ -271,12 +253,8 @@
           "name": "preferences_profile_id_profiles_id_fk",
           "tableFrom": "preferences",
           "tableTo": "profiles",
-          "columnsFrom": [
-            "profile_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["profile_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -338,12 +316,8 @@
           "name": "profiles_user_id_users_id_fk",
           "tableFrom": "profiles",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -390,12 +364,8 @@
           "name": "sessions_user_id_users_id_fk",
           "tableFrom": "sessions",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -453,9 +423,7 @@
       "indexes": {
         "users_email_unique": {
           "name": "users_email_unique",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": true
         }
       },
@@ -573,11 +541,7 @@
       "indexes": {
         "watch_history_unique": {
           "name": "watch_history_unique",
-          "columns": [
-            "profile_id",
-            "tmdb_id",
-            "media_type"
-          ],
+          "columns": ["profile_id", "tmdb_id", "media_type"],
           "isUnique": true
         }
       },
@@ -586,12 +550,8 @@
           "name": "watch_history_profile_id_profiles_id_fk",
           "tableFrom": "watch_history",
           "tableTo": "profiles",
-          "columnsFrom": [
-            "profile_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["profile_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -642,11 +602,7 @@
       "indexes": {
         "watchlist_unique": {
           "name": "watchlist_unique",
-          "columns": [
-            "profile_id",
-            "tmdb_id",
-            "media_type"
-          ],
+          "columns": ["profile_id", "tmdb_id", "media_type"],
           "isUnique": true
         }
       },
@@ -655,12 +611,8 @@
           "name": "watchlist_profile_id_profiles_id_fk",
           "tableFrom": "watchlist",
           "tableTo": "profiles",
-          "columnsFrom": [
-            "profile_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["profile_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }

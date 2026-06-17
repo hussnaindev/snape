@@ -144,11 +144,7 @@ function init() {
   });
 }
 
-export function registerParallax(
-  el: HTMLElement,
-  section: Element,
-  effect: Effect,
-): () => void {
+export function registerParallax(el: HTMLElement, section: Element, effect: Effect): () => void {
   init();
 
   const sub: Subscriber = { el, section, effect, visible: false };

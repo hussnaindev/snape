@@ -46,7 +46,9 @@ export function Banner() {
           }}
         >
           <span className="sm:hidden">Thousands of movies & shows, free.</span>
-          <span className="hidden sm:inline">Thousands of movies and shows, streaming instantly. New releases every week.</span>
+          <span className="hidden sm:inline">
+            Thousands of movies and shows, streaming instantly. New releases every week.
+          </span>
         </p>
 
         <div className="flex items-center gap-3">

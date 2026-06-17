@@ -73,12 +73,7 @@ describe('flattenAutocompleteItems', () => {
       series: [series(10)],
       people: [person(100)],
     });
-    expect(flat.map((i) => i.href)).toEqual([
-      '/movie/1',
-      '/movie/2',
-      '/series/10',
-      '/person/100',
-    ]);
+    expect(flat.map((i) => i.href)).toEqual(['/movie/1', '/movie/2', '/series/10', '/person/100']);
   });
 
   test('caps each category at AUTOCOMPLETE_ITEM_LIMIT', () => {

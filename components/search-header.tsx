@@ -33,7 +33,10 @@ export function SearchHeader({ active }: Props) {
 
   return (
     <div className="flex flex-col items-center mb-8">
-      <div className="inline-flex rounded-lg bg-white/5 border border-white/10 p-1 gap-0.5" role="tablist">
+      <div
+        className="inline-flex rounded-lg bg-white/5 border border-white/10 p-1 gap-0.5"
+        role="tablist"
+      >
         {TABS.map(({ id, label }) => {
           const selected = active === id;
           return (

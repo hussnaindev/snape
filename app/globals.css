@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
 @font-face {
-  font-family: 'ITC Pioneer';
-  src: url('/fonts/ITCPioneer.otf') format('opentype');
+  font-family: "ITC Pioneer";
+  src: url("/fonts/ITCPioneer.otf") format("opentype");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'Chesna Grotesk';
-  src: url('/fonts/chesnagrotesk-regular-webfont.woff2') format('woff2');
+  font-family: "Chesna Grotesk";
+  src: url("/fonts/chesnagrotesk-regular-webfont.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -28,10 +28,8 @@
 
   /* ── Fonts (populated by next/font CSS vars) ── */
   --font-body: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-itc-pioneer: 'ITC Pioneer', ui-serif, Georgia, serif;
-  --font-chesna-grotesk: 'Chesna Grotesk', ui-sans-serif, system-ui, sans-serif;
-
-
+  --font-itc-pioneer: "ITC Pioneer", ui-serif, Georgia, serif;
+  --font-chesna-grotesk: "Chesna Grotesk", ui-sans-serif, system-ui, sans-serif;
 }
 
 /* ── Keyframes ── */
@@ -76,15 +74,23 @@
 }
 
 @keyframes slide-in-right {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 @keyframes breath {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.06); }
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
 }
-
 
 /* ── Custom utilities ── */
 
@@ -168,7 +174,7 @@ html:fullscreen .player-safe-area {
 }
 
 /* TV Channels: hide page chrome while the player is in native fullscreen */
-html[data-tv-fullscreen] header[class*='fixed'] {
+html[data-tv-fullscreen] header[class*="fixed"] {
   display: none;
 }
 
@@ -190,7 +196,6 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-
 
 /* Honor prefers-reduced-motion: kill all transitions, animations, and
    smooth-scroll so the UI feels instant for users with vestibular

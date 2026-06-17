@@ -57,12 +57,7 @@ function progressPct(positionSeconds: number, durationSeconds: number): number {
  * Identity of a single resume slot. Movies have one slot per title; series have
  * one slot per episode, so each episode keeps its own resume position.
  */
-function entryKey(
-  id: number,
-  type: 'movie' | 'series',
-  season?: number,
-  episode?: number,
-): string {
+function entryKey(id: number, type: 'movie' | 'series', season?: number, episode?: number): string {
   return type === 'series' ? `series:${id}:${season ?? 0}:${episode ?? 0}` : `movie:${id}`;
 }
 
@@ -205,7 +200,10 @@ export function getResumePosition(
     const slot = entryKey(id, type, season, episode);
     const entry = getWatchHistory().find((e) => entrySlot(e) === slot);
     if (!entry) return 0;
-    if (entry.durationSeconds > 0 && entry.positionSeconds / entry.durationSeconds >= FINISHED_FRACTION) {
+    if (
+      entry.durationSeconds > 0 &&
+      entry.positionSeconds / entry.durationSeconds >= FINISHED_FRACTION
+    ) {
       return 0;
     }
     return entry.positionSeconds > 0 ? entry.positionSeconds : 0;

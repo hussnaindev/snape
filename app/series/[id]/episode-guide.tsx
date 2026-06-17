@@ -21,7 +21,14 @@ interface Props {
   variant?: 'carousel' | 'list';
 }
 
-export function EpisodeGuide({ seriesId, seasons, initialSeason, initialSelectedSeason, onSelect, variant = 'carousel' }: Props) {
+export function EpisodeGuide({
+  seriesId,
+  seasons,
+  initialSeason,
+  initialSelectedSeason,
+  onSelect,
+  variant = 'carousel',
+}: Props) {
   // Filter out specials (season 0) unless it's the only season
   const mainSeasons = seasons.filter((s) => s.season_number !== 0 && s.episode_count > 0);
   const hasSpecials = seasons.some((s) => s.season_number === 0 && s.episode_count > 0);
@@ -81,7 +88,9 @@ export function EpisodeGuide({ seriesId, seasons, initialSeason, initialSelected
 
       {/* Season tabs */}
       {allVisibleSeasons.length > 1 && (
-        <div className={`flex gap-2 overflow-x-auto no-scrollbar pb-3 ${variant === 'carousel' ? 'px-4 md:px-8' : ''}`}>
+        <div
+          className={`flex gap-2 overflow-x-auto no-scrollbar pb-3 ${variant === 'carousel' ? 'px-4 md:px-8' : ''}`}
+        >
           {allVisibleSeasons.map((s) => (
             <button
               key={s.season_number}
@@ -112,9 +121,9 @@ export function EpisodeGuide({ seriesId, seasons, initialSeason, initialSelected
                   key={i}
                   className="flex-none w-[180px] sm:w-[240px] md:w-[260px] lg:w-[280px] xl:w-[300px]"
                 >
-                    <div className="rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 overflow-hidden animate-pulse shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)]">
-                      <div className="aspect-[4/3] bg-white/10" />
-                    </div>
+                  <div className="rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 overflow-hidden animate-pulse shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)]">
+                    <div className="aspect-[4/3] bg-white/10" />
+                  </div>
                 </div>
               ))}
             </div>
@@ -166,7 +175,9 @@ export function EpisodeGuide({ seriesId, seasons, initialSeason, initialSelected
           </div>
         )
       ) : (
-        <p className={`text-white/40 text-sm py-6 text-center ${variant === 'carousel' ? 'px-4 md:px-8' : ''}`}>
+        <p
+          className={`text-white/40 text-sm py-6 text-center ${variant === 'carousel' ? 'px-4 md:px-8' : ''}`}
+        >
           No episodes available.
         </p>
       )}
@@ -308,7 +319,13 @@ function EpisodeRow({
         {still ? (
           <picture>
             <source srcSet={still.desktop} media="(min-width: 1024px)" />
-            <Image src={still.mobile} alt={episode.name} fill sizes="160px" className="object-cover transition-transform duration-300 ease-out group-hover:scale-110" />
+            <Image
+              src={still.mobile}
+              alt={episode.name}
+              fill
+              sizes="160px"
+              className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
+            />
           </picture>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">

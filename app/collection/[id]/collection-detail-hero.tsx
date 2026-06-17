@@ -86,9 +86,9 @@ export function CollectionDetailHero({
       playerContainerRef.current
         ?.requestFullscreen()
         .then(() =>
-          (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock?.(
-            'landscape',
-          )?.catch(() => {}),
+          (screen.orientation as unknown as { lock?: (o: string) => Promise<void> })
+            .lock?.('landscape')
+            ?.catch(() => {}),
         )
         .catch(() => {});
     }

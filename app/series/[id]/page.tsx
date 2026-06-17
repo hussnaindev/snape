@@ -66,9 +66,8 @@ export default async function SeriesPage({ params }: Props) {
     getSeriesImages(seriesId).catch(() => ({ id: 0, backdrops: [], logos: [], posters: [] })),
   ]);
 
-  const logoPath = images.logos.find((l) => l.iso_639_1 === 'en')?.file_path
-    ?? images.logos[0]?.file_path
-    ?? null;
+  const logoPath =
+    images.logos.find((l) => l.iso_639_1 === 'en')?.file_path ?? images.logos[0]?.file_path ?? null;
   const logoUrl = logoPath ? tmdbImage(logoPath, 'w500') : null;
 
   const trailerKey = await getEmbeddableTrailerKey(videos);

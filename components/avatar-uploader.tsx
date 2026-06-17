@@ -57,7 +57,9 @@ export function AvatarUploader({ onSuccess, onError, size = 'lg' }: Props) {
     <div className="relative group cursor-pointer" onClick={handleClick}>
       <UserAvatar name={user.name} avatarUrl={user.avatarUrl} size={size} />
       {/* Edit overlay */}
-      <div className={`absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${wrapSize}`}>
+      <div
+        className={`absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${wrapSize}`}
+      >
         <CameraIcon size={iconSize} />
       </div>
       <input
@@ -84,18 +86,34 @@ function resizeImage(file: File, maxPx: number): Promise<string> {
       canvas.width = w;
       canvas.height = h;
       const ctx = canvas.getContext('2d');
-      if (!ctx) { reject(new Error('canvas unavailable')); return; }
+      if (!ctx) {
+        reject(new Error('canvas unavailable'));
+        return;
+      }
       ctx.drawImage(img, 0, 0, w, h);
       resolve(canvas.toDataURL('image/jpeg', 0.85));
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image load failed')); };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('image load failed'));
+    };
     img.src = url;
   });
 }
 
 function CameraIcon({ size }: { size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="white"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
       <circle cx="12" cy="13" r="4" />
     </svg>

@@ -14,7 +14,12 @@ import { searchCollections, searchMovies, searchPeople, searchTvShows } from '@/
 import { filterHasImages } from '@/lib/tmdb-filters';
 
 const ROW_SIZE = 6;
-import type { TMDBCollectionSearchHit, TMDBMovie, TMDBPersonSearchHit, TMDBSeries } from '@/types/tmdb';
+import type {
+  TMDBCollectionSearchHit,
+  TMDBMovie,
+  TMDBPersonSearchHit,
+  TMDBSeries,
+} from '@/types/tmdb';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 

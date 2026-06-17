@@ -53,7 +53,11 @@ const MEDIA_PROXY_BASE = (process.env.MEDIA_PROXY_BASE ?? '').replace(/\/+$/, ''
 async function signedMediaUrl(absoluteUrl, headers) {
   const h = encodeHeaders(headers);
   const key = await getSignKey();
-  const sigBuf = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${absoluteUrl}\n${h}`));
+  const sigBuf = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    new TextEncoder().encode(`${absoluteUrl}\n${h}`),
+  );
   const sig = [...new Uint8Array(sigBuf)].map((b) => b.toString(16).padStart(2, '0')).join('');
   const hParam = h ? `&h=${encodeURIComponent(h)}` : '';
   return `${MEDIA_PROXY_BASE}/api/media-proxy?u=${encodeURIComponent(absoluteUrl)}${hParam}&s=${sig}`;

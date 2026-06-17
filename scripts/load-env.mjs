@@ -16,10 +16,7 @@ function loadEnvFile(file) {
     const key = trimmed.slice(0, eq).trim();
     if (process.env[key] !== undefined) continue;
     let val = trimmed.slice(eq + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     process.env[key] = val;

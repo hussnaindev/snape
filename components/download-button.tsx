@@ -12,6 +12,7 @@ import {
 import { showToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -76,10 +77,20 @@ export function DownloadButton({
     });
   }, [type, tmdbId, season, episode]);
 
+  const router = useRouter();
   const downloaded = record?.status === 'completed';
   const active = record ? isDownloadActive(record.status) : false;
   const paused = record?.status === 'paused';
   const pct = record ? record.progress : 0;
+  const hasExistingDownload = record && (downloaded || active);
+
+  const handleClick = () => {
+    if (hasExistingDownload) {
+      router.push('/downloads');
+    } else {
+      setOpen(true);
+    }
+  };
 
   // Show the live percentage; if the source didn't expose a total size, fall
   // back to bytes downloaded so the user still sees real progress.
@@ -101,7 +112,7 @@ export function DownloadButton({
       <>
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={handleClick}
           aria-label={downloaded ? 'Downloaded' : active ? `Downloading ${pct}%` : 'Download'}
           className={cn(
             'relative flex items-center justify-center w-9 h-9 rounded-full border transition-all cursor-pointer',
@@ -134,7 +145,7 @@ export function DownloadButton({
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={handleClick}
         className={cn(
           'relative top-0 inline-flex items-center justify-center gap-2 overflow-hidden text-nowrap rounded-full border py-0.5 text-xs font-semibold uppercase leading-tight tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-10 px-3 md:h-12 md:px-5 min-w-36',
           downloaded

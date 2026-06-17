@@ -62,9 +62,8 @@ export function EpisodePanel({
     };
   }, [selectedSeason, seriesId, initialSeason]);
 
-  const airedEpisodes = seasonData?.episodes?.filter(
-    (e) => e.air_date !== null && e.air_date <= TODAY,
-  ) ?? [];
+  const airedEpisodes =
+    seasonData?.episodes?.filter((e) => e.air_date !== null && e.air_date <= TODAY) ?? [];
 
   const currentEp = seasonData?.episodes?.find(
     (e) => e.season_number === currentSeasonNum && e.episode_number === currentEpisodeNum,
@@ -117,7 +116,9 @@ export function EpisodePanel({
               <div>
                 <p className="text-white font-semibold text-sm line-clamp-1">{seriesName}</p>
                 <p className="text-white/40 text-xs mt-0.5">
-                  {allVisibleSeasons.length > 1 ? `Season ${selectedSeason}` : seasonData?.name ?? 'Loading...'}
+                  {allVisibleSeasons.length > 1
+                    ? `Season ${selectedSeason}`
+                    : (seasonData?.name ?? 'Loading...')}
                 </p>
               </div>
               <button

@@ -27,10 +27,7 @@ export async function mergePaginatedResults<T extends { id: number }>(
   return merged;
 }
 
-export function parsePageParam(
-  raw: string | undefined,
-  totalPages: number,
-): number {
+export function parsePageParam(raw: string | undefined, totalPages: number): number {
   const n = Number(raw ?? 1);
   if (!Number.isFinite(n) || n < 1) return 1;
   return Math.min(Math.floor(n), Math.max(1, totalPages));

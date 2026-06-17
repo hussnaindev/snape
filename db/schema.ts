@@ -97,7 +97,9 @@ export const watchHistory = sqliteTable(
       .notNull()
       .$defaultFn(() => new Date()),
   },
-  (t) => [unique('watch_history_unique').on(t.profileId, t.tmdbId, t.mediaType, t.season, t.episode)],
+  (t) => [
+    unique('watch_history_unique').on(t.profileId, t.tmdbId, t.mediaType, t.season, t.episode),
+  ],
 );
 
 export const preferences = sqliteTable('preferences', {

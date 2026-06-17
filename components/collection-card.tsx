@@ -28,18 +28,18 @@ export function CollectionCard({ collection, className }: CollectionCardProps) {
               alt={collection.name}
               fill
               sizes="50vw"
-                className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
-              />
-            </picture>
-          ) : backdrop ? (
-            <picture>
-              <source srcSet={backdrop.desktop} media="(min-width: 1024px)" />
-              <Image
-                src={backdrop.mobile}
-                alt={collection.name}
-                fill
-                sizes="50vw"
-                className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
+              className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
+            />
+          </picture>
+        ) : backdrop ? (
+          <picture>
+            <source srcSet={backdrop.desktop} media="(min-width: 1024px)" />
+            <Image
+              src={backdrop.mobile}
+              alt={collection.name}
+              fill
+              sizes="50vw"
+              className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
             />
           </picture>
         ) : (
@@ -48,7 +48,7 @@ export function CollectionCard({ collection, className }: CollectionCardProps) {
           </div>
         )}
         {/* Play overlay on hover */}
-          <div className="absolute inset-0 bg-black/50 opacity-0 hidden items-center justify-center">
+        <div className="absolute inset-0 bg-black/50 opacity-0 hidden items-center justify-center">
           <div className="w-12 h-12 rounded-full border border-white/50 bg-black/30 flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.12)]">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="white" aria-hidden="true">
               <polygon points="6,4 20,12 6,20" />
@@ -64,7 +64,7 @@ export function CollectionCard({ collection, className }: CollectionCardProps) {
         <div className="absolute inset-x-0 bottom-0 flex items-center pointer-events-none z-0">
           <div className="w-full bg-gradient-to-t from-black/85 to-black/50 py-1.5 sm:py-2 rounded-t-md px-3">
             <p className="text-[10px] sm:text-[11px] font-chesna-grotesk uppercase truncate tracking-[0.2em] font-light text-white/90 text-center">
-                {collection.name}
+              {collection.name}
             </p>
           </div>
         </div>

@@ -89,8 +89,6 @@ async function fetchRetry(url: string, init: RequestInit, attempts = 3): Promise
   return last as Response;
 }
 
-
-
 // Convert SubRip (SRT) to WebVTT — browsers only render VTT in <track>.
 function srtToVtt(input: string): string {
   const body = input
@@ -159,7 +157,8 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
   initSecret(env.MEDIA_PROXY_SECRET ?? '');
 
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
-  if (req.method !== 'GET') return new Response('Method not allowed', { status: 405, headers: CORS });
+  if (req.method !== 'GET')
+    return new Response('Method not allowed', { status: 405, headers: CORS });
 
   const url = new URL(req.url);
   const sp = url.searchParams;

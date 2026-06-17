@@ -7,7 +7,6 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-
 const updateSchema = z.object({
   autoplayNext: z.boolean().optional(),
   subtitlesEnabled: z.boolean().optional(),

@@ -59,7 +59,8 @@ const SLIDES: Slide[] = [
     moreInfo: true,
     metadata: 'TV Show',
     rating: 'TV-MA',
-    trailerUrl: 'https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?cc=US&svcId=tvs.vds.4105&a=1815366977&isExternal=true&brandId=tvs.sbd.4000&id=1131292652&l=en-US&aec=UHD',
+    trailerUrl:
+      'https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?cc=US&svcId=tvs.vds.4105&a=1815366977&isExternal=true&brandId=tvs.sbd.4000&id=1131292652&l=en-US&aec=UHD',
   },
   {
     id: '241609',
@@ -76,7 +77,8 @@ const SLIDES: Slide[] = [
     moreInfo: true,
     metadata: 'TV Show',
     rating: 'TV-MA',
-    trailerUrl: 'https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?cc=US&svcId=tvs.vds.4105&a=1875429673&isExternal=true&brandId=tvs.sbd.4000&id=1283390014&l=en-US&aec=UHD',
+    trailerUrl:
+      'https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?cc=US&svcId=tvs.vds.4105&a=1875429673&isExternal=true&brandId=tvs.sbd.4000&id=1283390014&l=en-US&aec=UHD',
   },
   {
     id: '202411',
@@ -94,7 +96,8 @@ const SLIDES: Slide[] = [
     moreInfo: true,
     metadata: 'TV Show',
     rating: 'TV-14',
-    trailerUrl: 'https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?cc=US&svcId=tvs.vds.4105&a=1867658901&isExternal=true&brandId=tvs.sbd.4000&id=1283929122&l=en-US&aec=UHD',
+    trailerUrl:
+      'https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?cc=US&svcId=tvs.vds.4105&a=1867658901&isExternal=true&brandId=tvs.sbd.4000&id=1283929122&l=en-US&aec=UHD',
   },
   {
     id: '270476',
@@ -112,7 +115,8 @@ const SLIDES: Slide[] = [
     moreInfo: true,
     metadata: 'TV Show',
     rating: 'TV-MA',
-    trailerUrl: 'https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?cc=US&svcId=tvs.vds.4105&a=1888549019&isExternal=true&brandId=tvs.sbd.4000&id=1327736478&l=en-US&aec=UHD',
+    trailerUrl:
+      'https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?cc=US&svcId=tvs.vds.4105&a=1888549019&isExternal=true&brandId=tvs.sbd.4000&id=1327736478&l=en-US&aec=UHD',
   },
   {
     id: '136311',
@@ -130,7 +134,8 @@ const SLIDES: Slide[] = [
     moreInfo: true,
     metadata: 'TV Show',
     rating: 'TV-MA',
-    trailerUrl: 'https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?cc=US&svcId=tvs.vds.4105&a=1855667906&isExternal=true&brandId=tvs.sbd.4000&id=1235227606&l=en-US&aec=UHD',
+    trailerUrl:
+      'https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?cc=US&svcId=tvs.vds.4105&a=1855667906&isExternal=true&brandId=tvs.sbd.4000&id=1235227606&l=en-US&aec=UHD',
   },
   {
     id: '87917',
@@ -147,7 +152,8 @@ const SLIDES: Slide[] = [
     moreInfo: true,
     metadata: 'TV Show',
     rating: 'TV-MA',
-    trailerUrl: 'https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?cc=US&svcId=tvs.vds.4105&a=1873096122&isExternal=true&brandId=tvs.sbd.4000&id=1269359171&l=en-US&aec=UHD',
+    trailerUrl:
+      'https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?cc=US&svcId=tvs.vds.4105&a=1873096122&isExternal=true&brandId=tvs.sbd.4000&id=1269359171&l=en-US&aec=UHD',
   },
 ];
 
@@ -159,7 +165,6 @@ const DESKTOP_GRADIENT = [
   'linear-gradient(80deg, rgba(0,0,0,.14), transparent 41%)',
   'radial-gradient(circle 100vmax at 66.7% 0%, transparent 0%, rgba(7,11,8,.04) 19%, rgba(7,11,8,.15) 36%, rgba(7,11,8,.3) 51%, rgba(7,11,8,.33) 53%, rgba(7,11,8,.49) 65%, rgba(7,11,8,.67) 77%, rgba(7,11,8,.85) 89%, #070b08 100%)',
 ].join(', ');
-
 
 const APPLE_FONT =
   '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif';
@@ -455,7 +460,8 @@ export function HeroSection() {
             <div
               className="absolute inset-0 sm:hidden pointer-events-none"
               style={{
-                background: 'linear-gradient(180deg, transparent 0%, transparent 38%, rgba(7,11,8,0.55) 65%, #070b08 90%)',
+                background:
+                  'linear-gradient(180deg, transparent 0%, transparent 38%, rgba(7,11,8,0.55) 65%, #070b08 90%)',
               }}
             />
 
@@ -639,7 +645,10 @@ export function HeroSection() {
               {(s.metadata ?? s.rating) && (
                 <div className="flex items-center gap-1.5 mb-2.5">
                   {s.metadata && (
-                    <span className="text-white/70" style={{ fontFamily: APPLE_FONT, fontSize: 10 }}>
+                    <span
+                      className="text-white/70"
+                      style={{ fontFamily: APPLE_FONT, fontSize: 10 }}
+                    >
                       {s.metadata}
                     </span>
                   )}

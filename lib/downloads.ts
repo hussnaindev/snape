@@ -16,7 +16,8 @@ export type DownloadStatus =
   | 'paused'
   | 'completed'
   | 'failed'
-  | 'canceled';
+  | 'canceled'
+  | 'removing';
 
 import { showToast } from '@/lib/toast';
 
@@ -277,7 +278,6 @@ export function buildDownloadId(
 // ---------- download lifecycle ----------
 
 const PERSIST_INTERVAL_MS = 1500;
-const NOTIFY_INTERVAL_MS = 350;
 
 // Ids the user chose to *pause* (vs cancel). Both abort the fetch; the intent
 // decides whether the partial bytes are kept (paused) or discarded (canceled).
@@ -292,11 +292,11 @@ async function runDownload(id: string, resume = false): Promise<void> {
 
   record.status = 'downloading';
   record.error = null;
-  await idbPutRecord(record);
   notify();
+  void idbPutRecord(record);
 
   let lastPersist = 0;
-  let lastNotify = 0;
+  let rafPending = false;
 
   // Resume: start from the previously-saved partial bytes (a byte-range request).
   let startByte = 0;
@@ -348,12 +348,15 @@ async function runDownload(id: string, resume = false): Promise<void> {
       chunks.push(value);
       received += value.length;
       record.receivedBytes = received;
-      record.progress = total > 0 ? Math.min(99, Math.round((received / total) * 100)) : 0;
-      const now = Date.now();
-      if (now - lastNotify > NOTIFY_INTERVAL_MS) {
-        lastNotify = now;
-        notify();
+      record.progress = total > 0 ? Math.min(99, (received / total) * 100) : 0;
+      if (!rafPending) {
+        rafPending = true;
+        requestAnimationFrame(() => {
+          rafPending = false;
+          notify();
+        });
       }
+      const now = Date.now();
       if (now - lastPersist > PERSIST_INTERVAL_MS) {
         lastPersist = now;
         void idbPutRecord(record);
@@ -383,31 +386,34 @@ async function runDownload(id: string, resume = false): Promise<void> {
     await idbPutRecord(record);
     showToast(`Saved for offline · ${record.title}`, 'check');
   } catch (err) {
-    if (controller.signal.aborted && pauseIntent.has(id)) {
-      // Pause: persist the bytes downloaded so far so resume can continue.
-      try {
-        const partialBlob = new Blob(chunks, { type: record.mime || 'video/mp4' });
-        await idbPutBlob({ id, video: partialBlob, subtitle: null, partial: true });
-        record.status = 'paused';
-        record.receivedBytes = received;
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if ((record.status as DownloadStatus) !== 'removing') {
+      if (controller.signal.aborted && pauseIntent.has(id)) {
+        // Pause: persist the bytes downloaded so far so resume can continue.
+        try {
+          const partialBlob = new Blob(chunks, { type: record.mime || 'video/mp4' });
+          await idbPutBlob({ id, video: partialBlob, subtitle: null, partial: true });
+          record.status = 'paused';
+          record.receivedBytes = received;
+          record.error = null;
+        } catch {
+          record.status = 'failed';
+          record.error = 'Could not pause download';
+        }
+      } else if (controller.signal.aborted) {
+        // Cancel: discard the partial bytes.
+        record.status = 'canceled';
+        record.receivedBytes = 0;
+        record.progress = 0;
         record.error = null;
-      } catch {
+        await idbDeleteBlob(id).catch(() => {});
+      } else {
         record.status = 'failed';
-        record.error = 'Could not pause download';
+        record.error = err instanceof Error ? err.message : 'Download failed';
+        showToast(`Download failed · ${record.title}`, 'error');
       }
-    } else if (controller.signal.aborted) {
-      // Cancel: discard the partial bytes.
-      record.status = 'canceled';
-      record.receivedBytes = 0;
-      record.progress = 0;
-      record.error = null;
-      await idbDeleteBlob(id).catch(() => {});
-    } else {
-      record.status = 'failed';
-      record.error = err instanceof Error ? err.message : 'Download failed';
-      showToast(`Download failed · ${record.title}`, 'error');
+      await idbPutRecord(record);
     }
-    await idbPutRecord(record);
   } finally {
     controllers.delete(id);
     pauseIntent.delete(id);
@@ -492,6 +498,10 @@ export async function resumeDownload(id: string): Promise<void> {
   await ensureLoaded();
   const record = records.get(id);
   if (!record || record.status === 'downloading') return;
+  record.status = 'downloading';
+  record.error = null;
+  notify();
+  void idbPutRecord(record);
   void runDownload(id, true);
 }
 
@@ -513,9 +523,13 @@ export async function retryDownload(id: string): Promise<void> {
 
 /** Remove a download entirely (aborts if active, deletes record + blob). */
 export async function removeDownload(id: string): Promise<void> {
+  const record = records.get(id);
+  if (!record) return;
+  record.status = 'removing';
+  notify();
   controllers.get(id)?.abort();
-  records.delete(id);
   await idbDelete(id).catch(() => {});
+  records.delete(id);
   notify();
 }
 

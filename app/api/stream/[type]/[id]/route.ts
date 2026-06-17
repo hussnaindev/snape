@@ -38,13 +38,18 @@ export async function GET(
   try {
     res = await fetch(upstream.toString(), { headers: { Accept: 'application/json' } });
   } catch {
-    return NextResponse.json({ ok: false, error: 'Extractor unreachable', code: 502 }, { status: 502 });
+    return NextResponse.json(
+      { ok: false, error: 'Extractor unreachable', code: 502 },
+      { status: 502 },
+    );
   }
 
   const body = await res.text();
 
   let cacheControl =
-    process.env.NODE_ENV === 'development' ? 'no-store' : 's-maxage=300, stale-while-revalidate=600';
+    process.env.NODE_ENV === 'development'
+      ? 'no-store'
+      : 's-maxage=300, stale-while-revalidate=600';
   if (res.status >= 400) {
     cacheControl = 'no-store';
   } else {

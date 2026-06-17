@@ -47,7 +47,10 @@ export function WatchHistoryRecorder({
 
   // Record (or refresh) the entry when the title/episode opens.
   useEffect(() => {
-    const entry: Omit<WatchHistoryEntry, 'progress' | 'positionSeconds' | 'durationSeconds' | 'watchedAt'> = {
+    const entry: Omit<
+      WatchHistoryEntry,
+      'progress' | 'positionSeconds' | 'durationSeconds' | 'watchedAt'
+    > = {
       id,
       type,
       title,
@@ -62,7 +65,18 @@ export function WatchHistoryRecorder({
 
     // Upload the entry as stored (position preserved by addToWatchHistory).
     if (isAuthenticated && stored) uploadEntryToServer(stored);
-  }, [id, type, title, posterPath, backdropPath, year, season, episode, vote_average, isAuthenticated]);
+  }, [
+    id,
+    type,
+    title,
+    posterPath,
+    backdropPath,
+    year,
+    season,
+    episode,
+    vote_average,
+    isAuthenticated,
+  ]);
 
   // Persist live playback progress emitted by the player. Local storage on a
   // short throttle (instant resume), server on a longer throttle, and a beacon
@@ -96,7 +110,11 @@ export function WatchHistoryRecorder({
       if (p.ended || now - lastLocalRef.current >= LOCAL_INTERVAL_MS) {
         lastLocalRef.current = now;
         const entry = persistLocal(p);
-        if (isAuthenticated && entry && (p.ended || now - lastServerRef.current >= SERVER_INTERVAL_MS)) {
+        if (
+          isAuthenticated &&
+          entry &&
+          (p.ended || now - lastServerRef.current >= SERVER_INTERVAL_MS)
+        ) {
           lastServerRef.current = now;
           uploadEntryToServer(entry);
         }
@@ -122,7 +140,10 @@ export function WatchHistoryRecorder({
         };
         if (entry.season !== undefined) body.season = entry.season;
         if (entry.episode !== undefined) body.episode = entry.episode;
-        navigator.sendBeacon('/api/watch-history', new Blob([JSON.stringify(body)], { type: 'application/json' }));
+        navigator.sendBeacon(
+          '/api/watch-history',
+          new Blob([JSON.stringify(body)], { type: 'application/json' }),
+        );
       }
     };
     const onVisibility = () => {

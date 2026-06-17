@@ -37,7 +37,10 @@ export default function WatchlistPage() {
 
   useEffect(() => {
     if (isLoading) return;
-    if (!user) { setFetching(false); return; }
+    if (!user) {
+      setFetching(false);
+      return;
+    }
 
     fetch('/api/watchlist')
       .then((r) => r.json())
@@ -51,7 +54,13 @@ export default function WatchlistPage() {
                 const res = await fetch(`/api/tmdb/collection/${item.tmdbId}`);
                 const d = await res.json();
                 if (d.ok && d.data) {
-                  const coll = d.data as { id: number; name: string; poster_path: string | null; backdrop_path: string | null; overview: string };
+                  const coll = d.data as {
+                    id: number;
+                    name: string;
+                    poster_path: string | null;
+                    backdrop_path: string | null;
+                    overview: string;
+                  };
                   return { ...coll, mediaType: 'collection' as const };
                 }
               } catch {}
@@ -59,7 +68,12 @@ export default function WatchlistPage() {
             }
             return fetch(`/api/tmdb/${item.mediaType === 'movie' ? 'movie' : 'tv'}/${item.tmdbId}`)
               .then((r) => r.json())
-              .then((d) => (d.ok && d.data ? { ...d.data, mediaType: item.mediaType } : null) as TMDBCard | null)
+              .then(
+                (d) =>
+                  (d.ok && d.data
+                    ? { ...d.data, mediaType: item.mediaType }
+                    : null) as TMDBCard | null,
+              )
               .catch(() => null);
           }),
         );
@@ -161,11 +175,12 @@ function WatchlistCard({
 }) {
   const title = card.title ?? card.name ?? '';
   const year = (card.release_date ?? card.first_air_date ?? '').slice(0, 4);
-  const href = card.mediaType === 'collection'
-    ? `/collection/${card.id}`
-    : card.mediaType === 'movie'
-      ? `/movie/${card.id}`
-      : `/series/${card.id}`;
+  const href =
+    card.mediaType === 'collection'
+      ? `/collection/${card.id}`
+      : card.mediaType === 'movie'
+        ? `/movie/${card.id}`
+        : `/series/${card.id}`;
   const poster = tmdbImage(card.poster_path, 'w342');
   const backdrop = tmdbImage(card.backdrop_path, 'w780');
 
@@ -224,7 +239,11 @@ function WatchlistCard({
 
         {/* Type chip top-left */}
         <span className="absolute top-1 left-1.5 sm:top-1.5 sm:left-2 lg:top-2 lg:left-3 z-10 inline-flex items-center text-[7px] sm:text-[9px] lg:text-[10px] xl:text-[11px] font-semibold tracking-widest uppercase text-white/80 border border-white/40 rounded-full px-1.5 py-1 lg:px-2.5 lg:py-1.5 bg-black/60">
-          {card.mediaType === 'movie' ? 'Film' : card.mediaType === 'series' ? 'Series' : 'Collection'}
+          {card.mediaType === 'movie'
+            ? 'Film'
+            : card.mediaType === 'series'
+              ? 'Series'
+              : 'Collection'}
         </span>
 
         {/* Rating chip top-right */}

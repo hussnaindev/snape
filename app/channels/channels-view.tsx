@@ -85,9 +85,15 @@ export function ChannelsView() {
           setLoadError(true);
         }
       })
-      .catch(() => { if (!cancelled) setLoadError(true); })
-      .finally(() => { if (!cancelled) setLoadingChannels(false); });
-    return () => { cancelled = true; };
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingChannels(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // ── Category row: wheel → horizontal scroll ─────────────────────────
@@ -113,10 +119,7 @@ export function ChannelsView() {
   // ── Close dropdown on outside click ─────────────────────────────────
   useEffect(() => {
     function onMouseDown(e: MouseEvent) {
-      if (
-        searchContainerRef.current &&
-        !searchContainerRef.current.contains(e.target as Node)
-      ) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
       }
     }
@@ -130,17 +133,13 @@ export function ChannelsView() {
   const dropdownResults = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase();
     if (q.length < 1) return [] as Channel[];
-    return channels
-      .filter((ch) => channelDisplay(ch).name.toLowerCase().includes(q))
-      .slice(0, 25);
+    return channels.filter((ch) => channelDisplay(ch).name.toLowerCase().includes(q)).slice(0, 25);
   }, [channels, debouncedSearch]);
 
   // Category-filtered list (used when no search query)
   const categoryChannels = useMemo(() => {
     if (activeCategory === 'all') return channels;
-    return channels.filter((ch) =>
-      ch.categories.some((c) => c.toLowerCase() === activeCategory),
-    );
+    return channels.filter((ch) => ch.categories.some((c) => c.toLowerCase() === activeCategory));
   }, [channels, activeCategory]);
 
   // Main list: global search when query present; category view otherwise
@@ -158,11 +157,12 @@ export function ChannelsView() {
   const showDropdown =
     dropdownOpen && debouncedSearch.trim().length >= 1 && dropdownResults.length > 0;
 
-  const totalForCategory = debouncedSearch.trim().length >= 1
-    ? channels.filter((ch) =>
-        channelDisplay(ch).name.toLowerCase().includes(debouncedSearch.toLowerCase()),
-      ).length
-    : categoryChannels.length;
+  const totalForCategory =
+    debouncedSearch.trim().length >= 1
+      ? channels.filter((ch) =>
+          channelDisplay(ch).name.toLowerCase().includes(debouncedSearch.toLowerCase()),
+        ).length
+      : categoryChannels.length;
 
   // ── Interaction handlers ─────────────────────────────────────────────
 
@@ -195,7 +195,6 @@ export function ChannelsView() {
   const sidebarContent = (
     // flex col, h-full; the list is the only scrolling child
     <div className="flex flex-col h-full">
-
       {/* ── Search ── */}
       {/*
         overflow-visible here so the dropdown isn't clipped.
@@ -245,7 +244,16 @@ export function ChannelsView() {
                 className="absolute right-2.5 text-white/30 hover:text-white/60 transition-colors cursor-pointer"
                 aria-label="Clear search"
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  aria-hidden="true"
+                >
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
@@ -310,7 +318,16 @@ export function ChannelsView() {
       <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
         {loadingChannels && (
           <div className="flex flex-col items-center justify-center gap-3 py-16 text-white/35">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin" aria-hidden="true">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="animate-spin"
+              aria-hidden="true"
+            >
               <path d="M21 12a9 9 0 1 1-6.219-8.56" />
             </svg>
             <span className="text-sm">Loading channels…</span>
@@ -351,9 +368,7 @@ export function ChannelsView() {
                     <ChannelName>{channelDisplay(ch).name}</ChannelName>
                     <ChannelMetaRow tags={channelDisplay(ch).tags} ch={ch} className="mt-1" />
                   </div>
-                  {isActive && (
-                    <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-red-500" />
-                  )}
+                  {isActive && <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-red-500" />}
                 </button>
               );
             })}
@@ -384,10 +399,7 @@ export function ChannelsView() {
   return (
     <>
       {/* ── Mobile: player under topbar, list below ── */}
-      <div
-        className="md:hidden flex flex-col bg-black"
-        style={{ height: '100dvh' }}
-      >
+      <div className="md:hidden flex flex-col bg-black" style={{ height: '100dvh' }}>
         <div
           className={cn(
             'relative w-full shrink-0 bg-black aspect-video',
@@ -423,17 +435,12 @@ export function ChannelsView() {
       </div>
 
       {/* ── Desktop: sidebar + player edge-to-edge under topbar ── */}
-      <div
-        className="hidden md:flex bg-black"
-        style={{ height: '100dvh' }}
-      >
+      <div className="hidden md:flex bg-black" style={{ height: '100dvh' }}>
         <div
           className="channels-page-chrome w-[17rem] xl:w-72 shrink-0 flex flex-col bg-[#0a0a0b] border-r border-white/10"
           style={{ paddingTop: 'calc(4rem + env(safe-area-inset-top))' }}
         >
-          <div className="flex-1 min-h-0 overflow-visible flex flex-col">
-            {sidebarContent}
-          </div>
+          <div className="flex-1 min-h-0 overflow-visible flex flex-col">{sidebarContent}</div>
         </div>
 
         <div className="flex-1 relative bg-black min-h-0">
@@ -513,9 +520,7 @@ function MetaChip({
     <span
       className={cn(
         'inline-flex items-center shrink-0 rounded-full text-[9px] font-chesna-grotesk tracking-[0.05em] uppercase px-1.5 py-px leading-none',
-        variant === 'geo'
-          ? 'bg-white/8 text-white/40'
-          : 'bg-white/8 text-white/55',
+        variant === 'geo' ? 'bg-white/8 text-white/40' : 'bg-white/8 text-white/55',
       )}
     >
       {children}
@@ -527,11 +532,7 @@ function ChannelLogo({ ch, size }: { ch: Channel; size: 'sm' | 'md' }) {
   const cls = size === 'sm' ? 'w-9 h-6' : 'w-10 h-7';
   if (ch.logo) {
     return (
-      <img
-        src={ch.logo}
-        alt=""
-        className={cn(cls, 'object-contain rounded shrink-0 bg-white/5')}
-      />
+      <img src={ch.logo} alt="" className={cn(cls, 'object-contain rounded shrink-0 bg-white/5')} />
     );
   }
   return (

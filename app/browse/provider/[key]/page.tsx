@@ -1,22 +1,26 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
-import { MovieCard } from '@/components/movie-card';
+import { InfiniteScrollSentinel } from '@/components/infinite-scroll-sentinel';
+import { MovieCardGrid } from '@/components/movie-card-grid';
 import { ParallaxContent } from '@/components/parallax-content';
-import { SeriesCard } from '@/components/series-card';
 import { SectionDivider } from '@/components/ui/section-divider';
-import { chunk } from '@/lib/utils';
+import { SeriesCardGrid } from '@/components/series-card-grid';
 import { CURATED_PROVIDERS } from '@/lib/curated-providers';
-import { getCuratedProviderMovies, getMoviesByProvider, getSeriesByProvider } from '@/lib/tmdb';
+import { buildPageHref, mergePaginatedResults, parsePageParam } from '@/lib/paginated-tmdb';
+import {
+  getCuratedProviderMovies,
+  getMoviesByProviderPage,
+  getSeriesByProviderPage,
+} from '@/lib/tmdb';
 import { filterHasImages } from '@/lib/tmdb-filters';
 import { PREFERRED_PROVIDERS } from '@/lib/watch-providers';
-
-const ROW_SIZE = 6;
 
 export const runtime = 'edge';
 
 interface Props {
   params: Promise<{ key: string }>;
+  searchParams: Promise<{ page?: string }>;
 }
 
 function resolveProvider(key: string) {
@@ -31,99 +35,95 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { key } = await params;
   const resolved = resolveProvider(key);
   if (!resolved) return { title: 'Provider Not Found' };
-  const suffix = resolved.kind === 'curated'
-    ? (resolved.provider.mediaType === 'series' ? 'Series' : 'Movies')
-    : 'Movies & Series';
+  const suffix =
+    resolved.kind === 'curated'
+      ? resolved.provider.mediaType === 'series'
+        ? 'Series'
+        : 'Movies'
+      : 'Movies & Series';
   return { title: `${resolved.provider.label} — Browse ${suffix}` };
 }
 
-export default async function ProviderBrowsePage({ params }: Props) {
+export default async function ProviderBrowsePage({ params, searchParams }: Props) {
   const { key } = await params;
+  const { page: pageParam } = await searchParams;
+
   const resolved = resolveProvider(key);
   if (!resolved) notFound();
 
-  let movies: Awaited<ReturnType<typeof getMoviesByProvider>> = [];
-  let series: Awaited<ReturnType<typeof getSeriesByProvider>> = [];
-
-  if (resolved.kind === 'curated') {
-    const items = await getCuratedProviderMovies(resolved.provider.key);
-    if (resolved.provider.mediaType === 'series') {
-      series = items as typeof series;
-    } else {
-      movies = items as typeof movies;
-    }
-  } else {
-    [movies, series] = await Promise.all([
-      getMoviesByProvider(resolved.provider.tmdbId),
-      getSeriesByProvider(resolved.provider.tmdbId),
-    ]);
-  }
-
   const { label: providerLabel } = resolved.provider;
 
-  const filteredMovies = filterHasImages(movies);
-  const filteredSeries = filterHasImages(series);
+  let allMovies: Awaited<ReturnType<typeof getMoviesByProviderPage>>['results'] = [];
+  let allSeries: Awaited<ReturnType<typeof getSeriesByProviderPage>>['results'] = [];
+  let totalMoviePages = 0;
+  let totalSeriesPages = 0;
+  let hasMore = false;
 
-  if (filteredMovies.length === 0 && filteredSeries.length === 0) notFound();
+  if (resolved.kind === 'curated') {
+    const page = Math.max(1, Number(pageParam ?? 1));
+    const items = await getCuratedProviderMovies(resolved.provider.key, page);
+    if (resolved.provider.mediaType === 'series') {
+      allSeries = items as typeof allSeries;
+    } else {
+      allMovies = items as typeof allMovies;
+    }
+  } else {
+    const tmdbId = resolved.provider.tmdbId;
+
+    const firstMoviePage = await getMoviesByProviderPage(tmdbId, 1).catch(() => null);
+    const firstSeriesPage = await getSeriesByProviderPage(tmdbId, 1).catch(() => null);
+
+    totalMoviePages = firstMoviePage?.total_pages ?? 0;
+    totalSeriesPages = firstSeriesPage?.total_pages ?? 0;
+
+    const page = parsePageParam(pageParam, Math.max(totalMoviePages, totalSeriesPages, 1));
+
+    if (firstMoviePage) {
+      allMovies = filterHasImages(
+        await mergePaginatedResults(page, (p) => getMoviesByProviderPage(tmdbId, p)),
+      );
+    }
+    if (firstSeriesPage) {
+      allSeries = filterHasImages(
+        await mergePaginatedResults(page, (p) => getSeriesByProviderPage(tmdbId, p)),
+      );
+    }
+
+    hasMore = page < Math.max(totalMoviePages, totalSeriesPages, 1);
+  }
+
+  if (allMovies.length === 0 && allSeries.length === 0) notFound();
+
+  const nextHref = hasMore
+    ? buildPageHref(`/browse/provider/${key}`, { page: Number(pageParam ?? 1) + 1 })
+    : null;
 
   return (
     <>
       <div className="pt-20">
-        {filteredMovies.length > 0 && (
+        {allMovies.length > 0 && (
           <section>
             <ParallaxContent direction="left" speed={120}>
               <div className="px-4 md:px-8 mb-6">
                 <SectionDivider label={`${providerLabel} Movies`} />
               </div>
             </ParallaxContent>
-            <div className="grid grid-cols-2 gap-3 px-4 sm:hidden">
-              {filteredMovies.map((movie) => (
-                <MovieCard key={movie.id} movie={movie} />
-              ))}
-            </div>
-            <div className="hidden sm:block">
-              {chunk(filteredMovies, ROW_SIZE).map((row, i) => (
-                <section key={i}>
-                  <ParallaxContent direction={i % 2 === 0 ? 'right' : 'left'} speed={120}>
-                    <div className="grid grid-cols-[repeat(auto-fit,minmax(165px,210px))] justify-center gap-3 px-4 md:px-8">
-                      {row.map((movie) => (
-                        <MovieCard key={movie.id} movie={movie} />
-                      ))}
-                    </div>
-                  </ParallaxContent>
-                </section>
-              ))}
-            </div>
+            <MovieCardGrid movies={allMovies} parallaxRows />
           </section>
         )}
 
-        {filteredSeries.length > 0 && (
-          <section className="mt-10">
+        {allSeries.length > 0 && (
+          <section className={allMovies.length > 0 ? 'mt-10' : undefined}>
             <ParallaxContent direction="right" speed={120}>
               <div className="px-4 md:px-8 mb-6">
                 <SectionDivider label={`${providerLabel} Series`} />
               </div>
             </ParallaxContent>
-            <div className="grid grid-cols-2 gap-3 px-4 sm:hidden">
-              {filteredSeries.map((s) => (
-                <SeriesCard key={s.id} series={s} />
-              ))}
-            </div>
-            <div className="hidden sm:block">
-              {chunk(filteredSeries, ROW_SIZE).map((row, i) => (
-                <section key={i}>
-                  <ParallaxContent direction={i % 2 === 0 ? 'left' : 'right'} speed={120}>
-                    <div className="grid grid-cols-[repeat(auto-fit,minmax(165px,210px))] justify-center gap-3 px-4 md:px-8">
-                      {row.map((s) => (
-                        <SeriesCard key={s.id} series={s} />
-                      ))}
-                    </div>
-                  </ParallaxContent>
-                </section>
-              ))}
-            </div>
+            <SeriesCardGrid series={allSeries} parallaxRows />
           </section>
         )}
+
+        <InfiniteScrollSentinel hasMore={hasMore} nextHref={nextHref} />
 
         <div className="h-16" />
       </div>

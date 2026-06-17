@@ -1,6 +1,12 @@
 import type { TMDBWatchProvidersRegion, TMDBWatchProvider } from '@/types/tmdb';
 
-export type PreferredProviderKey = 'netflix' | 'primevideo' | 'paramountplus' | 'appletv' | 'max' | 'disneyplus';
+export type PreferredProviderKey =
+  | 'netflix'
+  | 'primevideo'
+  | 'paramountplus'
+  | 'appletv'
+  | 'max'
+  | 'disneyplus';
 
 export const PREFERRED_PROVIDERS: ReadonlyArray<{
   key: PreferredProviderKey;
@@ -9,16 +15,56 @@ export const PREFERRED_PROVIDERS: ReadonlyArray<{
   tmdbId: number;
   brandColor: string;
 }> = [
-  { key: 'netflix', label: 'Netflix', assetPath: '/providers/netflix.svg', tmdbId: 8, brandColor: '#E50914' },
-  { key: 'max', label: 'Max', assetPath: '/providers/max.svg', tmdbId: 1899, brandColor: '#8A2BE2' },
-  { key: 'primevideo', label: 'Prime Video', assetPath: '/providers/primevideo.svg', tmdbId: 9, brandColor: '#00A8E0' },
-  { key: 'disneyplus', label: 'Disney+', assetPath: '/providers/disneyplus.svg', tmdbId: 337, brandColor: '#166534' },
-  { key: 'paramountplus', label: 'Paramount+', assetPath: '/providers/paramountplus.svg', tmdbId: 531, brandColor: '#CA8A04' },
-  { key: 'appletv', label: 'Apple TV+', assetPath: '/providers/appletv.svg', tmdbId: 350, brandColor: '#6E6E73' },
+  {
+    key: 'netflix',
+    label: 'Netflix',
+    assetPath: '/providers/netflix.svg',
+    tmdbId: 8,
+    brandColor: '#E50914',
+  },
+  {
+    key: 'max',
+    label: 'Max',
+    assetPath: '/providers/max.svg',
+    tmdbId: 1899,
+    brandColor: '#8A2BE2',
+  },
+  {
+    key: 'primevideo',
+    label: 'Prime Video',
+    assetPath: '/providers/primevideo.svg',
+    tmdbId: 9,
+    brandColor: '#00A8E0',
+  },
+  {
+    key: 'disneyplus',
+    label: 'Disney+',
+    assetPath: '/providers/disneyplus.svg',
+    tmdbId: 337,
+    brandColor: '#166534',
+  },
+  {
+    key: 'paramountplus',
+    label: 'Paramount+',
+    assetPath: '/providers/paramountplus.svg',
+    tmdbId: 531,
+    brandColor: '#CA8A04',
+  },
+  {
+    key: 'appletv',
+    label: 'Apple TV+',
+    assetPath: '/providers/appletv.svg',
+    tmdbId: 350,
+    brandColor: '#6E6E73',
+  },
 ] as const;
 
 function normalizeProviderName(name: string): string {
-  return name.toLowerCase().replace(/\+/g, 'plus').replace(/[^a-z0-9]+/g, ' ').trim();
+  return name
+    .toLowerCase()
+    .replace(/\+/g, 'plus')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 }
 
 function keyFromProvider(p: TMDBWatchProvider): PreferredProviderKey | null {
@@ -28,12 +74,15 @@ function keyFromProvider(p: TMDBWatchProvider): PreferredProviderKey | null {
   if (n.includes('paramount')) return 'paramountplus';
   if (n.includes('apple tv')) return 'appletv';
   // TMDB may report "HBO Max" or "Max"
-  if (n === 'max' || n.includes('hbo max') || (n.includes('max') && !n.includes('imax'))) return 'max';
+  if (n === 'max' || n.includes('hbo max') || (n.includes('max') && !n.includes('imax')))
+    return 'max';
   if (n.includes('disney')) return 'disneyplus';
   return null;
 }
 
-export function pickPreferredProviders(region: TMDBWatchProvidersRegion | null | undefined): PreferredProviderKey[] {
+export function pickPreferredProviders(
+  region: TMDBWatchProvidersRegion | null | undefined,
+): PreferredProviderKey[] {
   if (!region) return [];
   const buckets = ['flatrate', 'free', 'ads', 'rent', 'buy'] as const;
   const found = new Set<PreferredProviderKey>();
@@ -79,9 +128,11 @@ export function pickPreferredProvidersWithFallback(
   return [];
 }
 
-export function preferredProviderMeta(key: PreferredProviderKey): { label: string; assetPath: string } {
+export function preferredProviderMeta(key: PreferredProviderKey): {
+  label: string;
+  assetPath: string;
+} {
   const meta = PREFERRED_PROVIDERS.find((p) => p.key === key);
   if (!meta) return { label: key, assetPath: '' };
   return { label: meta.label, assetPath: meta.assetPath };
 }
-
