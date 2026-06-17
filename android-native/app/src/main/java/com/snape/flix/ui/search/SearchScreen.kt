@@ -76,6 +76,7 @@ import com.snape.flix.data.LocalStore
 import com.snape.flix.data.SubjectGroup
 import com.snape.flix.ui.browse.BrowseActivity
 import com.snape.flix.ui.components.DownloadGlyph
+import com.snape.flix.ui.streaming.StreamingSitesActivity
 import com.snape.flix.ui.components.MediaCard
 import com.snape.flix.ui.components.ProgressRing
 import com.snape.flix.ui.components.SnakeLoader
@@ -162,6 +163,7 @@ fun SearchScreen(
                 onOpenWatchlist = { WatchlistActivity.start(context) },
                 onOpenDownloads = { DownloadsActivity.start(context) },
                 onClearHistory = { LocalStore.clearHistory() },
+                onOpenStreaming = { StreamingSitesActivity.start(context) },
             )
         }
     }
@@ -462,7 +464,7 @@ private fun SearchBar(
 // ── side drawer (mirrors the web mobile menu; links wired up later) ───────────
 
 /** A drawer link. [kind] decides what tapping it does (see [SideDrawer]). */
-private enum class MenuKind { GENRE, WATCHLIST, DOWNLOADS, CLEAR_HISTORY, NONE }
+private enum class MenuKind { GENRE, WATCHLIST, DOWNLOADS, CLEAR_HISTORY, STREAMING, NONE }
 private data class MenuItem(val label: String, val kind: MenuKind = MenuKind.NONE, val danger: Boolean = false)
 private data class MenuSection(val title: String, val items: List<MenuItem>)
 
@@ -473,6 +475,7 @@ private val GENRES = listOf(
 
 // No-signup app: the menu carries no login/sign-out/account links.
 private val MENU_SECTIONS = listOf(
+    MenuSection("Streaming", listOf(MenuItem("Streaming Sites", MenuKind.STREAMING))),
     MenuSection("Browse", GENRES.map { MenuItem(it, MenuKind.GENRE) }),
     MenuSection("Continue watching", listOf(MenuItem("Clear watch history", MenuKind.CLEAR_HISTORY))),
     MenuSection(
@@ -491,6 +494,7 @@ private fun SideDrawer(
     onOpenWatchlist: () -> Unit,
     onOpenDownloads: () -> Unit,
     onClearHistory: () -> Unit,
+    onOpenStreaming: () -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
         // scrim
@@ -586,6 +590,7 @@ private fun SideDrawer(
                                 MenuKind.WATCHLIST -> onOpenWatchlist()
                                 MenuKind.DOWNLOADS -> onOpenDownloads()
                                 MenuKind.CLEAR_HISTORY -> onClearHistory()
+                                MenuKind.STREAMING -> onOpenStreaming()
                                 MenuKind.NONE -> Unit
                             }
                             onClose()

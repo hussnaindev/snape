@@ -320,6 +320,49 @@ object TmdbRepository {
         }.getOrDefault(emptyList())
     }
 
+    /**
+     * Discover movies available on a given watch provider (TMDB provider id).
+     * Mirrors the web `getMoviesByProvider` in `lib/tmdb.ts`.
+     */
+    suspend fun discoverMoviesByProvider(providerId: Int, region: String = "US"): List<TmdbSearchHit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val today = todayIso()
+                get(
+                    "/discover/movie",
+                    listOf(
+                        "with_watch_providers" to providerId.toString(),
+                        "watch_region" to region,
+                        "sort_by" to "popularity.desc",
+                        "primary_release_date.lte" to today,
+                    ),
+                    TmdbSearchResponse.serializer(),
+                ).results.filter { it.poster_path != null }
+            }.getOrDefault(emptyList())
+        }
+
+    /**
+     * Discover TV series available on a given watch provider (TMDB provider id).
+     * Mirrors the web `getSeriesByProvider` in `lib/tmdb.ts`.
+     */
+    suspend fun discoverSeriesByProvider(providerId: Int, region: String = "US"): List<TmdbSearchHit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val today = todayIso()
+                get(
+                    "/discover/tv",
+                    listOf(
+                        "with_watch_providers" to providerId.toString(),
+                        "watch_region" to region,
+                        "sort_by" to "popularity.desc",
+                        "first_air_date.lte" to today,
+                        "include_null_first_air_dates" to "false",
+                    ),
+                    TmdbSearchResponse.serializer(),
+                ).results.filter { it.poster_path != null }
+            }.getOrDefault(emptyList())
+        }
+
     /** Episodes for one season (used by the episodes carousel). */
     suspend fun season(id: Int, seasonNumber: Int): List<TmdbEpisode> = withContext(Dispatchers.IO) {
         runCatching {

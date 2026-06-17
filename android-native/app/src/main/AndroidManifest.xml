@@ -61,6 +61,12 @@
             android:theme="@style/Theme.Snape" />
 
         <activity
+            android:name=".ui.streaming.StreamingSitesActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:theme="@style/Theme.Snape" />
+
+        <activity
             android:name=".ui.detail.PersonActivity"
             android:exported="false"
             android:configChanges="orientation|screenSize|keyboardHidden"
