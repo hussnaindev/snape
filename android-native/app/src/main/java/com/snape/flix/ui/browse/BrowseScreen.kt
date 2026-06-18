@@ -9,10 +9,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -39,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import android.graphics.BitmapFactory
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -49,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import coil.compose.AsyncImage
 import com.snape.flix.data.AdultRepository
@@ -372,10 +376,10 @@ private fun AdultCard(
             )
         }
 
-        // type chip — top-left
-        Chip(
-            text = if (item.isSeries) "SERIES" else "FILM",
-            modifier = Modifier.align(Alignment.TopStart).padding(5.dp),
+        // studio logo — top-left
+        StudioLogo(
+            studio = item.title.trim().split(Regex("\\s+")).first().uppercase(),
+            modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
         )
 
         // rating chip — top-right
@@ -389,6 +393,27 @@ private fun AdultCard(
 
     // bottom hairline
     Box(Modifier.fillMaxWidth().height(1.dp).background(Hairline))
+}
+
+@Composable
+private fun StudioLogo(studio: String, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val logoBitmap = remember(studio) {
+        try {
+            context.assets.open("${studio.lowercase()}-logo.png").use { stream ->
+                BitmapFactory.decodeStream(stream)?.asImageBitmap()
+            }
+        } catch (_: Exception) { null }
+    }
+    if (logoBitmap != null) {
+        Image(
+            bitmap = logoBitmap,
+            contentDescription = studio,
+            modifier = modifier.width(80.dp).height(28.dp),
+        )
+    } else {
+        Chip(text = "FILM", modifier = modifier)
+    }
 }
 
 @Composable
