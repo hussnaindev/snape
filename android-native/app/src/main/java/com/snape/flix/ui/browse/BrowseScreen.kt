@@ -3,6 +3,7 @@ package com.snape.flix.ui.browse
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.clipToBounds
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.draw.scale
 import coil.compose.AsyncImage
 import com.snape.flix.data.AdultRepository
 import com.snape.flix.data.SubjectGroup
@@ -328,6 +330,7 @@ private fun AdultCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .clipToBounds()
             .clickable(onClick = onClick)
             .height(200.dp),
     ) {
@@ -336,7 +339,7 @@ private fun AdultCard(
                 model = item.cover.url,
                 contentDescription = item.title,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().scale(1.2f),
             )
         } else {
             Box(
