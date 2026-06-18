@@ -43,6 +43,12 @@
             android:theme="@style/Theme.Snape" />
 
         <activity
+            android:name=".ui.browse.ProviderBrowseActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:theme="@style/Theme.Snape" />
+
+        <activity
             android:name=".ui.watchlist.WatchlistActivity"
             android:exported="false"
             android:configChanges="orientation|screenSize|keyboardHidden"

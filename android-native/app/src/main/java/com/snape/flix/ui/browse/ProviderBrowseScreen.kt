@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -49,10 +50,17 @@ fun ProviderBrowseScreen(
     LaunchedEffect(providerId) { vm.start(providerId) }
     val state by vm.state.collectAsStateWithLifecycle()
 
+    // Interleave movies & series, de-duped by (mediaType, tmdbId) so the LazyGrid
+    // never sees a repeated key (a movie and a series can share a title, and TMDB
+    // can repeat an item across pages — either would crash the grid otherwise).
     val allResults = remember(state.movies, state.series) {
+        val seen = HashSet<String>()
         buildList {
-            addAll(state.movies.map { it.toHomeCard(isSeries = false) })
-            addAll(state.series.map { it.toHomeCard(isSeries = true) })
+            (state.movies.map { it.toHomeCard(isSeries = false) } +
+                state.series.map { it.toHomeCard(isSeries = true) })
+                .forEach { card ->
+                    if (seen.add("${card.isSeries}-${card.tmdbId}")) add(card)
+                }
         }
     }
 
@@ -63,6 +71,7 @@ fun ProviderBrowseScreen(
                 Box(
                     Modifier
                         .fillMaxWidth()
+                        .statusBarsPadding()
                         .padding(top = 16.dp, bottom = 20.dp),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -106,7 +115,7 @@ fun ProviderBrowseScreen(
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
                         modifier = Modifier.fillMaxSize(),
                     ) {
-                        items(allResults, key = { it.title }) { card ->
+                        items(allResults, key = { "${it.isSeries}-${it.tmdbId}" }) { card ->
                             PosterCard(
                                 posterUrl = card.posterUrl,
                                 isSeries = card.isSeries,

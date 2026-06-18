@@ -335,9 +335,19 @@ object Downloads {
     private fun refresh() {
         val dm = manager ?: return
         val list = runCatching {
+            // The index DB only flushes progress every few seconds, so reading it
+            // makes the progress bar jump in 4–5s chunks. The DownloadManager keeps
+            // live, continuously-updated [Download] objects in memory for everything
+            // that isn't terminal (queued/downloading/removing) — prefer those for an
+            // accurate, real-time percent and fall back to the index for the rest
+            // (completed/failed items aren't in currentDownloads).
+            val live = dm.currentDownloads.associateBy { it.request.id }
             val acc = mutableListOf<DownloadItem>()
             dm.downloadIndex.getDownloads().use { cursor ->
-                while (cursor.moveToNext()) acc += cursor.download.toItem()
+                while (cursor.moveToNext()) {
+                    val indexed = cursor.download
+                    acc += (live[indexed.request.id] ?: indexed).toItem()
+                }
             }
             acc
         }.getOrNull() ?: return
