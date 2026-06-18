@@ -213,23 +213,15 @@ fun DetailScreen(
     BackHandler(enabled = fullscreen) { fullscreen = false }
     BackHandler(enabled = playerActive && !fullscreen) { playerActive = false }
 
-    // Tie playback to the activity lifecycle: when this screen is no longer in the
-    // foreground (e.g. opening a "More Like This" title on top, backgrounding the
-    // app, or screen-off) tear the inline player down. That releases the ExoPlayer
-    // and restores the backdrop, so nothing keeps playing — or leaking — behind
-    // the next screen.
+    // When the activity goes to the background (user switches apps, screen-off)
+    // pause playback so the position is preserved. On return the player is still
+    // in composition, paused at the same spot — ready to resume on tap.
     val lifecycleOwner = LocalLifecycleOwner.current
-    // Latest player, read at event time (the observer is created once).
     val currentExo by rememberUpdatedState(exo)
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) {
-                // Silence immediately — recomposition is deferred while stopped, so
-                // don't rely on the state flip alone. Release follows when the
-                // player leaves composition (on return/destroy).
+            if (event == Lifecycle.Event.ON_PAUSE) {
                 currentExo?.pause()
-                fullscreen = false
-                playerActive = false
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

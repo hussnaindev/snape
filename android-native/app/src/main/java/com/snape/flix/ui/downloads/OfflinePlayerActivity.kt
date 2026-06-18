@@ -16,6 +16,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -73,6 +75,18 @@ private fun OfflinePlayer(mediaItem: MediaItem, onExit: () -> Unit) {
             }
     }
     DisposableEffect(exo) { onDispose { exo.release() } }
+
+    // Pause when the activity goes to the background so playback position is
+    // preserved; the StreamPlayerChrome's keep-screen-on flag keeps the display
+    // awake while actively playing.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE) exo.pause()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     // The chrome reads `captions`/`qualities` to drive its menus; offline content was
     // downloaded at a single quality with no fetched subtitle tracks, so both are empty

@@ -1,7 +1,9 @@
 package com.snape.flix.ui.player
 
+import android.app.Activity
 import android.content.res.Configuration
 import android.net.Uri
+import android.view.WindowManager
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -213,6 +215,17 @@ fun StreamPlayerChrome(
                 }
             }
             delay(250)
+        }
+    }
+
+    // Keep the screen on while video is actively playing.
+    val ctx = LocalContext.current
+    LaunchedEffect(playing) {
+        val window = (ctx as? Activity)?.window ?: return@LaunchedEffect
+        if (playing) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 
