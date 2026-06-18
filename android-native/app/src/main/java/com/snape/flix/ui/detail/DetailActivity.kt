@@ -13,13 +13,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.lifecycle.lifecycleScope
-import com.snape.flix.data.MovieBoxRepository
 import com.snape.flix.data.SubjectGroup
 import com.snape.flix.data.SubjectItem
+import com.snape.flix.data.TmdbRef
 import com.snape.flix.data.TmdbSearchHit
 import com.snape.flix.ui.theme.SnapeTheme
-import kotlinx.coroutines.launch
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 
@@ -32,6 +30,7 @@ class DetailActivity : ComponentActivity() {
 
     companion object {
         private const val EXTRA_VARIANTS_JSON = "variantsJson"
+        private const val EXTRA_REF_JSON = "refJson"
         private const val EXTRA_RESUME_SE = "resumeSe"
         private const val EXTRA_RESUME_EP = "resumeEp"
         // Sentinel meaning "no autoplay on open" (a real resume always has se/ep
@@ -40,9 +39,28 @@ class DetailActivity : ComponentActivity() {
         private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
         /**
-         * Open the detail page. When [resumeSe]/[resumeEp] are provided (Continue
-         * Watching) the page autostarts that episode and seeks to the saved
-         * position; otherwise it opens idle on the backdrop/trailer.
+         * Open the detail page from a TMDB ref — the primary entry across the app.
+         * TMDB metadata renders immediately while the MovieBox match resolves in
+         * parallel for playback.
+         */
+        fun start(
+            context: Context,
+            ref: TmdbRef,
+            resumeSe: Int = NO_RESUME,
+            resumeEp: Int = NO_RESUME,
+        ) {
+            context.startActivity(
+                Intent(context, DetailActivity::class.java)
+                    .putExtra(EXTRA_REF_JSON, json.encodeToString(TmdbRef.serializer(), ref))
+                    .putExtra(EXTRA_RESUME_SE, resumeSe)
+                    .putExtra(EXTRA_RESUME_EP, resumeEp),
+            )
+        }
+
+        /**
+         * Open the detail page from an already-resolved MovieBox group (watchlist /
+         * Continue Watching replay) so playback is instant; the full audio-variant
+         * set + TMDB metadata fill in afterward.
          */
         fun start(
             context: Context,
@@ -50,19 +68,20 @@ class DetailActivity : ComponentActivity() {
             resumeSe: Int = NO_RESUME,
             resumeEp: Int = NO_RESUME,
         ) {
-            val payload = json.encodeToString(
-                ListSerializer(SubjectItem.serializer()),
-                group.variants,
-            )
             context.startActivity(
                 Intent(context, DetailActivity::class.java)
-                    .putExtra(EXTRA_VARIANTS_JSON, payload)
+                    .putExtra(EXTRA_VARIANTS_JSON, json.encodeToString(ListSerializer(SubjectItem.serializer()), group.variants))
                     .putExtra(EXTRA_RESUME_SE, resumeSe)
                     .putExtra(EXTRA_RESUME_EP, resumeEp),
             )
         }
 
-        private fun parse(intent: Intent): SubjectGroup? {
+        private fun parseRef(intent: Intent): TmdbRef? {
+            val payload = intent.getStringExtra(EXTRA_REF_JSON) ?: return null
+            return runCatching { json.decodeFromString(TmdbRef.serializer(), payload) }.getOrNull()
+        }
+
+        private fun parseGroup(intent: Intent): SubjectGroup? {
             val payload = intent.getStringExtra(EXTRA_VARIANTS_JSON) ?: return null
             val variants = runCatching {
                 json.decodeFromString(ListSerializer(SubjectItem.serializer()), payload)
@@ -84,11 +103,13 @@ class DetailActivity : ComponentActivity() {
             }
         }
 
-        val group = parse(intent)
-        if (group == null) {
+        val ref = parseRef(intent)
+        val group = if (ref == null) parseGroup(intent) else null
+        if (ref == null && group == null) {
             finish()
             return
         }
+        val isSeries = ref?.isSeries ?: group!!.primary.isSeries
 
         val resumeSe = intent.getIntExtra(EXTRA_RESUME_SE, NO_RESUME)
         val resumeEp = intent.getIntExtra(EXTRA_RESUME_EP, NO_RESUME)
@@ -97,7 +118,9 @@ class DetailActivity : ComponentActivity() {
             SnapeTheme {
                 Surface(Modifier.fillMaxSize().background(Color.Black), color = Color.Black) {
                     DetailScreen(
-                        group = group,
+                        isSeries = isSeries,
+                        ref = ref,
+                        initialGroup = group,
                         onOpenRecommendation = ::openRecommendation,
                         onBack = ::finish,
                         onOpenPerson = ::openPerson,
@@ -113,18 +136,9 @@ class DetailActivity : ComponentActivity() {
         PersonActivity.start(this, personId)
     }
 
-    /**
-     * Recommendations come from TMDB, which the player can't stream directly.
-     * Re-search MovieBox for the title and open that result's detail page so the
-     * native app stays fully self-contained and playable.
-     */
+    /** Recommendations are TMDB titles → open the detail page by ref; the MovieBox
+     *  match resolves there (and is cached). */
     private fun openRecommendation(hit: TmdbSearchHit) {
-        lifecycleScope.launch {
-            val group = runCatching { MovieBoxRepository.search(hit.displayTitle) }
-                .getOrNull()
-                ?.groups
-                ?.firstOrNull()
-            if (group != null) start(this@DetailActivity, group)
-        }
+        start(this, hit.toRef())
     }
 }

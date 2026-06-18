@@ -24,9 +24,9 @@ class MainActivity : ComponentActivity() {
             SnapeTheme {
                 Surface(Modifier.fillMaxSize().background(Color.Black), color = Color.Black) {
                     SearchScreen(
-                        // Every card opens the detail page; movies and series alike.
-                        // Watch/episode playback happens inline on the detail screen.
-                        onOpenDetail = { group -> DetailActivity.start(this, group) },
+                        // Every card is a TMDB title; open the detail page by ref.
+                        // The MovieBox match resolves there for inline playback.
+                        onOpenRef = { ref -> DetailActivity.start(this, ref) },
                     )
                 }
             }

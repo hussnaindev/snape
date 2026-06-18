@@ -13,11 +13,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.lifecycle.lifecycleScope
-import com.snape.flix.data.MovieBoxRepository
 import com.snape.flix.data.TmdbPersonCredit
 import com.snape.flix.ui.theme.SnapeTheme
-import kotlinx.coroutines.launch
 
 class PersonActivity : ComponentActivity() {
 
@@ -62,14 +59,6 @@ class PersonActivity : ComponentActivity() {
     }
 
     private fun openMovie(credit: TmdbPersonCredit) {
-        lifecycleScope.launch {
-            val group = runCatching { MovieBoxRepository.search(credit.displayTitle) }
-                .getOrNull()
-                ?.groups
-                ?.firstOrNull()
-            if (group != null) {
-                DetailActivity.start(this@PersonActivity, group)
-            }
-        }
+        DetailActivity.start(this, credit.toRef())
     }
 }

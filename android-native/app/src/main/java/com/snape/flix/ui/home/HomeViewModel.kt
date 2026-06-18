@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.snape.flix.data.HomeRepository
 import com.snape.flix.data.HomeSection
-import com.snape.flix.data.MovieBoxRepository
-import com.snape.flix.data.SubjectGroup
+import com.snape.flix.data.TmdbRef
+import com.snape.flix.data.TmdbRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -52,16 +52,17 @@ class HomeViewModel : ViewModel() {
     }
 
     /**
-     * Resolve a title (TMDB-sourced card or hero button) to a playable MovieBox
-     * subject via search, then open it. Shows a brief resolving overlay.
+     * The hero slides are hard-coded brand titles with no TMDB id, so look the
+     * title up on TMDB first, then open the detail page by ref (which resolves the
+     * MovieBox match). A brief overlay covers the quick TMDB lookup.
      */
-    fun resolveAndOpen(title: String, onOpen: (SubjectGroup) -> Unit, onFail: () -> Unit = {}) {
+    fun openHeroTitle(title: String, isSeries: Boolean, onOpen: (TmdbRef) -> Unit, onFail: () -> Unit = {}) {
         viewModelScope.launch {
             _resolving.value = true
-            val group = runCatching { MovieBoxRepository.search(title, page = 1).groups.firstOrNull() }
-                .getOrNull()
+            val hits = runCatching { TmdbRepository.searchMulti(title) }.getOrNull().orEmpty()
+            val hit = hits.firstOrNull { it.isSeries == isSeries } ?: hits.firstOrNull()
             _resolving.value = false
-            if (group != null) onOpen(group) else onFail()
+            if (hit != null) onOpen(hit.toRef()) else onFail()
         }
     }
 }

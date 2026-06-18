@@ -52,7 +52,7 @@ class BrowseActivity : ComponentActivity() {
                     BrowseScreen(
                         title = title,
                         query = query,
-                        onOpenDetail = { group -> DetailActivity.start(this, group) },
+                        onOpenRef = { ref -> DetailActivity.start(this, ref) },
                         onBack = ::finish,
                     )
                 }

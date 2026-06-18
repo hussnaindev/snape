@@ -130,21 +130,29 @@ private fun Modifier.verticalShift(dy: Dp): Modifier = layout { measurable, cons
 
 @Composable
 fun DetailScreen(
-    group: com.snape.flix.data.SubjectGroup,
+    isSeries: Boolean,
     onOpenRecommendation: (TmdbSearchHit) -> Unit,
     onBack: () -> Unit,
+    ref: com.snape.flix.data.TmdbRef? = null,
+    initialGroup: com.snape.flix.data.SubjectGroup? = null,
     onOpenPerson: (Int) -> Unit = {},
     resumeSe: Int = DetailActivity.NO_RESUME,
     resumeEp: Int = DetailActivity.NO_RESUME,
     vm: DetailViewModel = viewModel(),
 ) {
-    LaunchedEffect(group) { vm.start(group) }
+    LaunchedEffect(ref, initialGroup) {
+        when {
+            ref != null -> vm.start(ref)
+            initialGroup != null -> vm.start(initialGroup)
+        }
+    }
     val state by vm.state.collectAsStateWithLifecycle()
     val s = state
-    // Show the full skeleton (laid out identically to the final page) until TMDB
-    // enrichment finishes, so the page never reflows when the data lands.
+    // Show the full skeleton (laid out identically to the final page) until BOTH
+    // TMDB enrichment and the MovieBox resolve finish, so the page never reflows
+    // and Watch is immediately playable (or definitively unavailable) on render.
     if (s == null || s.enriching) {
-        DetailSkeleton(isSeries = group.primary.isSeries, onBack = onBack)
+        DetailSkeleton(isSeries = isSeries, onBack = onBack)
         return
     }
 
@@ -161,10 +169,14 @@ fun DetailScreen(
     var currentEp by remember { mutableIntStateOf(0) }
     var requestedId by remember { mutableStateOf<String?>(null) }
 
+    // Audio variants come from the resolved MovieBox group (empty when unmatched).
+    // Labels use the matcher's language detection (bracket/corner aware), then are
+    // ordered by the player's audio preference.
     val ordered = remember(s.group) {
-        s.group.variants
-            .map { AudioVariant(it.subjectId, it.variantLabel) }
-            .sortedBy { audioPreferenceRank(it.label) }
+        s.group?.variants
+            ?.map { AudioVariant(it.subjectId, com.snape.flix.data.MovieBoxMatcher.detectLanguage(it)) }
+            ?.sortedBy { audioPreferenceRank(it.label) }
+            ?: emptyList()
     }
 
     val playerVm: PlayerViewModel = viewModel()
@@ -180,8 +192,9 @@ fun DetailScreen(
     val ready = pState as? PlayerLoadState.Ready
     // Resume from the last saved position for this exact title/season/episode.
     val resumeFrom = remember(ready, currentSe, currentEp) {
-        if (ready != null) {
-            com.snape.flix.data.LocalStore.progressFor(s.group.primary.subjectId, currentSe, currentEp) ?: 0L
+        val primaryId = s.group?.primary?.subjectId
+        if (ready != null && primaryId != null) {
+            com.snape.flix.data.LocalStore.progressFor(primaryId, currentSe, currentEp) ?: 0L
         } else {
             0L
         }
@@ -237,6 +250,7 @@ fun DetailScreen(
     }
 
     fun play(se: Int, ep: Int) {
+        if (s.group == null) return // no playable MovieBox match
         currentSe = se
         currentEp = ep
         requestedId = null
@@ -305,9 +319,9 @@ fun DetailScreen(
                             currentEp = currentEp,
                             onSelectEpisode = { se, ep -> play(se, ep) },
                             onProgress = { pos, dur ->
-                                com.snape.flix.data.LocalStore.recordProgress(
-                                    s.group.primary, currentSe, currentEp, pos, dur,
-                                )
+                                s.group?.primary?.let {
+                                    com.snape.flix.data.LocalStore.recordProgress(it, currentSe, currentEp, pos, dur)
+                                }
                             },
                         )
                         pState is PlayerLoadState.Error ->
@@ -617,10 +631,11 @@ private fun HeroStatus(message: String, spinner: Boolean = false, onBack: (() ->
 @Composable
 private fun MetaCard(s: DetailUiState, onWatch: () -> Unit) {
     val context = LocalContext.current
+    val group = s.group
     var downloadOpen by remember { mutableStateOf(false) }
-    if (downloadOpen) {
+    if (downloadOpen && group != null) {
         DownloadSheet(
-            group = s.group,
+            group = group,
             isSeries = s.isSeries,
             onDismiss = { downloadOpen = false },
             posterUrl = s.posterUrl,
@@ -711,15 +726,20 @@ private fun MetaCard(s: DetailUiState, onWatch: () -> Unit) {
 
                 Spacer(Modifier.height(12.dp))
 
-                // actions: Watch + Download + Watchlist
+                // actions: Watch + Download + Watchlist. When there's no playable
+                // MovieBox match, the title is still browsable — Watch shows
+                // "UNAVAILABLE" and the download/watchlist (which key on a MovieBox
+                // subject) are hidden.
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    WatchButton(modifier = Modifier.weight(1f), onClick = onWatch)
-                    DownloadActionIcon(
-                        group = s.group,
-                        onDownload = { downloadOpen = true },
-                        onNavigateToDownloads = { com.snape.flix.ui.downloads.DownloadsActivity.start(context) },
-                    )
-                    WatchlistIcon(item = s.group.primary)
+                    WatchButton(modifier = Modifier.weight(1f), enabled = group != null, onClick = onWatch)
+                    if (group != null) {
+                        DownloadActionIcon(
+                            group = group,
+                            onDownload = { downloadOpen = true },
+                            onNavigateToDownloads = { com.snape.flix.ui.downloads.DownloadsActivity.start(context) },
+                        )
+                        WatchlistIcon(item = group.primary)
+                    }
                 }
             }
         }
@@ -847,22 +867,27 @@ private fun WatchProvidersRow(providers: List<WatchProviderKey>) {
 }
 
 @Composable
-private fun WatchButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun WatchButton(modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
     Row(
         modifier
             .height(40.dp)
             .clip(RoundedCornerShape(50))
-            .background(Color.White)
-            .clickable(onClick = onClick)
+            .background(if (enabled) Color.White else Color(0x1FFFFFFF))
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
-        Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+        Icon(
+            Icons.Rounded.PlayArrow,
+            contentDescription = null,
+            tint = if (enabled) Color.Black else Color(0x80FFFFFF),
+            modifier = Modifier.size(16.dp),
+        )
         Spacer(Modifier.width(8.dp))
         Text(
-            "WATCH",
-            color = Color.Black,
+            if (enabled) "WATCH" else "UNAVAILABLE",
+            color = if (enabled) Color.Black else Color(0x80FFFFFF),
             fontFamily = ChesnaGrotesk,
             fontWeight = FontWeight.SemiBold,
             fontSize = 12.sp,

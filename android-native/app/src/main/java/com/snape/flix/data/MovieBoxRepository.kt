@@ -1,6 +1,12 @@
 package com.snape.flix.data
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -101,16 +107,29 @@ object MovieBoxRepository {
     private const val PER_PAGE = 24
 
     /**
-     * Search movies + series for one [page]. Drops trailers/music and
-     * resource-less hits, then folds every audio variant (Original / Hindi /
-     * Tamil …) of the same title into a single [SubjectGroup] so the grid shows
-     * one card per title. Returns the page's groups plus whether more pages
-     * remain (for the grid's infinite scroll).
+     * Raw, ungrouped search hits filtered to playable movies/series. This is the
+     * matcher's input: a single TMDB title's audio variants are separate hits
+     * here, and the matcher ([MovieBoxMatcher.pickVariants]) folds + orders them.
+     * `hasResource == true` is enforced here (and again in the matcher) so an
+     * un-streamable subject is never matched. Pulls one page by default (variants
+     * are adjacent); [pages] > 1 widens the net for sparse hits.
      */
-    suspend fun search(keyword: String, page: Int = 1): SearchPage = withContext(Dispatchers.IO) {
+    suspend fun searchSubjects(keyword: String, pages: Int = 1): List<SubjectItem> = withContext(Dispatchers.IO) {
+        val out = ArrayList<SubjectItem>()
+        var page = 1
+        while (page <= pages) {
+            val (items, hasMore) = searchPage(keyword.trim(), page)
+            out += items
+            if (!hasMore) break
+            page++
+        }
+        out
+    }
+
+    private fun searchPage(keyword: String, page: Int): Pair<List<SubjectItem>, Boolean> {
         val body = json.encodeToString(
             SearchRequest.serializer(),
-            SearchRequest(keyword = keyword.trim(), page = page, perPage = PER_PAGE),
+            SearchRequest(keyword = keyword, page = page, perPage = PER_PAGE),
         )
         val ts = System.currentTimeMillis()
         val sig = MovieBoxSign.signature("POST", P_SEARCH, "", body, ts)
@@ -132,19 +151,56 @@ object MovieBoxRepository {
             .filter { (it.subjectType == 1 || it.subjectType == 2) && it.subjectId.isNotBlank() && it.hasResource }
         // Trust the pager when present; otherwise infer from a full page of raw hits.
         val hasMore = parsed.data?.pager?.hasMore ?: (rawItems.size >= PER_PAGE)
-        SearchPage(groups = groupVariants(items), hasMore = hasMore)
+        return items to hasMore
     }
 
-    /** Fold audio variants of the same title into one group (order preserved). */
-    private fun groupVariants(items: List<SubjectItem>): List<SubjectGroup> {
-        val groups = LinkedHashMap<String, MutableList<SubjectItem>>()
-        for (item in items) groups.getOrPut(item.groupKey) { mutableListOf() }.add(item)
-        return groups.values.map { variants ->
-            // Prefer the original (un-badged) variant as the default; play it first.
-            val primary = variants.firstOrNull { it.isOriginal } ?: variants.first()
-            val ordered = listOf(primary) + variants.filter { it.subjectId != primary.subjectId }
-            SubjectGroup(primary, ordered)
+    // --- TMDB → MovieBox match (cached) -------------------------------------
+
+    private data class CacheEntry(val group: SubjectGroup?, val expiresAt: Long)
+
+    // Positive matches live for the session; negatives expire so newly-added
+    // MovieBox titles eventually resolve. Bounded LRU keeps memory flat.
+    private const val MATCH_CACHE_MAX = 256
+    private const val NEG_TTL_MS = 10 * 60 * 1000L
+    private val cache = object : LinkedHashMap<String, CacheEntry>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CacheEntry>?) = size > MATCH_CACHE_MAX
+    }
+    private val inFlight = HashMap<String, Deferred<SubjectGroup?>>()
+    private val cacheMutex = Mutex()
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    private fun keyOf(ref: TmdbRef) = (if (ref.isSeries) "tv" else "movie") + ":" + ref.id
+
+    /**
+     * Resolve a TMDB ref to a playable MovieBox [SubjectGroup] (primary + ordered
+     * audio variants), or null when no confident match exists. Cached and
+     * in-flight-deduped, so opening the same title twice — or many cards for the
+     * same title — costs at most one MovieBox search.
+     */
+    suspend fun resolve(ref: TmdbRef): SubjectGroup? {
+        val key = keyOf(ref)
+        val now = System.currentTimeMillis()
+        val deferred: Deferred<SubjectGroup?> = cacheMutex.withLock {
+            cache[key]?.let { e -> if (e.group != null || e.expiresAt > now) return e.group }
+            inFlight[key] ?: scope.async { doResolve(ref).also { storeResult(key, it) } }
+                .also { inFlight[key] = it }
         }
+        return deferred.await()
+    }
+
+    private suspend fun storeResult(key: String, group: SubjectGroup?) = cacheMutex.withLock {
+        cache[key] = CacheEntry(group, if (group == null) System.currentTimeMillis() + NEG_TTL_MS else Long.MAX_VALUE)
+        inFlight.remove(key)
+    }
+
+    private suspend fun doResolve(ref: TmdbRef): SubjectGroup? {
+        val items = runCatching { searchSubjects(ref.title) }.getOrDefault(emptyList())
+        if (items.isEmpty()) return null
+        val variants = MovieBoxMatcher.pickVariants(ref, items)
+        if (variants.isEmpty()) return null
+        // Stamp the TMDB id so the resolved subjects can be persisted and reopened.
+        val stamped = variants.map { it.item.copy(tmdbId = ref.id) }
+        return SubjectGroup(primary = stamped.first(), variants = stamped)
     }
 
     /** Seasons (with episode counts) for a series. */

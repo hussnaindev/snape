@@ -164,6 +164,24 @@ object TmdbRepository {
         return prev[b.length]
     }
 
+    /**
+     * Multi search (movies + series) for the search screen. Filters out people and
+     * poster-less hits, and — per the released-only rule — drops anything with a
+     * blank or future release/air date.
+     */
+    suspend fun searchMulti(query: String, page: Int = 1): List<TmdbSearchHit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val today = todayIso()
+            get(
+                "/search/multi",
+                listOf("query" to query, "include_adult" to "false", "page" to page.toString()),
+                TmdbSearchResponse.serializer(),
+            ).results
+                .filter { (it.media_type == "movie" || it.media_type == "tv") && it.poster_path != null }
+                .filter { it.date.isNotBlank() && it.date <= today }
+        }.getOrDefault(emptyList())
+    }
+
     suspend fun detail(isSeries: Boolean, id: Int): TmdbDetail? = withContext(Dispatchers.IO) {
         runCatching {
             get(if (isSeries) "/tv/$id" else "/movie/$id", emptyList(), TmdbDetail.serializer())
@@ -220,11 +238,14 @@ object TmdbRepository {
     ): List<TmdbSearchHit> = withContext(Dispatchers.IO) {
         runCatching {
             if (genreIds.isEmpty()) return@runCatching emptyList()
+            val today = todayIso()
             val res = get(
                 if (isSeries) "/discover/tv" else "/discover/movie",
                 listOf(
                     "with_genres" to genreIds.take(5).joinToString("|"),
                     "sort_by" to "popularity.desc",
+                    // Released-only: no future/unaired recommendations.
+                    (if (isSeries) "first_air_date.lte" else "primary_release_date.lte") to today,
                 ),
                 TmdbSearchResponse.serializer(),
             )
@@ -414,8 +435,30 @@ data class TmdbSearchHit(
     val first_air_date: String = "",
     val poster_path: String? = null,
     val vote_average: Double = 0.0,
+    val media_type: String = "", // "movie" | "tv" (only set by /search/multi)
 ) {
     val displayTitle: String get() = title.ifBlank { name }
+
+    /** TV when /search/multi says so, or (for discover/recs hits) when only `name`
+     *  is populated. */
+    val isSeries: Boolean get() = media_type == "tv" || (title.isBlank() && name.isNotBlank())
+
+    /** Release/air date, whichever this hit carries. */
+    val date: String get() = if (isSeries) first_air_date else release_date
+
+    /** Build the TMDB ref used to open the detail page (and resolve MovieBox). */
+    fun toRef(seriesOverride: Boolean? = null): TmdbRef {
+        val series = seriesOverride ?: isSeries
+        val d = if (series) first_air_date else release_date
+        return TmdbRef(
+            id = id,
+            isSeries = series,
+            title = displayTitle,
+            year = d.take(4),
+            voteAverage = vote_average.takeIf { it > 0 },
+            posterUrl = TmdbRepository.img(poster_path, "w342"),
+        )
+    }
 }
 
 @Serializable
@@ -564,6 +607,19 @@ data class TmdbPersonCredit(
     /** Release/air date, whichever this credit type carries. */
     val date: String get() = release_date.ifBlank { first_air_date }
 
+    /** TV credits carry `name`/`first_air_date`; movie credits carry `title`/`release_date`. */
+    val isSeries: Boolean get() = title.isBlank() && name.isNotBlank()
+
     /** Same "has both images" rule the homepage/web `filterHasImages` uses. */
     val hasImages: Boolean get() = !backdrop_path.isNullOrBlank() && !poster_path.isNullOrBlank()
+
+    /** The TMDB ref this credit opens on the detail page. */
+    fun toRef(): TmdbRef = TmdbRef(
+        id = id,
+        isSeries = isSeries,
+        title = displayTitle,
+        year = date.take(4),
+        voteAverage = vote_average.takeIf { it > 0 },
+        posterUrl = TmdbRepository.img(poster_path, "w342"),
+    )
 }

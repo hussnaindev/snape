@@ -66,20 +66,25 @@ class PersonViewModel : ViewModel() {
                 return@launch
             }
 
-            // Known for: top 8 films by popularity (same image rule as the homepage).
+            // Released-only: drop credits with a blank or future date (yyyy-MM-dd
+            // string compare matches TMDB's format).
+            val today = java.time.LocalDate.now().toString()
+            fun TmdbPersonCredit.isReleased() = date.isNotBlank() && date <= today
+
+            // Known for: top 8 released films by popularity (homepage image rule).
             val knownFor = movieCredits
-                .filter { it.hasImages }
+                .filter { it.hasImages && it.isReleased() }
                 .sortedByDescending { it.popularity }
                 .take(8)
 
-            // Full filmography: films with images and a release date, newest first.
+            // Full filmography: released films with images, newest first.
             val filmography = movieCredits
-                .filter { it.hasImages && it.date.isNotBlank() }
+                .filter { it.hasImages && it.isReleased() }
                 .sortedByDescending { it.date }
 
-            // Hero backdrop: latest movie OR series credit that has a backdrop.
+            // Hero backdrop: latest released movie OR series credit with a backdrop.
             val heroCredit = (movieCredits + seriesCredits)
-                .filter { !it.backdrop_path.isNullOrBlank() && it.date.isNotBlank() }
+                .filter { !it.backdrop_path.isNullOrBlank() && it.isReleased() }
                 .maxByOrNull { it.date }
 
             _state.update {

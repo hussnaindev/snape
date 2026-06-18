@@ -57,6 +57,10 @@ data class SubjectItem(
     // Present on home-feed (`tab-operating`) subjects, empty on search hits.
     val detailUrl: String = "",
     val countryName: String = "",
+    // The TMDB id this subject was matched from, stamped when a TMDB ref resolves
+    // to this MovieBox subject. Persisted so watchlist/history cards can reopen by
+    // ref. Null for un-stamped/legacy entries (default keeps old JSON readable).
+    val tmdbId: Int? = null,
 ) {
     val isSeries: Boolean get() = subjectType == 2
     val year: String get() = releaseDate.take(4)
@@ -92,6 +96,25 @@ data class SubjectGroup(
     val variants: List<SubjectItem>,
 ) {
     val hasVariants: Boolean get() = variants.size > 1
+}
+
+/**
+ * A TMDB title to resolve against MovieBox. TMDB is the catalogue/source of truth
+ * across the app; this ref is what travels from a card/search-hit/recommendation
+ * into the detail page, where it is (a) enriched with TMDB metadata and (b)
+ * resolved to a playable MovieBox [SubjectGroup] in parallel.
+ */
+@Serializable
+data class TmdbRef(
+    val id: Int,
+    val isSeries: Boolean,
+    val title: String,
+    val year: String,
+    val runtime: Int? = null,
+    val voteAverage: Double? = null,
+    val posterUrl: String? = null,
+) {
+    val yearInt: Int? get() = year.take(4).toIntOrNull()
 }
 
 // --- home feed (tab-operating) ----------------------------------------------
@@ -130,7 +153,19 @@ data class HomeCard(
     val year: String,
     val subject: SubjectItem?,
     val tmdbId: Int? = null,
-)
+) {
+    /** The TMDB ref this card opens (null when the card carries no TMDB id). */
+    fun toRef(): TmdbRef? = tmdbId?.let {
+        TmdbRef(
+            id = it,
+            isSeries = isSeries,
+            title = title,
+            year = year,
+            voteAverage = rating,
+            posterUrl = posterUrl,
+        )
+    }
+}
 
 /**
  * One curated provider section, mirroring the web `CuratedProviderSection`.

@@ -11,13 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.lifecycle.lifecycleScope
-import com.snape.flix.data.HomeCard
-import com.snape.flix.data.MovieBoxRepository
-import com.snape.flix.data.SubjectGroup
 import com.snape.flix.ui.detail.DetailActivity
 import com.snape.flix.ui.theme.SnapeTheme
-import kotlinx.coroutines.launch
 
 class ProviderBrowseActivity : ComponentActivity() {
 
@@ -53,12 +48,7 @@ class ProviderBrowseActivity : ComponentActivity() {
                         title = title,
                         providerId = tmdbId,
                         onOpenDetail = { card ->
-                            lifecycleScope.launch {
-                                val group = runCatching {
-                                    MovieBoxRepository.search(card.title)
-                                }.getOrNull()?.groups?.firstOrNull()
-                                if (group != null) DetailActivity.start(this@ProviderBrowseActivity, group)
-                            }
+                            card.toRef()?.let { DetailActivity.start(this@ProviderBrowseActivity, it) }
                         },
                         onBack = ::finish,
                     )

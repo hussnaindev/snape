@@ -29,10 +29,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.snape.flix.data.SubjectGroup
+import com.snape.flix.data.TmdbRef
+import com.snape.flix.data.TmdbRepository
 import com.snape.flix.ui.components.BackChip
 import com.snape.flix.ui.components.LinedHeading
-import com.snape.flix.ui.components.MediaCard
+import com.snape.flix.ui.components.PosterCard
 import com.snape.flix.ui.components.SnakeLoader
 import com.snape.flix.ui.search.SearchViewModel
 import com.snape.flix.ui.theme.ChesnaGrotesk
@@ -49,7 +50,7 @@ private val PageBg = Color(0xFF070B08)
 fun BrowseScreen(
     title: String,
     query: String,
-    onOpenDetail: (SubjectGroup) -> Unit,
+    onOpenRef: (TmdbRef) -> Unit,
     onBack: () -> Unit,
     vm: SearchViewModel = viewModel(),
 ) {
@@ -112,8 +113,15 @@ fun BrowseScreen(
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
                         modifier = Modifier.fillMaxSize(),
                     ) {
-                        items(state.results, key = { it.primary.subjectId }) { group ->
-                            MediaCard(item = group.primary, onClick = { onOpenDetail(group) })
+                        items(state.results, key = { "${it.isSeries}-${it.id}" }) { hit ->
+                            PosterCard(
+                                posterUrl = TmdbRepository.img(hit.poster_path, "w342"),
+                                isSeries = hit.isSeries,
+                                rating = hit.vote_average.takeIf { it > 0 },
+                                title = hit.displayTitle,
+                                onClick = { onOpenRef(hit.toRef()) },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
                         }
                         if (state.loadingMore) {
                             item(span = { GridItemSpan(maxLineSpan) }) {

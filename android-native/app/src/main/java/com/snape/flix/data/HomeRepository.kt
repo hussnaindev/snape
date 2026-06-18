@@ -41,12 +41,11 @@ object HomeRepository {
 
     private const val CAROUSEL_SIZE = 10
 
-    /** Build all sections (cards only). MovieBox feed is fetched once and shared;
-     *  the per-section builds (incl. TMDB discover for fallback rows) run in
-     *  parallel so first paint isn't gated on serial network calls. */
+    /** Build all sections (cards only) from TMDB discover. TMDB is the catalogue;
+     *  each card carries a `tmdbId` and resolves to a playable MovieBox match only
+     *  when opened. Section builds run in parallel so first paint isn't serialized. */
     suspend fun buildSections(): List<HomeSection> = coroutineScope {
-        val rows = runCatching { MovieBoxRepository.homeFeed() }.getOrDefault(emptyList())
-        val built = SPECS.map { spec -> async { buildSection(spec, rows) } }.awaitAll()
+        val built = SPECS.map { spec -> async { buildSection(spec) } }.awaitAll()
         dedupeHeroes(built)
     }
 
@@ -80,45 +79,21 @@ object HomeRepository {
         }
     }
 
-    private suspend fun buildSection(spec: SectionSpec, rows: List<HomeRow>): HomeSection {
-        val mbRow = spec.movieboxRowTitle?.let { wanted ->
-            rows.firstOrNull {
-                it.type == "SUBJECTS_MOVIE" &&
-                    it.title.contains(wanted, ignoreCase = true) &&
-                    it.subjects.isNotEmpty()
+    private suspend fun buildSection(spec: SectionSpec): HomeSection {
+        val cards: List<HomeCard> = TmdbRepository.discoverSection(spec.key)
+            .take(CAROUSEL_SIZE)
+            .map { hit ->
+                val date = if (spec.isSeries) hit.first_air_date else hit.release_date
+                HomeCard(
+                    title = hit.displayTitle,
+                    posterUrl = TmdbRepository.img(hit.poster_path, "w342"),
+                    rating = hit.vote_average.takeIf { it > 0 },
+                    isSeries = spec.isSeries,
+                    year = date.take(4),
+                    subject = null,
+                    tmdbId = hit.id,
+                )
             }
-        }
-
-        val cards: List<HomeCard> = if (mbRow != null) {
-            mbRow.subjects
-                .filter { it.hasResource && it.posterUrl != null }
-                .map { s ->
-                    HomeCard(
-                        title = s.cleanTitle,
-                        posterUrl = s.posterUrl,
-                        rating = s.rating?.takeIf { it > 0 },
-                        isSeries = s.isSeries,
-                        year = s.year,
-                        subject = s,
-                    )
-                }
-                .take(CAROUSEL_SIZE)
-        } else {
-            TmdbRepository.discoverSection(spec.key)
-                .take(CAROUSEL_SIZE)
-                .map { hit ->
-                    val date = if (spec.isSeries) hit.first_air_date else hit.release_date
-                    HomeCard(
-                        title = hit.displayTitle,
-                        posterUrl = TmdbRepository.img(hit.poster_path, "w342"),
-                        rating = hit.vote_average.takeIf { it > 0 },
-                        isSeries = spec.isSeries,
-                        year = date.take(4),
-                        subject = null,
-                        tmdbId = hit.id,
-                    )
-                }
-        }
 
         return HomeSection(
             key = spec.key,
@@ -140,9 +115,7 @@ object HomeRepository {
         // Use the hero card's own type — these rows (Trending, Top Series) mix
         // movies and series, so the section's nominal type isn't always right.
         val isSeries = first.isSeries
-        val id = first.tmdbId
-            ?: TmdbRepository.resolveId(isSeries, first.title, first.year)
-            ?: return section
+        val id = first.tmdbId ?: return section
 
         val detail = TmdbRepository.detail(isSeries, id) ?: return section
         val logo = TmdbRepository.logoUrl(isSeries, id)

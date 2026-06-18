@@ -87,4 +87,8 @@ dependencies {
     // SimpleCache / CacheDataSource / DownloadManager / DownloadService classes
     // come transitively via media3-datasource + media3-exoplayer.
     implementation("androidx.media3:media3-database:$media3")
+
+    // Pure-JVM unit tests (e.g. the MovieBox↔TMDB matcher battery). No Android
+    // framework needed — runs on the local JVM via `testDebugUnitTest`.
+    testImplementation("junit:junit:4.13.2")
 }

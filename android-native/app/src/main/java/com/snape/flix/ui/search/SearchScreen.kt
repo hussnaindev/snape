@@ -74,10 +74,12 @@ import com.snape.flix.data.DownloadStatus
 import com.snape.flix.data.Downloads
 import com.snape.flix.data.LocalStore
 import com.snape.flix.data.SubjectGroup
+import com.snape.flix.data.TmdbRef
+import com.snape.flix.data.TmdbRepository
 import com.snape.flix.ui.browse.BrowseActivity
 import com.snape.flix.ui.components.DownloadGlyph
 import com.snape.flix.ui.streaming.StreamingSitesActivity
-import com.snape.flix.ui.components.MediaCard
+import com.snape.flix.ui.components.PosterCard
 import com.snape.flix.ui.components.ProgressRing
 import com.snape.flix.ui.components.SnakeLoader
 import com.snape.flix.ui.downloads.DownloadsActivity
@@ -88,7 +90,7 @@ import com.snape.flix.ui.watchlist.WatchlistActivity
 
 @Composable
 fun SearchScreen(
-    onOpenDetail: (group: SubjectGroup) -> Unit,
+    onOpenRef: (TmdbRef) -> Unit,
     viewModel: SearchViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -112,7 +114,7 @@ fun SearchScreen(
         ) { searching ->
             if (!searching) {
                 HomeScreen(
-                    onOpenDetail = onOpenDetail,
+                    onOpenRef = onOpenRef,
                     onExplore = { section ->
                         // Explore = MovieBox keyword search for the section label.
                         BrowseActivity.start(context, section.label, section.label)
@@ -136,7 +138,7 @@ fun SearchScreen(
                     SearchResults(
                         state = state,
                         onLoadMore = viewModel::loadMore,
-                        onOpenDetail = onOpenDetail,
+                        onOpenRef = onOpenRef,
                     )
                 }
             }
@@ -173,7 +175,7 @@ fun SearchScreen(
 private fun SearchResults(
     state: SearchUiState,
     onLoadMore: () -> Unit,
-    onOpenDetail: (group: SubjectGroup) -> Unit,
+    onOpenRef: (TmdbRef) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.fillMaxSize()) {
@@ -211,10 +213,14 @@ private fun SearchResults(
                     contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    items(state.results, key = { it.primary.subjectId }) { group ->
-                        MediaCard(
-                            item = group.primary,
-                            onClick = { onOpenDetail(group) },
+                    items(state.results, key = { "${it.isSeries}-${it.id}" }) { hit ->
+                        PosterCard(
+                            posterUrl = TmdbRepository.img(hit.poster_path, "w342"),
+                            isSeries = hit.isSeries,
+                            rating = hit.vote_average.takeIf { it > 0 },
+                            title = hit.displayTitle,
+                            onClick = { onOpenRef(hit.toRef()) },
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
                     if (state.loadingMore) {

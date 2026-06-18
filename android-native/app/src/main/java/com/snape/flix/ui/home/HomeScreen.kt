@@ -31,7 +31,7 @@ import com.snape.flix.data.HistoryEntry
 import com.snape.flix.data.HomeCard
 import com.snape.flix.data.HomeSection
 import com.snape.flix.data.LocalStore
-import com.snape.flix.data.SubjectGroup
+import com.snape.flix.data.TmdbRef
 import com.snape.flix.ui.components.PosterCard
 import com.snape.flix.ui.components.SnakeLoader
 import com.snape.flix.ui.theme.ChesnaGrotesk
@@ -46,7 +46,7 @@ private val PageBg = Color(0xFF070B08)
  */
 @Composable
 fun HomeScreen(
-    onOpenDetail: (SubjectGroup) -> Unit,
+    onOpenRef: (TmdbRef) -> Unit,
     onExplore: (HomeSection) -> Unit,
     onOpenContinue: (HistoryEntry) -> Unit,
     modifier: Modifier = Modifier,
@@ -67,9 +67,10 @@ fun HomeScreen(
     val scrolling by remember { derivedStateOf { scrollState.isScrollInProgress } }
 
     fun openCard(card: HomeCard) {
-        val subject = card.subject
-        if (subject != null) onOpenDetail(SubjectGroup(subject, listOf(subject)))
-        else viewModel.resolveAndOpen(card.title, onOpenDetail)
+        // Every home card is TMDB-sourced now; open detail by ref (resolve happens
+        // there). Fall back to a title lookup only if a card somehow lacks an id.
+        val ref = card.toRef()
+        if (ref != null) onOpenRef(ref) else viewModel.openHeroTitle(card.title, card.isSeries, onOpenRef)
     }
 
     Box(modifier.fillMaxSize().background(PageBg)) {
@@ -96,7 +97,7 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxSize().verticalScroll(scrollState),
             ) {
                 HeroCarousel(
-                    onOpenTitle = { title, isSeries -> viewModel.resolveAndOpen(title, onOpenDetail) },
+                    onOpenTitle = { title, isSeries -> viewModel.openHeroTitle(title, isSeries, onOpenRef) },
                     playbackEnabled = heroPlaying && !resolving,
                     scrolling = scrolling,
                 )
