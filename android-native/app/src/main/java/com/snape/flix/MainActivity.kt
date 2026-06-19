@@ -107,7 +107,7 @@ class MainActivity : ComponentActivity() {
             val client = app.ldClient
             if (client != null && ip != null) {
                 val context = LDContext.builder("snape-user")
-                    .ip(ip)
+                    .set("ip", ip)
                     .build()
                 client.identify(context)
                 val restricted = client.boolVariation("ip-access-restriction", false)

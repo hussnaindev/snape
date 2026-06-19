@@ -23,10 +23,11 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Accept Android SDK licenses and install packages
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" --sdk_root=$ANDROID_HOME
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages
+        run: sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -34,6 +35,9 @@ jobs:
           gradle-version: "8.9"
 
       - name: Build release APK
+        # Release (non-debuggable) build — scrolling/animation perf is much
+        # smoother than a debug build. Signed with the debug keystore so it
+        # installs without secrets.
         run: gradle :app:assembleRelease --no-daemon --stacktrace
         env:
           ORG_GRADLE_PROJECT_LAUNCHDARKLY_MOBILE_KEY: ${{ secrets.LAUNCHDARKLY_MOBILE_KEY }}
