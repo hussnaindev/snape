@@ -13,6 +13,7 @@ import com.launchdarkly.sdk.android.LDClient
 import com.launchdarkly.sdk.android.LDConfig
 import com.snape.flix.data.Downloads
 import com.snape.flix.data.LocalStore
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -38,8 +39,11 @@ import kotlinx.coroutines.launch
  * load through this same tuned loader.
  */
 class SnapeApp : Application(), ImageLoaderFactory {
-    var ldClient: LDClient? = null
-        private set
+    // Completes (possibly with null) once the on-device SDK has finished its first
+    // flag fetch. Callers MUST await this rather than reading a bare field — the
+    // init blocks for up to 5s, so a plain field is null during a startup race and
+    // silently skips flag evaluation. See awaitLdClient().
+    private val ldClientReady = CompletableDeferred<LDClient?>()
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -51,25 +55,30 @@ class SnapeApp : Application(), ImageLoaderFactory {
         Downloads.init(this)
         // LaunchDarkly — async init so on-device SDK starts fetching flags.
         appScope.launch {
-            initLaunchDarkly()
+            ldClientReady.complete(initLaunchDarkly())
         }
     }
 
-    private fun initLaunchDarkly() {
-        try {
+    /** Suspends until LD init finishes, then returns the client (or null if init failed/skipped). */
+    suspend fun awaitLdClient(): LDClient? = ldClientReady.await()
+
+    private fun initLaunchDarkly(): LDClient? {
+        return try {
             val key = BuildConfig.LAUNCHDARKLY_MOBILE_KEY
             if (key.isEmpty()) {
                 Log.w("SnapeApp", "LAUNCHDARKLY_MOBILE_KEY is empty — skipping LD init")
-                return
+                return null
             }
             val config = LDConfig.Builder(LDConfig.Builder.AutoEnvAttributes.Enabled)
                 .mobileKey(key)
                 .build()
             val context = LDContext.create("snape-default-context")
-            ldClient = LDClient.init(this, config, context, 5)
+            val client = LDClient.init(this, config, context, 5)
             Log.i("SnapeApp", "LaunchDarkly initialized")
+            client
         } catch (e: Exception) {
             Log.e("SnapeApp", "Failed to init LaunchDarkly", e)
+            null
         }
     }
 

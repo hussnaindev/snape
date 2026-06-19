@@ -101,20 +101,31 @@ class MainActivity : ComponentActivity() {
 
     private fun checkIpAccess() {
         lifecycleScope.launch {
-            val ip = fetchPublicIp()
-            Log.i("MainActivity", "Public IP: $ip")
-            val app = application as SnapeApp
-            val client = app.ldClient
-            if (client != null && ip != null) {
+            val granted = withContext(Dispatchers.IO) {
+                val ip = fetchPublicIp()
+                Log.i("MainActivity", "Public IP: $ip")
+                val app = application as SnapeApp
+                // Wait for the SDK's first flag fetch — reading a bare field here
+                // races init and silently grants access before the flag is ready.
+                val client = app.awaitLdClient()
+                if (client == null || ip == null) {
+                    Log.w("MainActivity", "LD client=$client ip=$ip — granting by default")
+                    return@withContext true
+                }
                 val context = LDContext.builder("snape-user")
                     .set("ip", ip)
                     .build()
-                client.identify(context)
+                // Block until the new context's flags are loaded, otherwise
+                // boolVariation may return the previous context's value.
+                client.identify(context).get()
                 val restricted = client.boolVariation("ip-access-restriction", false)
-                accessState = if (restricted) AccessState.Denied else AccessState.Granted
-            } else {
-                accessState = AccessState.Granted
+                Log.i("MainActivity", "ip-access-restriction=$restricted for ip=$ip")
+                // Push the evaluation event now so it shows up in LD without waiting
+                // for the default batch interval (helpful when verifying the flow).
+                client.flush()
+                !restricted
             }
+            accessState = if (granted) AccessState.Granted else AccessState.Denied
         }
     }
 
