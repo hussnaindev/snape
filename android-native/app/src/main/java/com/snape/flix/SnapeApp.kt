@@ -9,6 +9,7 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.util.DebugLogger
 import com.launchdarkly.sdk.LDContext
+import com.launchdarkly.sdk.android.AutoEnvAttributes
 import com.launchdarkly.sdk.android.LDClient
 import com.launchdarkly.sdk.android.LDConfig
 import com.snape.flix.data.Downloads
@@ -62,7 +63,7 @@ class SnapeApp : Application(), ImageLoaderFactory {
                 Log.w("SnapeApp", "LAUNCHDARKLY_MOBILE_KEY is empty — skipping LD init")
                 return
             }
-            val config = LDConfig.Builder()
+            val config = LDConfig.Builder(AutoEnvAttributes.Enabled)
                 .mobileKey(key)
                 .build()
             val context = LDContext.create("snape-default-context")

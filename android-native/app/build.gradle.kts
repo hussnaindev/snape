@@ -76,7 +76,7 @@ dependencies {
     // SVG decoder so the bundled provider logos (Netflix/Max/…) render as vectors.
     implementation("io.coil-kt:coil-svg:2.7.0")
 
-    implementation("com.launchdarkly:launchdarkly-android-client-sdk:5.+")
+    implementation("com.launchdarkly:launchdarkly-android-client-sdk:5.5.0")
 
     val media3 = "1.4.1"
     implementation("androidx.media3:media3-exoplayer:$media3")
