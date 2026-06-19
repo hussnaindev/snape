@@ -15,6 +15,8 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
+        val key = (project.findProperty("LAUNCHDARKLY_MOBILE_KEY") as String?)?.trim().orEmpty()
+        buildConfigField("String", "LAUNCHDARKLY_MOBILE_KEY", "\"$key\"")
     }
 
     buildTypes {
@@ -73,6 +75,8 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     // SVG decoder so the bundled provider logos (Netflix/Max/…) render as vectors.
     implementation("io.coil-kt:coil-svg:2.7.0")
+
+    implementation("com.launchdarkly:launchdarkly-android-client-sdk:5.+")
 
     val media3 = "1.4.1"
     implementation("androidx.media3:media3-exoplayer:$media3")
