@@ -67,7 +67,7 @@ class SnapeApp : Application(), ImageLoaderFactory {
                 .mobileKey(key)
                 .build()
             val context = LDContext.create("snape-default-context")
-            ldClient = LDClient.init(this, config, context, 5)
+            ldClient = LDClient.init(this, config, context)
             Log.i("SnapeApp", "LaunchDarkly initialized")
         } catch (e: Exception) {
             Log.e("SnapeApp", "Failed to init LaunchDarkly", e)
