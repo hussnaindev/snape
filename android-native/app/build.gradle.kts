@@ -15,7 +15,14 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-        val key = (project.findProperty("LAUNCHDARKLY_MOBILE_KEY") as String?)?.trim().orEmpty()
+        // Prefer the injected property/secret, but fall back to the committed
+        // production mobile key so CI never ships an empty key (an unset secret
+        // expands to "" and would otherwise clobber the default → LD init skipped
+        // → no events). Mobile keys are not secret per LaunchDarkly's docs.
+        val key = (project.findProperty("LAUNCHDARKLY_MOBILE_KEY") as String?)
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: "mob-87b917f3-6572-4e30-8474-1edee58b7cfc"
         buildConfigField("String", "LAUNCHDARKLY_MOBILE_KEY", "\"$key\"")
     }
 
