@@ -254,6 +254,7 @@ fun DownloadSheet(
                             }
                         }
                         isActive -> {
+                            val activeMatch = match!!
                             // In progress — green outline with progress bar, navigates to downloads.
                             Box(
                                 Modifier
@@ -277,7 +278,7 @@ fun DownloadSheet(
                                 Box(
                                     Modifier
                                         .align(Alignment.CenterStart)
-                                        .fillMaxWidth(match.fraction.coerceAtLeast(0.03f))
+                                        .fillMaxWidth(activeMatch.fraction.coerceAtLeast(0.03f))
                                         .height(48.dp)
                                         .clip(RoundedCornerShape(50))
                                         .background(Color(0x20FF10B981)),
@@ -286,7 +287,7 @@ fun DownloadSheet(
                                     com.snape.flix.ui.components.DownloadGlyph(modifier = Modifier.size(16.dp), tint = Color(0xFF34D399))
                                     Spacer(Modifier.width(8.dp))
                                     Text(
-                                        if (match.status == DownloadStatus.PAUSED) "PAUSED" else "IN PROGRESS",
+                                        if (activeMatch.status == DownloadStatus.PAUSED) "PAUSED" else "IN PROGRESS",
                                         color = Color(0xFF34D399),
                                         fontFamily = ChesnaGrotesk,
                                         fontWeight = FontWeight.SemiBold,
