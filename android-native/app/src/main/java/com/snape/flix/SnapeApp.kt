@@ -12,6 +12,7 @@ import com.launchdarkly.sdk.LDContext
 import com.launchdarkly.sdk.android.LDClient
 import com.launchdarkly.sdk.android.LDConfig
 import com.snape.flix.data.Downloads
+import com.snape.flix.data.HomeCache
 import com.snape.flix.data.LocalStore
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -53,6 +54,8 @@ class SnapeApp : Application(), ImageLoaderFactory {
         LocalStore.init(this)
         // Offline downloads store + engine (resumes paused rows after a restart).
         Downloads.init(this)
+        // Home screen disk cache so a cold start paints the last sections instantly.
+        HomeCache.init(this)
         // LaunchDarkly — async init so on-device SDK starts fetching flags.
         appScope.launch {
             ldClientReady.complete(initLaunchDarkly())

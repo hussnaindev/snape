@@ -2,7 +2,7 @@ package com.snape.flix.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.snape.flix.data.HomeRepository
+import com.snape.flix.data.HomePrefetch
 import com.snape.flix.data.HomeSection
 import com.snape.flix.data.MovieBoxRepository
 import com.snape.flix.data.SubjectGroup
@@ -29,25 +29,20 @@ class HomeViewModel : ViewModel() {
     init { load() }
 
     fun load() {
-        _state.update { it.copy(loading = true, error = null) }
+        // The catalogue is loaded by [HomePrefetch] (kicked off at launch, in
+        // parallel with the access check). It's almost always already complete by
+        // the time the home screen is shown, so this just reflects the result;
+        // if it isn't started yet, start() begins it and we show the spinner.
+        _state.update { it.copy(loading = _state.value.sections.isEmpty(), error = null) }
         viewModelScope.launch {
-            val base = runCatching { HomeRepository.buildSections() }.getOrElse { e ->
-                _state.update { it.copy(loading = false, error = e.message ?: "Failed to load home") }
+            val sections = runCatching { HomePrefetch.start().await() }.getOrElse { e ->
+                _state.update { st ->
+                    if (st.sections.isEmpty()) st.copy(loading = false, error = e.message ?: "Failed to load home")
+                    else st.copy(loading = false)
+                }
                 return@launch
             }
-            // Render cards immediately; fade hero metadata in as TMDB resolves.
-            _state.update { it.copy(sections = base, loading = false, error = null) }
-            for (section in base) {
-                launch {
-                    val enriched = runCatching { HomeRepository.enrichHero(section) }.getOrDefault(section)
-                    _state.update { st ->
-                        val list = st.sections.toMutableList()
-                        val i = list.indexOfFirst { it.key == enriched.key }
-                        if (i >= 0) list[i] = enriched
-                        st.copy(sections = list)
-                    }
-                }
-            }
+            _state.update { it.copy(sections = sections, loading = false, error = null) }
         }
     }
 

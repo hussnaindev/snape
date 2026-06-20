@@ -130,6 +130,13 @@ object HomeRepository {
         )
     }
 
+    /** Enrich every section's hero in parallel and return the assembled list. */
+    suspend fun enrichAll(sections: List<HomeSection>): List<HomeSection> = coroutineScope {
+        sections
+            .map { section -> async { runCatching { enrichHero(section) }.getOrDefault(section) } }
+            .awaitAll()
+    }
+
     /**
      * Resolve the section hero's TMDB entry and patch in its backdrop, title
      * logo, overview, year, rating and Rotten-Tomatoes-style score — exactly the

@@ -122,6 +122,7 @@ data class HomeRow(
  * from MovieBox and opens detail directly; otherwise it came from TMDB and must
  * be resolved to a MovieBox subject (via search) before it can play.
  */
+@Serializable
 data class HomeCard(
     val title: String,
     val posterUrl: String?,
@@ -137,6 +138,7 @@ data class HomeCard(
  * Cards are available immediately; the TMDB-enriched hero fields ([heroBackdropUrl],
  * [heroLogoUrl], …) are patched in asynchronously, so they are nullable.
  */
+@Serializable
 data class HomeSection(
     val key: String,
     val label: String,
