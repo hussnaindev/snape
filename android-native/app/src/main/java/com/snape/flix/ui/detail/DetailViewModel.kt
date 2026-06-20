@@ -51,6 +51,7 @@ data class DetailUiState(
     val episodesBySeason: Map<Int, List<TmdbEpisode>> = emptyMap(),
     val playableSeasons: List<SeasonItem> = emptyList(),
     val enriching: Boolean = true,
+    val refreshing: Boolean = false,
 )
 
 class DetailViewModel : ViewModel() {
@@ -64,14 +65,24 @@ class DetailViewModel : ViewModel() {
     fun start(group: SubjectGroup) {
         if (started) return
         started = true
+        _state.value = baseState(group, group.primary)
+        enrich(group)
+    }
 
+    /** Pull-to-refresh: re-resolve and refetch TMDB enrichment, keeping the page up. */
+    fun refresh() {
+        val cur = _state.value ?: return
+        if (cur.refreshing) return
+        _state.update { it?.copy(refreshing = true) }
+        enrich(cur.group)
+    }
+
+    private fun enrich(group: SubjectGroup) {
         val p = group.primary
-        _state.value = baseState(group, p)
-
         viewModelScope.launch {
             // Resolve the matching TMDB id, then fan out the enrichment calls.
             val id = TmdbRepository.resolveId(p.isSeries, p.title, p.year) ?: run {
-                _state.update { it?.copy(enriching = false) }
+                _state.update { it?.copy(enriching = false, refreshing = false) }
                 if (p.isSeries) loadPlayableSeasons(group)
                 return@launch
             }
@@ -119,6 +130,7 @@ class DetailViewModel : ViewModel() {
                         ?.filter { it.season_number != 0 && it.episode_count > 0 }
                         ?: emptyList(),
                     enriching = false,
+                    refreshing = false,
                 )
             }
 

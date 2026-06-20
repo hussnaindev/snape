@@ -89,6 +89,7 @@ import com.snape.flix.data.TmdbRepository
 import com.snape.flix.data.TmdbSearchHit
 import com.snape.flix.data.WatchProviderKey
 import com.snape.flix.ui.components.PosterCard
+import com.snape.flix.ui.components.PullToRefresh
 import com.snape.flix.ui.player.AudioVariant
 import com.snape.flix.ui.player.PlayerLoadState
 import com.snape.flix.ui.player.PlayerViewModel
@@ -269,6 +270,12 @@ fun DetailScreen(
     val metaMargin by animateDpAsState(if (playerActive) 16.dp else -MetaOverlap, label = "metaMargin")
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
+        PullToRefresh(
+            isRefreshing = s.refreshing,
+            onRefresh = vm::refresh,
+            enabled = !playerActive,
+            modifier = Modifier.fillMaxSize(),
+        ) {
         Column(
             Modifier
                 .fillMaxSize()
@@ -381,6 +388,7 @@ fun DetailScreen(
 
                 Spacer(Modifier.height(40.dp))
             }
+        }
         }
 
         // ── fullscreen player overlay (same exo instance as inline) ───────────

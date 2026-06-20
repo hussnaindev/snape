@@ -33,6 +33,7 @@ import com.snape.flix.data.SubjectGroup
 import com.snape.flix.ui.components.BackChip
 import com.snape.flix.ui.components.LinedHeading
 import com.snape.flix.ui.components.MediaCard
+import com.snape.flix.ui.components.PullToRefresh
 import com.snape.flix.ui.components.SnakeLoader
 import com.snape.flix.ui.search.SearchViewModel
 import com.snape.flix.ui.theme.ChesnaGrotesk
@@ -55,6 +56,7 @@ fun BrowseScreen(
 ) {
     LaunchedEffect(query) { vm.onQueryChange(query) }
     val state by vm.state.collectAsStateWithLifecycle()
+    val refreshing by vm.refreshing.collectAsStateWithLifecycle()
 
     Box(Modifier.fillMaxSize().background(PageBg)) {
         Column(Modifier.fillMaxSize()) {
@@ -104,23 +106,29 @@ fun BrowseScreen(
                         if (shouldLoadMore && state.canLoadMore) vm.loadMore()
                     }
 
-                    LazyVerticalGrid(
-                        state = gridState,
-                        columns = GridCells.Fixed(2),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                    PullToRefresh(
+                        isRefreshing = refreshing,
+                        onRefresh = vm::refresh,
                         modifier = Modifier.fillMaxSize(),
                     ) {
-                        items(state.results, key = { it.primary.subjectId }) { group ->
-                            MediaCard(item = group.primary, onClick = { onOpenDetail(group) })
-                        }
-                        if (state.loadingMore) {
-                            item(span = { GridItemSpan(maxLineSpan) }) {
-                                Box(
-                                    Modifier.fillMaxWidth().padding(vertical = 20.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) { SnakeLoader(size = 40.dp) }
+                        LazyVerticalGrid(
+                            state = gridState,
+                            columns = GridCells.Fixed(2),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            items(state.results, key = { it.primary.subjectId }) { group ->
+                                MediaCard(item = group.primary, onClick = { onOpenDetail(group) })
+                            }
+                            if (state.loadingMore) {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    Box(
+                                        Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) { SnakeLoader(size = 40.dp) }
+                                }
                             }
                         }
                     }

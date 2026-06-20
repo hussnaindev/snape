@@ -50,6 +50,9 @@ class SearchViewModel : ViewModel() {
     private val _picker = MutableStateFlow<PickerState>(PickerState.Hidden)
     val picker: StateFlow<PickerState> = _picker.asStateFlow()
 
+    private val _refreshing = MutableStateFlow(false)
+    val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
+
     // The raw, every-keystroke query. The pipeline below debounces it, drops
     // duplicates, and runs at most one search at a time — a newer keystroke
     // cancels the in-flight search via flatMapLatest, so no stale page ever lands.
@@ -143,6 +146,35 @@ class SearchViewModel : ViewModel() {
             } catch (_: Exception) {
                 // Keep what we have; stop trying so we don't loop on a bad page.
                 _state.update { it.copy(loadingMore = false, canLoadMore = false) }
+            }
+        }
+    }
+
+    /** Pull-to-refresh: re-run the current query from page 1, keeping content visible. */
+    fun refresh() {
+        val q = _state.value.query
+        if (q.isBlank() || _refreshing.value) return
+        _refreshing.value = true
+        loadMoreJob?.cancel()
+        viewModelScope.launch {
+            page = 1
+            try {
+                val pageResult = MovieBoxRepository.search(q, page = 1)
+                _state.update {
+                    it.copy(
+                        results = pageResult.groups,
+                        searched = true,
+                        error = null,
+                        canLoadMore = pageResult.hasMore,
+                        loading = false,
+                    )
+                }
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (e: Exception) {
+                _state.update { it.copy(error = e.message ?: "Search failed", searched = true) }
+            } finally {
+                _refreshing.value = false
             }
         }
     }

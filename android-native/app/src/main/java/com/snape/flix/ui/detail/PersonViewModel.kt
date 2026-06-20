@@ -29,6 +29,7 @@ data class PersonUiState(
     val knownFor: List<TmdbPersonCredit> = emptyList(),
     val filmography: List<TmdbPersonCredit> = emptyList(),
     val displayCount: Int = PAGE,
+    val refreshing: Boolean = false,
 ) {
     /** Filmography slice currently visible in the grid. */
     val visibleFilmography: List<TmdbPersonCredit>
@@ -47,11 +48,23 @@ class PersonViewModel : ViewModel() {
     val state: StateFlow<PersonUiState> = _state.asStateFlow()
 
     private var started = false
+    private var personId = 0
 
     fun start(personId: Int) {
         if (started) return
         started = true
+        this.personId = personId
+        load()
+    }
 
+    /** Pull-to-refresh: refetch the person + credits, keeping current content visible. */
+    fun refresh() {
+        if (personId == 0 || _state.value.refreshing) return
+        _state.update { it.copy(refreshing = true) }
+        load()
+    }
+
+    private fun load() {
         viewModelScope.launch {
             val personDeferred = async { TmdbRepository.person(personId) }
             val movieDeferred = async { TmdbRepository.personMovieCredits(personId) }
@@ -62,7 +75,7 @@ class PersonViewModel : ViewModel() {
             val seriesCredits = seriesDeferred.await()
 
             if (person == null) {
-                _state.update { it.copy(loading = false, error = "Couldn't load this person.") }
+                _state.update { it.copy(loading = false, refreshing = false, error = "Couldn't load this person.") }
                 return@launch
             }
 
@@ -85,6 +98,8 @@ class PersonViewModel : ViewModel() {
             _state.update {
                 it.copy(
                     loading = false,
+                    refreshing = false,
+                    error = null,
                     person = person,
                     knownFor = knownFor,
                     filmography = filmography,

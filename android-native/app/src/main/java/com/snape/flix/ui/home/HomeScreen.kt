@@ -33,6 +33,7 @@ import com.snape.flix.data.HomeSection
 import com.snape.flix.data.LocalStore
 import com.snape.flix.data.SubjectGroup
 import com.snape.flix.ui.components.PosterCard
+import com.snape.flix.ui.components.PullToRefresh
 import com.snape.flix.ui.components.SnakeLoader
 import com.snape.flix.ui.theme.ChesnaGrotesk
 
@@ -54,6 +55,7 @@ fun HomeScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val resolving by viewModel.resolving.collectAsStateWithLifecycle()
+    val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
     val history by LocalStore.history.collectAsStateWithLifecycle()
     val continueWatching = remember(history) { LocalStore.continueWatching() }
     // A plain vertical scroll, NOT a LazyColumn. The feed is bounded (hero + 8
@@ -73,46 +75,52 @@ fun HomeScreen(
     }
 
     Box(modifier.fillMaxSize().background(PageBg)) {
-        when {
-            state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                SnakeLoader(size = 56.dp)
-            }
+        PullToRefresh(
+            isRefreshing = refreshing,
+            onRefresh = viewModel::refresh,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            when {
+                state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    SnakeLoader(size = 56.dp)
+                }
 
-            state.error != null && state.sections.isEmpty() -> Box(
-                Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    state.error ?: "Failed to load",
-                    color = Color(0x80FFFFFF),
-                    fontFamily = ChesnaGrotesk,
-                    fontSize = 13.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(32.dp),
-                )
-            }
-
-            else -> Column(
-                modifier = Modifier.fillMaxSize().verticalScroll(scrollState),
-            ) {
-                HeroCarousel(
-                    onOpenTitle = { title, isSeries -> viewModel.resolveAndOpen(title, onOpenDetail) },
-                    playbackEnabled = heroPlaying && !resolving,
-                    scrolling = scrolling,
-                )
-
-                // Continue Watching row — populated from the on-device history.
-                ContinueWatchingRow(entries = continueWatching, onOpen = onOpenContinue)
-
-                for (section in state.sections) {
-                    ProviderSection(
-                        section = section,
-                        onOpenCard = ::openCard,
-                        onExplore = { onExplore(section) },
+                state.error != null && state.sections.isEmpty() -> Box(
+                    Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        state.error ?: "Failed to load",
+                        color = Color(0x80FFFFFF),
+                        fontFamily = ChesnaGrotesk,
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(32.dp),
                     )
                 }
 
-                HomeBanner(modifier = Modifier.navigationBarsPadding())
+                else -> Column(
+                    modifier = Modifier.fillMaxSize().verticalScroll(scrollState),
+                ) {
+                    HeroCarousel(
+                        onOpenTitle = { title, isSeries -> viewModel.resolveAndOpen(title, onOpenDetail) },
+                        playbackEnabled = heroPlaying && !resolving,
+                        scrolling = scrolling,
+                    )
+
+                    // Continue Watching row — populated from the on-device history.
+                    ContinueWatchingRow(entries = continueWatching, onOpen = onOpenContinue)
+
+                    for (section in state.sections) {
+                        ProviderSection(
+                            section = section,
+                            onOpenCard = ::openCard,
+                            onExplore = { onExplore(section) },
+                        )
+                    }
+
+                    HomeBanner(modifier = Modifier.navigationBarsPadding())
+                }
             }
         }
 

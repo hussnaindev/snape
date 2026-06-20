@@ -332,6 +332,9 @@ object Downloads {
     private fun downloadById(id: String): Download? =
         runCatching { manager?.downloadIndex?.getDownload(id) }.getOrNull()
 
+    /** Public re-read of the download index into [items] — backs pull-to-refresh. */
+    fun reload() = refresh()
+
     private fun refresh() {
         val dm = manager ?: return
         val list = runCatching {

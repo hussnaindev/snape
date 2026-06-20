@@ -8,6 +8,7 @@ import com.snape.flix.data.TmdbRepository
 import com.snape.flix.data.WatchProviderKey
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,6 +17,7 @@ import kotlinx.coroutines.launch
 data class StreamingSitesState(
     val sections: List<HomeSection> = emptyList(),
     val loading: Boolean = true,
+    val refreshing: Boolean = false,
 )
 
 class StreamingSitesViewModel : ViewModel() {
@@ -73,8 +75,27 @@ class StreamingSitesViewModel : ViewModel() {
     fun load() {
         viewModelScope.launch {
             _state.value = _state.value.copy(loading = true)
+            _state.value = StreamingSitesState(sections = buildSections(), loading = false)
+        }
+    }
 
-            val sections = WatchProviderKey.entries.map { provider ->
+    /** Pull-to-refresh: rebuild all provider rows fresh, keeping content visible. */
+    fun refresh() {
+        if (_state.value.refreshing) return
+        _state.value = _state.value.copy(refreshing = true)
+        viewModelScope.launch {
+            val sections = buildSections()
+            _state.value = _state.value.copy(
+                sections = sections.ifEmpty { _state.value.sections },
+                loading = false,
+                refreshing = false,
+            )
+        }
+    }
+
+    private suspend fun buildSections(): List<HomeSection> =
+        coroutineScope {
+            WatchProviderKey.entries.map { provider ->
                 val meta = HERO_META[provider] ?: return@map null
 
                 val moviesDeferred = async {
@@ -146,8 +167,5 @@ class StreamingSitesViewModel : ViewModel() {
                     backdropOffsetX = if (provider == WatchProviderKey.DISNEYPLUS) -48f else 0f,
                 )
             }.filterNotNull()
-
-            _state.value = StreamingSitesState(sections = sections, loading = false)
         }
-    }
 }

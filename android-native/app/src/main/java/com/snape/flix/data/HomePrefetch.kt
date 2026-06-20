@@ -42,8 +42,24 @@ object HomePrefetch {
         deferred = null
     }
 
+    /**
+     * Force a fresh load that bypasses the day cache (pull-to-refresh). Cancels any
+     * in-flight load, refetches the feed + enrichment, and repopulates the cache so
+     * subsequent cold starts see the newer data.
+     */
+    @Synchronized
+    fun refresh(): Deferred<List<HomeSection>> =
+        scope.async { fetchAndCache() }.also {
+            deferred?.cancel()
+            deferred = it
+        }
+
     private suspend fun loadHome(): List<HomeSection> {
         HomeCache.load().let { if (it.isNotEmpty()) return it }
+        return fetchAndCache()
+    }
+
+    private suspend fun fetchAndCache(): List<HomeSection> {
         val base = HomeRepository.buildSections()
         val enriched = HomeRepository.enrichAll(base)
         HomeCache.save(enriched)

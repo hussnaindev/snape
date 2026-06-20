@@ -79,6 +79,7 @@ import com.snape.flix.ui.components.DownloadGlyph
 import com.snape.flix.ui.streaming.StreamingSitesActivity
 import com.snape.flix.ui.components.MediaCard
 import com.snape.flix.ui.components.ProgressRing
+import com.snape.flix.ui.components.PullToRefresh
 import com.snape.flix.ui.components.SnakeLoader
 import com.snape.flix.ui.downloads.DownloadsActivity
 import com.snape.flix.ui.detail.DetailActivity
@@ -92,6 +93,7 @@ fun SearchScreen(
     viewModel: SearchViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     // Home shows by default; the magnifier opens the search bar, and as soon as
@@ -135,6 +137,8 @@ fun SearchScreen(
                 ) {
                     SearchResults(
                         state = state,
+                        refreshing = refreshing,
+                        onRefresh = viewModel::refresh,
                         onLoadMore = viewModel::loadMore,
                         onOpenDetail = onOpenDetail,
                     )
@@ -172,6 +176,8 @@ fun SearchScreen(
 @Composable
 private fun SearchResults(
     state: SearchUiState,
+    refreshing: Boolean,
+    onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
     onOpenDetail: (group: SubjectGroup) -> Unit,
     modifier: Modifier = Modifier,
@@ -203,27 +209,33 @@ private fun SearchResults(
                     if (shouldLoadMore && state.canLoadMore) onLoadMore()
                 }
 
-                LazyVerticalGrid(
-                    state = gridState,
-                    columns = GridCells.Fixed(2),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp),
+                PullToRefresh(
+                    isRefreshing = refreshing,
+                    onRefresh = onRefresh,
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    items(state.results, key = { it.primary.subjectId }) { group ->
-                        MediaCard(
-                            item = group.primary,
-                            onClick = { onOpenDetail(group) },
-                        )
-                    }
-                    if (state.loadingMore) {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            Box(
-                                Modifier.fillMaxWidth().padding(vertical = 20.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                SnakeLoader(size = 40.dp)
+                    LazyVerticalGrid(
+                        state = gridState,
+                        columns = GridCells.Fixed(2),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        items(state.results, key = { it.primary.subjectId }) { group ->
+                            MediaCard(
+                                item = group.primary,
+                                onClick = { onOpenDetail(group) },
+                            )
+                        }
+                        if (state.loadingMore) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box(
+                                    Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    SnakeLoader(size = 40.dp)
+                                }
                             }
                         }
                     }

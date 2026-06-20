@@ -64,6 +64,19 @@ object LocalStore {
         }
     }
 
+    /**
+     * Re-read the persisted collections from disk into the flows. The store is the
+     * single in-process writer so this rarely changes anything, but it backs
+     * pull-to-refresh on the watchlist/history screens (and recovers if the prefs
+     * were edited out-of-band).
+     */
+    fun reload() {
+        if (!::prefs.isInitialized) return
+        _watchlist.value = decode(KEY_WATCHLIST, SubjectItem.serializer())
+        _history.value = decode(KEY_HISTORY, HistoryEntry.serializer())
+        _epProgress.value = decode(KEY_EP_PROGRESS, EpProgress.serializer())
+    }
+
     // --- watchlist ----------------------------------------------------------
 
     fun isInWatchlist(subjectId: String): Boolean =

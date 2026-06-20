@@ -7,6 +7,7 @@ import com.snape.flix.data.TmdbSearchHit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class ProviderBrowseState(
@@ -14,6 +15,7 @@ data class ProviderBrowseState(
     val series: List<TmdbSearchHit> = emptyList(),
     val loading: Boolean = true,
     val loadingMore: Boolean = false,
+    val refreshing: Boolean = false,
     val moviePage: Int = 1,
     val seriesPage: Int = 1,
     val hasMore: Boolean = true,
@@ -45,6 +47,25 @@ class ProviderBrowseViewModel : ViewModel() {
                 loading = false,
                 hasMore = movies.size >= 20 || series.size >= 20,
             )
+        }
+    }
+
+    /** Pull-to-refresh: refetch page 1 fresh, keeping current content visible. */
+    fun refresh() {
+        if (!loaded || _state.value.refreshing) return
+        _state.update { it.copy(refreshing = true) }
+        viewModelScope.launch {
+            val movies = runCatching { TmdbRepository.discoverMoviesByProvider(providerId, page = 1) }.getOrDefault(emptyList())
+            val series = runCatching { TmdbRepository.discoverSeriesByProvider(providerId, page = 1) }.getOrDefault(emptyList())
+            _state.update {
+                if (movies.isEmpty() && series.isEmpty()) it.copy(refreshing = false)
+                else ProviderBrowseState(
+                    movies = movies,
+                    series = series,
+                    loading = false,
+                    hasMore = movies.size >= 20 || series.size >= 20,
+                )
+            }
         }
     }
 

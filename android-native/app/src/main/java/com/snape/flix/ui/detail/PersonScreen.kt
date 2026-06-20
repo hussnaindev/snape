@@ -69,6 +69,7 @@ import coil.compose.AsyncImage
 import com.snape.flix.R
 import com.snape.flix.data.TmdbPersonCredit
 import com.snape.flix.data.TmdbRepository
+import com.snape.flix.ui.components.PullToRefresh
 import com.snape.flix.ui.theme.ChesnaGrotesk
 import kotlinx.coroutines.delay
 
@@ -109,7 +110,13 @@ fun PersonScreen(
         when {
             s.loading && s.person == null -> PersonSkeleton(onBack = onBack)
             s.error != null -> PersonError(s.error, onBack)
-            s.person != null -> PersonContent(s, scrollState, onBack, onOpenMovie)
+            s.person != null -> PullToRefresh(
+                isRefreshing = s.refreshing,
+                onRefresh = vm::refresh,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                PersonContent(s, scrollState, onBack, onOpenMovie)
+            }
         }
     }
 

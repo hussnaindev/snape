@@ -34,6 +34,7 @@ import com.snape.flix.data.TmdbSearchHit
 import com.snape.flix.ui.components.BackChip
 import com.snape.flix.ui.components.LinedHeading
 import com.snape.flix.ui.components.PosterCard
+import com.snape.flix.ui.components.PullToRefresh
 import com.snape.flix.ui.components.SnakeLoader
 import com.snape.flix.ui.theme.ChesnaGrotesk
 
@@ -107,30 +108,36 @@ fun ProviderBrowseScreen(
                         if (shouldLoadMore && state.hasMore) vm.loadMore()
                     }
 
-                    LazyVerticalGrid(
-                        state = gridState,
-                        columns = GridCells.Fixed(2),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                    PullToRefresh(
+                        isRefreshing = state.refreshing,
+                        onRefresh = vm::refresh,
                         modifier = Modifier.fillMaxSize(),
                     ) {
-                        items(allResults, key = { "${it.isSeries}-${it.tmdbId}" }) { card ->
-                            PosterCard(
-                                posterUrl = card.posterUrl,
-                                isSeries = card.isSeries,
-                                rating = card.rating,
-                                title = card.title,
-                                onClick = { onOpenDetail(card) },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                        if (state.loadingMore) {
-                            item(span = { GridItemSpan(maxLineSpan) }) {
-                                Box(
-                                    Modifier.fillMaxWidth().padding(vertical = 20.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) { SnakeLoader(size = 40.dp) }
+                        LazyVerticalGrid(
+                            state = gridState,
+                            columns = GridCells.Fixed(2),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            items(allResults, key = { "${it.isSeries}-${it.tmdbId}" }) { card ->
+                                PosterCard(
+                                    posterUrl = card.posterUrl,
+                                    isSeries = card.isSeries,
+                                    rating = card.rating,
+                                    title = card.title,
+                                    onClick = { onOpenDetail(card) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                            if (state.loadingMore) {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    Box(
+                                        Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) { SnakeLoader(size = 40.dp) }
+                                }
                             }
                         }
                     }

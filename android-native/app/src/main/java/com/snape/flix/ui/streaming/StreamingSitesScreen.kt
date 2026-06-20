@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.snape.flix.data.HomeCard
 import com.snape.flix.ui.components.BackChip
 import com.snape.flix.ui.components.LinedHeading
+import com.snape.flix.ui.components.PullToRefresh
 import com.snape.flix.ui.components.SnakeLoader
 import com.snape.flix.ui.home.ProviderSection
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,20 +44,26 @@ fun StreamingSitesScreen(
                 SnakeLoader(size = 56.dp)
             }
         } else {
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState()),
+            PullToRefresh(
+                isRefreshing = state.refreshing,
+                onRefresh = viewModel::refresh,
+                modifier = Modifier.fillMaxSize(),
             ) {
-                Spacer(Modifier.height(56.dp))
-                for (section in state.sections) {
-                    ProviderSection(
-                        section = section,
-                        onOpenCard = onOpenDetail,
-                        onExplore = { onExplore(section.key, section.label) },
-                    )
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    Spacer(Modifier.height(56.dp))
+                    for (section in state.sections) {
+                        ProviderSection(
+                            section = section,
+                            onOpenCard = onOpenDetail,
+                            onExplore = { onExplore(section.key, section.label) },
+                        )
+                    }
+                    Spacer(Modifier.height(24.dp))
                 }
-                Spacer(Modifier.height(24.dp))
             }
         }
 

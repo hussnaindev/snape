@@ -32,6 +32,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,7 +55,10 @@ import com.snape.flix.data.DownloadStatus
 import com.snape.flix.data.Downloads
 import com.snape.flix.ui.components.BackChip
 import com.snape.flix.ui.components.LinedHeading
+import com.snape.flix.ui.components.PullToRefresh
 import com.snape.flix.ui.theme.ChesnaGrotesk
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private val PageBg = Color(0xFF070B08)
 private val GreenBrush = Brush.horizontalGradient(listOf(Color(0xFF34D399), Color(0xFF059669)))
@@ -61,6 +68,8 @@ fun DownloadsScreen(onBack: () -> Unit) {
     val items by Downloads.items.collectAsStateWithLifecycle()
     val removingIds by Downloads.removingIds.collectAsStateWithLifecycle()
     val resumingIds by Downloads.resumingIds.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    var refreshing by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize().background(PageBg)) {
         Column(Modifier.fillMaxSize()) {
@@ -89,13 +98,28 @@ fun DownloadsScreen(onBack: () -> Unit) {
                     )
                 }
             } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                PullToRefresh(
+                    isRefreshing = refreshing,
+                    onRefresh = {
+                        if (!refreshing) {
+                            refreshing = true
+                            scope.launch {
+                                Downloads.reload()
+                                delay(400) // brief feedback — the reload itself is instant
+                                refreshing = false
+                            }
+                        }
+                    },
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    items(items, key = { it.id }) { item ->
-                        DownloadRow(item, item.id in resumingIds, item.id in removingIds)
+                    LazyColumn(
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        items(items, key = { it.id }) { item ->
+                            DownloadRow(item, item.id in resumingIds, item.id in removingIds)
+                        }
                     }
                 }
             }

@@ -15,6 +15,10 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,7 +31,10 @@ import com.snape.flix.data.SubjectGroup
 import com.snape.flix.ui.components.BackChip
 import com.snape.flix.ui.components.LinedHeading
 import com.snape.flix.ui.components.PosterCard
+import com.snape.flix.ui.components.PullToRefresh
 import com.snape.flix.ui.theme.ChesnaGrotesk
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private val PageBg = Color(0xFF070B08)
 
@@ -44,6 +51,8 @@ fun WatchlistScreen(
     onBack: () -> Unit,
 ) {
     val items by LocalStore.watchlist.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    var refreshing by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize().background(PageBg)) {
         Column(Modifier.fillMaxSize()) {
@@ -72,23 +81,38 @@ fun WatchlistScreen(
                     )
                 }
             } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                PullToRefresh(
+                    isRefreshing = refreshing,
+                    onRefresh = {
+                        if (!refreshing) {
+                            refreshing = true
+                            scope.launch {
+                                LocalStore.reload()
+                                delay(400) // brief feedback — the reload itself is instant
+                                refreshing = false
+                            }
+                        }
+                    },
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    items(items, key = { it.subjectId }) { item ->
-                        PosterCard(
-                            posterUrl = item.posterUrl,
-                            isSeries = item.isSeries,
-                            rating = item.rating?.takeIf { it > 0 },
-                            title = item.cleanTitle,
-                            onClick = { onOpenDetail(SubjectGroup(item, listOf(item))) },
-                            onWatchlistRemove = { LocalStore.removeFromWatchlist(item.subjectId) },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        items(items, key = { it.subjectId }) { item ->
+                            PosterCard(
+                                posterUrl = item.posterUrl,
+                                isSeries = item.isSeries,
+                                rating = item.rating?.takeIf { it > 0 },
+                                title = item.cleanTitle,
+                                onClick = { onOpenDetail(SubjectGroup(item, listOf(item))) },
+                                onWatchlistRemove = { LocalStore.removeFromWatchlist(item.subjectId) },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
                     }
                 }
             }

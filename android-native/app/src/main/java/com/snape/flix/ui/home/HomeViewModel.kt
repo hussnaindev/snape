@@ -26,6 +26,9 @@ class HomeViewModel : ViewModel() {
     private val _resolving = MutableStateFlow(false)
     val resolving: StateFlow<Boolean> = _resolving.asStateFlow()
 
+    private val _refreshing = MutableStateFlow(false)
+    val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
+
     init { load() }
 
     fun load() {
@@ -43,6 +46,19 @@ class HomeViewModel : ViewModel() {
                 return@launch
             }
             _state.update { it.copy(sections = sections, loading = false, error = null) }
+        }
+    }
+
+    /** Pull-to-refresh: refetch the catalogue fresh (bypassing the day cache). */
+    fun refresh() {
+        if (_refreshing.value) return
+        _refreshing.value = true
+        viewModelScope.launch {
+            val sections = runCatching { HomePrefetch.refresh().await() }.getOrNull()
+            if (sections != null) {
+                _state.update { it.copy(sections = sections, loading = false, error = null) }
+            }
+            _refreshing.value = false
         }
     }
 
