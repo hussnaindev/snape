@@ -1099,7 +1099,7 @@ private fun EpisodesCarousel(
     s: DetailUiState,
     vm: DetailViewModel,
     onPlay: (se: Int, ep: Int) -> Unit,
-    onLongPress: (se: Int, ep: Int) -> Unit = {},
+    onLongPress: (se: Int, ep: Int) -> Unit = { _, _ -> },
 ) {
     val seasons = s.seasons
     if (seasons.isEmpty()) return

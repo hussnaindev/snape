@@ -145,9 +145,7 @@ object Downloads {
     private val _scheduledRetries = MutableStateFlow<Set<String>>(emptySet())
     val scheduledRetries: StateFlow<Set<String>> = _scheduledRetries.asStateFlow()
 
-    companion object {
-        val RETRY_DELAYS = listOf(1_000L, 3_000L, 5_000L, 10_000L, 15_000L)
-    }
+    val RETRY_DELAYS = listOf(1_000L, 3_000L, 5_000L, 10_000L, 15_000L)
 
     fun init(context: Context) {
         appContext = context.applicationContext
