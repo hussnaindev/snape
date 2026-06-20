@@ -15,11 +15,19 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-        // Prefer the injected property/secret, but fall back to the committed
-        // production mobile key so CI never ships an empty key (an unset secret
-        // expands to "" and would otherwise clobber the default → LD init skipped
-        // → no events). Mobile keys are not secret per LaunchDarkly's docs.
-        val key = (project.findProperty("LAUNCHDARKLY_MOBILE_KEY") as String?)
+        // Resolve the LD mobile key with this precedence:
+        //   1. Gradle property / CI secret (-PLAUNCHDARKLY_MOBILE_KEY=… or ORG_GRADLE_PROJECT_…)
+        //   2. local.properties (per-machine override — Gradle does NOT load custom
+        //      keys from local.properties automatically, so we read it explicitly)
+        //   3. committed fallback so CI never ships an empty key (an unset secret
+        //      expands to "" → LD init skipped → no events). Mobile keys are not
+        //      secret per LaunchDarkly's docs, so committing the default is fine.
+        val localProps = java.util.Properties().apply {
+            val f = rootProject.file("local.properties")
+            if (f.exists()) f.inputStream().use { load(it) }
+        }
+        val key = ((project.findProperty("LAUNCHDARKLY_MOBILE_KEY") as String?)
+            ?: localProps.getProperty("LAUNCHDARKLY_MOBILE_KEY"))
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
             ?: "mob-87b917f3-6572-4e30-8474-1edee58b7cfc"
