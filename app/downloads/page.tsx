@@ -270,26 +270,9 @@ function PlayerOverlay({ record, onClose }: { record: DownloadRecord; onClose: (
     window.addEventListener('keydown', onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-
-    // Auto-enter fullscreen on mobile to hide status bar.
-    const el = rootRef.current;
-    if (el && !document.fullscreenElement) {
-      el.requestFullscreen()
-        .then(() => {
-          (screen.orientation as unknown as { lock?: (o: string) => Promise<void> })
-            ?.lock?.('landscape')
-            ?.catch(() => {});
-        })
-        .catch(() => {});
-    }
-
     return () => {
       window.removeEventListener('keydown', onKey);
       document.body.style.overflow = prev;
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-        (screen.orientation as unknown as { unlock?: () => void })?.unlock?.();
-      }
     };
   }, [onClose]);
 

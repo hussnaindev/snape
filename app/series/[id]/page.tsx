@@ -147,8 +147,6 @@ export default async function SeriesPage({ params }: Props) {
                 seriesId={seriesId}
                 seasons={series.seasons}
                 initialSeason={initialSeason}
-                title={series.name}
-                posterPath={series.poster_path}
               />
             </ParallaxContent>
           </section>
