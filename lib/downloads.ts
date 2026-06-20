@@ -44,6 +44,8 @@ export interface DownloadRecord {
   // without re-resolving the source. Not shown in the UI.
   videoUrl: string;
   subtitleUrl: string | null;
+  // Number of automatic retries attempted so far (max 5).
+  retryCount: number;
 }
 
 export interface StartDownloadInput {
@@ -311,60 +313,7 @@ async function runDownload(id: string, resume = false): Promise<void> {
   let received = startByte;
 
   try {
-    // A `Range` request gives us a 206 + Content-Range, so we learn the real
-    // total size (→ accurate %) and can resume from an offset. The media proxy
-    // forwards Range and surfaces Content-Range/Content-Length.
-    const res = await fetch(record.videoUrl, {
-      signal: controller.signal,
-      headers: { Range: `bytes=${startByte}-` },
-    });
-    if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
-
-    // If we requested an offset but the server ignored it (200, not 206), the
-    // body is the whole file — drop the partial and start over to avoid a
-    // corrupt concatenation.
-    if (startByte > 0 && res.status !== 206) {
-      chunks.length = 0;
-      startByte = 0;
-      received = 0;
-    }
-
-    // Real total: Content-Range "bytes a-b/<total>" first, else Content-Length.
-    let total = 0;
-    const cr = res.headers.get('Content-Range');
-    const cl = res.headers.get('Content-Length');
-    if (cr) {
-      const m = /\/(\d+)\s*$/.exec(cr);
-      if (m) total = Number(m[1]);
-    }
-    if (!total && cl) total = startByte + (Number.parseInt(cl, 10) || 0);
-    record.totalBytes = total;
-
-    const reader = res.body.getReader();
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (!value) continue;
-      chunks.push(value);
-      received += value.length;
-      record.receivedBytes = received;
-      record.progress = total > 0 ? Math.min(99, (received / total) * 100) : 0;
-      if (!rafPending) {
-        rafPending = true;
-        requestAnimationFrame(() => {
-          rafPending = false;
-          notify();
-        });
-      }
-      const now = Date.now();
-      if (now - lastPersist > PERSIST_INTERVAL_MS) {
-        lastPersist = now;
-        void idbPutRecord(record);
-      }
-    }
-
-    const videoBlob = new Blob(chunks, { type: record.mime || 'video/mp4' });
-
+    // Fetch subtitle blob early (URL may expire during long video download).
     let subtitleBlob: Blob | null = null;
     if (record.subtitleUrl) {
       try {
@@ -375,16 +324,101 @@ async function runDownload(id: string, resume = false): Promise<void> {
       }
     }
 
-    await idbPutBlob({ id, video: videoBlob, subtitle: subtitleBlob });
+    // Auto-retry configuration: up to 5 attempts with incremental back-off.
+    const RETRY_DELAYS = [1000, 3000, 5000, 10000, 15000];
 
-    record.status = 'completed';
-    record.receivedBytes = videoBlob.size;
-    if (record.totalBytes === 0) record.totalBytes = videoBlob.size;
-    record.progress = 100;
-    record.completedAt = Date.now();
-    record.error = null;
-    await idbPutRecord(record);
-    showToast(`Saved for offline · ${record.title}`, 'check');
+    let lastFetchErr: Error | null = null;
+
+    for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
+      if (attempt > 0) {
+        await new Promise<void>((r) => setTimeout(r, RETRY_DELAYS[attempt - 1]));
+        if (controller.signal.aborted) break;
+        record.retryCount = attempt;
+        void idbPutRecord(record);
+        notify();
+      }
+
+      try {
+        // A `Range` request gives us a 206 + Content-Range, so we learn the real
+        // total size (→ accurate %) and can resume from an offset. The media proxy
+        // forwards Range and surfaces Content-Range/Content-Length.
+        const res = await fetch(record.videoUrl, {
+          signal: controller.signal,
+          headers: { Range: `bytes=${startByte}-` },
+        });
+        if (!res.ok || !res.body) {
+          lastFetchErr = new Error(`HTTP ${res.status}`);
+          if (attempt < RETRY_DELAYS.length) continue;
+          throw lastFetchErr;
+        }
+
+        // If we requested an offset but the server ignored it (200, not 206), the
+        // body is the whole file — drop the partial and start over to avoid a
+        // corrupt concatenation.
+        if (startByte > 0 && res.status !== 206) {
+          chunks.length = 0;
+          startByte = 0;
+          received = 0;
+        }
+
+        // Real total: Content-Range "bytes a-b/<total>" first, else Content-Length.
+        let total = 0;
+        const cr = res.headers.get('Content-Range');
+        const cl = res.headers.get('Content-Length');
+        if (cr) {
+          const m = /\/(\d+)\s*$/.exec(cr);
+          if (m) total = Number(m[1]);
+        }
+        if (!total && cl) total = startByte + (Number.parseInt(cl, 10) || 0);
+        record.totalBytes = total;
+
+        const reader = res.body.getReader();
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (!value) continue;
+          chunks.push(value);
+          received += value.length;
+          record.receivedBytes = received;
+          record.progress = total > 0 ? Math.min(99, (received / total) * 100) : 0;
+          if (!rafPending) {
+            rafPending = true;
+            requestAnimationFrame(() => {
+              rafPending = false;
+              notify();
+            });
+          }
+          const now = Date.now();
+          if (now - lastPersist > PERSIST_INTERVAL_MS) {
+            lastPersist = now;
+            void idbPutRecord(record);
+          }
+        }
+
+        // Success — assemble blobs and save.
+        const videoBlob = new Blob(chunks, { type: record.mime || 'video/mp4' });
+        await idbPutBlob({ id, video: videoBlob, subtitle: subtitleBlob });
+
+        record.status = 'completed';
+        record.retryCount = 0;
+        record.receivedBytes = videoBlob.size;
+        if (record.totalBytes === 0) record.totalBytes = videoBlob.size;
+        record.progress = 100;
+        record.completedAt = Date.now();
+        record.error = null;
+        await idbPutRecord(record);
+        showToast(`Saved for offline · ${record.title}`, 'check');
+
+        return; // Done — skip the catch handler below.
+      } catch (err) {
+        if (controller.signal.aborted) throw err;
+        lastFetchErr = err instanceof Error ? err : new Error('Download failed');
+        // Fall through to retry.
+      }
+    }
+
+    // All retries exhausted — fall through to the existing error handling.
+    throw lastFetchErr ?? new Error('Download failed');
   } catch (err) {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if ((record.status as DownloadStatus) !== 'removing') {
@@ -464,6 +498,7 @@ export async function startDownload(input: StartDownloadInput): Promise<string> 
     progress: 0,
     mime: input.mime,
     error: null,
+    retryCount: 0,
     createdAt: existing?.createdAt ?? Date.now(),
     completedAt: null,
     videoUrl: input.videoUrl,
