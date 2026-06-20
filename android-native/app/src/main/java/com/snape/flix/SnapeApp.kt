@@ -11,6 +11,7 @@ import coil.util.DebugLogger
 import com.launchdarkly.sdk.LDContext
 import com.launchdarkly.sdk.android.LDClient
 import com.launchdarkly.sdk.android.LDConfig
+import com.snape.flix.data.AccessGate
 import com.snape.flix.data.Downloads
 import com.snape.flix.data.HomeCache
 import com.snape.flix.data.LocalStore
@@ -56,6 +57,9 @@ class SnapeApp : Application(), ImageLoaderFactory {
         Downloads.init(this)
         // Home screen disk cache so a cold start paints the last sections instantly.
         HomeCache.init(this)
+        // Persisted IP-access verdict so the app can open offline within its last
+        // known verdict (granted → downloads; restricted → stays blocked).
+        AccessGate.init(this)
         // LaunchDarkly — async init so on-device SDK starts fetching flags.
         appScope.launch {
             ldClientReady.complete(initLaunchDarkly())
