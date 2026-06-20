@@ -14,7 +14,9 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -357,6 +359,23 @@ fun DetailScreen(
                 }
             }
 
+            // Long-press an episode card to open the download sheet for that episode.
+            var longPressEp by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+            if (longPressEp != null) {
+                val (lSe, lEp) = longPressEp!!
+                DownloadSheet(
+                    group = s.group,
+                    isSeries = true,
+                    onDismiss = { longPressEp = null },
+                    posterUrl = s.posterUrl,
+                    logoUrl = s.logoUrl,
+                    year = s.year,
+                    rating = s.rating,
+                    initialSe = lSe,
+                    initialEp = lEp,
+                )
+            }
+
             // ── everything below the hero — overlaps it, reclaiming the space ──
             Column(Modifier.fillMaxWidth().verticalShift(metaMargin)) {
                 // Movies play with se=0/ep=0; series have no such "episode zero", so
@@ -377,7 +396,7 @@ fun DetailScreen(
                 Spacer(Modifier.height(24.dp))
 
                 if (s.isSeries) {
-                    EpisodesCarousel(s, vm, onPlay = { se, ep -> play(se, ep) })
+                    EpisodesCarousel(s, vm, onPlay = { se, ep -> play(se, ep) }, onLongPress = { se, ep -> longPressEp = se to ep })
                 }
 
                 StarringRail(s.cast, onOpenPerson)
@@ -1074,11 +1093,13 @@ private fun StarringRail(cast: List<TmdbCastMember>, onOpenPerson: (Int) -> Unit
 
 private val TODAY: String = LocalDate.now().toString()
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun EpisodesCarousel(
     s: DetailUiState,
     vm: DetailViewModel,
     onPlay: (se: Int, ep: Int) -> Unit,
+    onLongPress: (se: Int, ep: Int) -> Unit = {},
 ) {
     val seasons = s.seasons
     if (seasons.isEmpty()) return
@@ -1145,22 +1166,23 @@ private fun EpisodesCarousel(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             episodes.forEach { ep ->
-                EpisodeCard(ep, onClick = { onPlay(selectedSeason, ep.episode_number) })
+                EpisodeCard(ep, onClick = { onPlay(selectedSeason, ep.episode_number) }, onLongClick = { onLongPress(selectedSeason, ep.episode_number) })
             }
         }
     }
     Spacer(Modifier.height(24.dp))
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun EpisodeCard(ep: TmdbEpisode, onClick: () -> Unit) {
+private fun EpisodeCard(ep: TmdbEpisode, onClick: () -> Unit, onLongClick: () -> Unit = {}) {
     Box(
         Modifier
             .width(180.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(Color(0x0DFFFFFF))
             .border(1.dp, Color(0x40FFFFFF), RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
     ) {
         Box(Modifier.fillMaxWidth().aspectRatio(4f / 3f)) {
             val still = TmdbRepository.img(ep.still_path, "w500")

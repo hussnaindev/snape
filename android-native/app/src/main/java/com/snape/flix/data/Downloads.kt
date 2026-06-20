@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -39,6 +40,7 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.IOException
 import java.net.URI
+import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
@@ -62,6 +64,7 @@ data class DownloadMeta(
     val year: String = "",
     val rating: Double? = null,
     val quality: String = "",
+    val subtitleLocalPath: String? = null,
 )
 
 /** A flattened, UI-facing view of one Media3 download (rebuilt on every change). */
@@ -81,6 +84,7 @@ data class DownloadItem(
     val bytesDownloaded: Long,
     val contentLength: Long, // -1 until known (adaptive)
     val status: DownloadStatus,
+    val retryCount: Int = 0,
 ) {
     val fraction: Float get() = (percent / 100f).coerceIn(0f, 1f)
     val inProgress: Boolean get() = status != DownloadStatus.COMPLETED
@@ -136,6 +140,15 @@ object Downloads {
     private val _resumingIds = MutableStateFlow<Set<String>>(emptySet())
     val resumingIds: StateFlow<Set<String>> = _resumingIds.asStateFlow()
 
+    // Retry tracking — incremental delays for failed downloads.
+    private val retryCounts = ConcurrentHashMap<String, Int>()
+    private val _scheduledRetries = MutableStateFlow<Set<String>>(emptySet())
+    val scheduledRetries: StateFlow<Set<String>> = _scheduledRetries.asStateFlow()
+
+    companion object {
+        val RETRY_DELAYS = listOf(1_000L, 3_000L, 5_000L, 10_000L, 15_000L)
+    }
+
     fun init(context: Context) {
         appContext = context.applicationContext
         prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -158,6 +171,15 @@ object Downloads {
             while (true) {
                 val active = _items.value.any { it.status == DownloadStatus.RUNNING || it.status == DownloadStatus.REMOVING }
                 if (active) refresh()
+                // Retry failed downloads when idle
+                if (!active) {
+                    _items.value.filter { it.status == DownloadStatus.FAILED }.forEach { item ->
+                        val count = retryCounts.getOrDefault(item.id, 0)
+                        if (count < RETRY_DELAYS.size && item.id !in _scheduledRetries.value) {
+                            scheduleRetry(item.id, count)
+                        }
+                    }
+                }
                 delay(if (active) 50 else 1000)
             }
         }
@@ -222,48 +244,65 @@ object Downloads {
         url: String,
         signCookie: String,
         format: String,
+        subtitleUrl: String? = null,
     ) {
         val ctx = appContext
         rememberCookie(url, signCookie)
         downloadManager(ctx) // ensure ready
         val id = "$subjectId/$se/$ep"
-        val mime = when (format.uppercase()) {
-            "HLS" -> MimeTypes.APPLICATION_M3U8
-            "MP4" -> MimeTypes.VIDEO_MP4
-            "DASH" -> MimeTypes.APPLICATION_MPD
-            else -> null
-        }
-        val meta = DownloadMeta(subjectId, se, ep, title, isSeries, posterUrl, logoUrl, year, rating, quality)
-        val data = json.encodeToString(DownloadMeta.serializer(), meta).toByteArray()
-        val mediaItem = MediaItem.Builder().setUri(url)
-            .apply { if (mime != null) setMimeType(mime) }
-            .build()
 
-        // Probe the manifest, pick the chosen quality (highest ≤ target), then queue.
-        val helper = DownloadHelper.forMediaItem(ctx, mediaItem, DefaultRenderersFactory(ctx), upstreamFactory())
-        helper.prepare(object : DownloadHelper.Callback {
-            override fun onPrepared(helper: DownloadHelper) {
-                try {
-                    quality.removeSuffix("p").toIntOrNull()?.let { targetHeight ->
-                        val params = DownloadHelper.getDefaultTrackSelectorParameters(ctx).buildUpon()
-                            .setMaxVideoSize(Int.MAX_VALUE, targetHeight)
-                            .build()
-                        for (period in 0 until helper.periodCount) {
-                            helper.clearTrackSelections(period)
-                            helper.addTrackSelection(period, params)
+        // Fetch subtitle blob BEFORE video download — the signed URL may expire
+        // during the multi-minute manifest probe and segment download.
+        scope.launch {
+            val subtitleLocalPath = subtitleUrl?.takeUnless { it.isBlank() }?.let { subUrl ->
+                runCatching {
+                    val bytes = URL(subUrl).readBytes()
+                    val subFile = File(downloadDir(ctx), "${id}_sub.srt")
+                    subFile.writeBytes(bytes)
+                    subFile.absolutePath
+                }.getOrNull()
+            }
+
+            withContext(Dispatchers.Main) {
+                val mime = when (format.uppercase()) {
+                    "HLS" -> MimeTypes.APPLICATION_M3U8
+                    "MP4" -> MimeTypes.VIDEO_MP4
+                    "DASH" -> MimeTypes.APPLICATION_MPD
+                    else -> null
+                }
+                val meta = DownloadMeta(subjectId, se, ep, title, isSeries, posterUrl, logoUrl, year, rating, quality, subtitleLocalPath = subtitleLocalPath)
+                val data = json.encodeToString(DownloadMeta.serializer(), meta).toByteArray()
+                val mediaItem = MediaItem.Builder().setUri(url)
+                    .apply { if (mime != null) setMimeType(mime) }
+                    .build()
+
+                // Probe the manifest, pick the chosen quality, then queue.
+                val helper = DownloadHelper.forMediaItem(ctx, mediaItem, DefaultRenderersFactory(ctx), upstreamFactory())
+                helper.prepare(object : DownloadHelper.Callback {
+                    override fun onPrepared(helper: DownloadHelper) {
+                        try {
+                            quality.removeSuffix("p").toIntOrNull()?.let { targetHeight ->
+                                val params = DownloadHelper.getDefaultTrackSelectorParameters(ctx).buildUpon()
+                                    .setMaxVideoSize(Int.MAX_VALUE, targetHeight)
+                                    .build()
+                                for (period in 0 until helper.periodCount) {
+                                    helper.clearTrackSelections(period)
+                                    helper.addTrackSelection(period, params)
+                                }
+                            }
+                            val request = helper.getDownloadRequest(id, data)
+                            DownloadService.sendAddDownload(ctx, SnapeDownloadService::class.java, request, /* foreground = */ false)
+                        } finally {
+                            helper.release()
                         }
                     }
-                    val request = helper.getDownloadRequest(id, data)
-                    DownloadService.sendAddDownload(ctx, SnapeDownloadService::class.java, request, /* foreground = */ false)
-                } finally {
-                    helper.release()
-                }
-            }
 
-            override fun onPrepareError(helper: DownloadHelper, e: IOException) {
-                helper.release()
+                    override fun onPrepareError(helper: DownloadHelper, e: IOException) {
+                        helper.release()
+                    }
+                })
             }
-        })
+        }
     }
 
     fun pause(id: String) {
@@ -307,6 +346,32 @@ object Downloads {
         // After the remove completes (onDownloadRemoved → refresh) the item will
         // disappear from the list, which is how the UI knows to stop rendering it.
         DownloadService.sendRemoveDownload(appContext, SnapeDownloadService::class.java, id, false)
+    }
+
+    /**
+     * Schedule an automatic retry for a failed download after an incremental delay.
+     * Each failed download gets up to 5 retries with delays: 1s, 3s, 5s, 10s, 15s.
+     * Before retrying, we refresh the CloudFront cookie (best-effort) since the
+     * original signed cookie may have expired.
+     */
+    private fun scheduleRetry(id: String, count: Int) {
+        _scheduledRetries.value = _scheduledRetries.value + id
+        scope.launch {
+            delay(RETRY_DELAYS[count])
+            _scheduledRetries.value = _scheduledRetries.value - id
+            val download = downloadById(id) ?: return@launch
+            if (download.state == Download.STATE_FAILED) {
+                retryCounts[id] = count + 1
+                val meta = runCatching { json.decodeFromString(DownloadMeta.serializer(), String(download.request.data)) }.getOrNull()
+                if (meta != null) {
+                    runCatching { MovieBoxRepository.playInfo(meta.subjectId, meta.se, meta.ep) }
+                        .getOrNull()
+                        ?.takeIf { it.url.isNotBlank() && it.signCookie.isNotBlank() }
+                        ?.let { fresh -> rememberCookie(fresh.url, fresh.signCookie) }
+                }
+                DownloadService.sendAddDownload(appContext, SnapeDownloadService::class.java, download.request, false)
+            }
+        }
     }
 
     // --- foreground notification (called by the service) --------------------
@@ -376,6 +441,7 @@ object Downloads {
             bytesDownloaded = bytesDownloaded,
             contentLength = contentLength,
             status = mapState(state, stopReason),
+            retryCount = retryCounts[request.id] ?: 0,
         )
     }
 

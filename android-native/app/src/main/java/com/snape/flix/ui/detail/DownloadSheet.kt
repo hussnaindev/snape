@@ -2,6 +2,7 @@ package com.snape.flix.ui.detail
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material3.CircularProgressIndicator
@@ -42,6 +44,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.snape.flix.data.DownloadItem
+import com.snape.flix.data.DownloadStatus
 import com.snape.flix.data.Downloads
 import com.snape.flix.data.MovieBoxRepository
 import com.snape.flix.data.SeasonItem
@@ -64,6 +68,8 @@ fun DownloadSheet(
     logoUrl: String? = null,
     year: String = "",
     rating: Double? = null,
+    initialSe: Int? = null,
+    initialEp: Int? = null,
     vm: DownloadViewModel = viewModel(),
 ) {
     val context = LocalContext.current
@@ -71,8 +77,8 @@ fun DownloadSheet(
     var audioIdx by remember { mutableIntStateOf(0) }
     var quality by remember { mutableStateOf("") }
     var subIdx by remember { mutableIntStateOf(-1) }
-    var selectedSeason by remember { mutableIntStateOf(1) }
-    var selectedEpisode by remember { mutableIntStateOf(1) }
+    var selectedSeason by remember { mutableIntStateOf(initialSe ?: 1) }
+    var selectedEpisode by remember { mutableIntStateOf(initialEp ?: 1) }
     var seasonItems by remember { mutableStateOf<List<SeasonItem>>(emptyList()) }
     var seasonsLoading by remember { mutableStateOf(true) }
 
@@ -88,7 +94,7 @@ fun DownloadSheet(
             .getOrDefault(emptyList())
         seasonItems = items
         seasonsLoading = false
-        if (items.isNotEmpty()) {
+        if (items.isNotEmpty() && initialSe == null) {
             selectedSeason = items.first().se
             selectedEpisode = 1
         }
@@ -189,23 +195,106 @@ fun DownloadSheet(
                     }
 
                     Spacer(Modifier.height(20.dp))
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(Color.White)
-                            .clickable {
-                                enqueue(st, group, audioIdx, isSeries, selectedSeason, selectedEpisode, quality, posterUrl, logoUrl, year, rating)
-                                Toast.makeText(context, "Download started", Toast.LENGTH_SHORT).show()
-                                onDismiss()
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.Download, null, tint = Color.Black, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("DOWNLOAD", color = Color.Black, fontFamily = ChesnaGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, letterSpacing = 2.sp)
+
+                    val allDownloads by Downloads.items.collectAsStateWithLifecycle()
+                    val variant = group.variants.getOrNull(audioIdx) ?: group.primary
+                    val match = allDownloads.firstOrNull { d ->
+                        d.subjectId == variant.subjectId &&
+                        d.se == selectedSeason &&
+                        d.ep == selectedEpisode &&
+                        d.quality == quality
+                    }
+                    val isCompleted = match?.status == DownloadStatus.COMPLETED
+                    val isActive = match != null && !isCompleted
+
+                    when {
+                        match == null -> {
+                            // Not downloaded — show normal Download button.
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                                    .clip(RoundedCornerShape(50))
+                                    .background(Color.White)
+                                    .clickable {
+                                        val subUrl = if (subIdx >= 0) st.subtitles.getOrNull(subIdx)?.url else null
+                                        enqueue(st, group, audioIdx, isSeries, selectedSeason, selectedEpisode, quality, posterUrl, logoUrl, year, rating, subUrl)
+                                        Toast.makeText(context, "Download started · $heading ($quality)", Toast.LENGTH_SHORT).show()
+                                        onDismiss()
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Rounded.Download, null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("DOWNLOAD", color = Color.Black, fontFamily = ChesnaGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, letterSpacing = 2.sp)
+                                }
+                            }
+                        }
+                        isCompleted -> {
+                            // Completed — green outline with checkmark, navigates to downloads.
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                                    .clip(RoundedCornerShape(50))
+                                    .background(Color(0x15FF10B981))
+                                    .border(1.dp, Color(0x66FF10B981), RoundedCornerShape(50))
+                                    .clickable {
+                                        com.snape.flix.ui.downloads.DownloadsActivity.start(context)
+                                        onDismiss()
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Rounded.Check, null, tint = Color(0xFF34D399), modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("DOWNLOADED", color = Color(0xFF34D399), fontFamily = ChesnaGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, letterSpacing = 2.sp)
+                                }
+                            }
+                        }
+                        isActive -> {
+                            // In progress — green outline with progress bar, navigates to downloads.
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                                    .clip(RoundedCornerShape(50))
+                                    .background(Color(0x15FF10B981))
+                                    .border(1.dp, Color(0x66FF10B981), RoundedCornerShape(50))
+                                    .clickable {
+                                        com.snape.flix.ui.downloads.DownloadsActivity.start(context)
+                                        onDismiss()
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Box(
+                                    Modifier
+                                        .matchParentSize()
+                                        .clip(RoundedCornerShape(50))
+                                        .background(Color(0x10FF10B981)),
+                                )
+                                Box(
+                                    Modifier
+                                        .align(Alignment.CenterStart)
+                                        .fillMaxWidth(match.fraction.coerceAtLeast(0.03f))
+                                        .height(48.dp)
+                                        .clip(RoundedCornerShape(50))
+                                        .background(Color(0x20FF10B981)),
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    com.snape.flix.ui.components.DownloadGlyph(modifier = Modifier.size(16.dp), tint = Color(0xFF34D399))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        if (match.status == DownloadStatus.PAUSED) "PAUSED" else "IN PROGRESS",
+                                        color = Color(0xFF34D399),
+                                        fontFamily = ChesnaGrotesk,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 12.sp,
+                                        letterSpacing = 2.sp,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -226,6 +315,7 @@ private fun enqueue(
     logoUrl: String?,
     year: String,
     rating: Double?,
+    subtitleUrl: String? = null,
 ) {
     val variant = group.variants.getOrNull(audioIdx) ?: group.primary
     Downloads.enqueue(
@@ -242,6 +332,7 @@ private fun enqueue(
         url = ready.url,
         signCookie = ready.signCookie,
         format = ready.format,
+        subtitleUrl = subtitleUrl,
     )
 }
 
