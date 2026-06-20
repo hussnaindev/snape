@@ -171,9 +171,18 @@ fun StreamPlayerChrome(
     currentSe: Int = 0,
     currentEp: Int = 0,
     onSelectEpisode: (se: Int, ep: Int) -> Unit = { _, _ -> },
-    onProgress: (positionMs: Long, durationMs: Long) -> Unit = { _, _ -> },
+    onProgress: (se: Int, ep: Int, positionMs: Long, durationMs: Long) -> Unit = { _, _, _, _ -> },
 ) {
     var cueText by remember { mutableStateOf("") }
+
+    // The episode this player instance is actually playing, snapshotted per
+    // ExoPlayer. The host advances currentSe/currentEp the moment the user taps the
+    // next episode — before this (old) player is torn down — so reading those live
+    // at save time would file the old position under the *new* episode (and the new
+    // episode would then resume at the old episode's timestamp). Snapshotting here
+    // keeps every progress write attributed to the episode that produced it.
+    val playingSe = remember(exo) { currentSe }
+    val playingEp = remember(exo) { currentEp }
 
     var playing by remember { mutableStateOf(exo.isPlaying) }
     var playbackState by remember { mutableIntStateOf(exo.playbackState) }
@@ -211,7 +220,7 @@ fun StreamPlayerChrome(
             if (!scrubbing && playing && positionMs > 0) {
                 if (++sinceReport >= 20) {
                     sinceReport = 0
-                    onProgress(positionMs, durationMs)
+                    onProgress(playingSe, playingEp, positionMs, durationMs)
                 }
             }
             delay(250)
@@ -234,7 +243,7 @@ fun StreamPlayerChrome(
     val latestPos by rememberUpdatedState(positionMs)
     val latestDur by rememberUpdatedState(durationMs)
     DisposableEffect(Unit) {
-        onDispose { if (latestPos > 0) onProgress(latestPos, latestDur) }
+        onDispose { if (latestPos > 0) onProgress(playingSe, playingEp, latestPos, latestDur) }
     }
 
     var controlsShown by remember { mutableStateOf(true) }

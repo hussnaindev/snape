@@ -28,6 +28,7 @@ object LocalStore {
     private const val PREFS = "snape_local"
     private const val KEY_WATCHLIST = "watchlist_v1"
     private const val KEY_HISTORY = "history_v1"
+    private const val KEY_EP_PROGRESS = "ep_progress_v1"
     // A title counts as "finished" (and drops out of Continue Watching) once it
     // crosses this fraction of its runtime.
     private const val FINISHED_FRACTION = 0.95f
@@ -41,10 +42,26 @@ object LocalStore {
     private val _history = MutableStateFlow<List<HistoryEntry>>(emptyList())
     val history: StateFlow<List<HistoryEntry>> = _history.asStateFlow()
 
+    // Per-episode resume points. Continue Watching keeps only one entry per title,
+    // so it can't remember where you were in an episode you're not currently on.
+    // This holds an independent position for every (title, season, episode) the user
+    // has played, so jumping back to an earlier episode resumes that episode — and a
+    // never-watched episode has no entry, so it starts from 0.
+    private val _epProgress = MutableStateFlow<List<EpProgress>>(emptyList())
+
     fun init(context: Context) {
         prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         _watchlist.value = decode(KEY_WATCHLIST, SubjectItem.serializer())
         _history.value = decode(KEY_HISTORY, HistoryEntry.serializer())
+        _epProgress.value = decode(KEY_EP_PROGRESS, EpProgress.serializer())
+        // First launch after the per-episode store was added: seed it from the
+        // existing Continue Watching entries so resume points aren't lost on upgrade.
+        if (_epProgress.value.isEmpty() && _history.value.isNotEmpty()) {
+            _epProgress.value = _history.value.map {
+                EpProgress(it.item.subjectId, it.se, it.ep, it.positionMs, it.durationMs)
+            }
+            persist(KEY_EP_PROGRESS, EpProgress.serializer(), _epProgress.value)
+        }
     }
 
     // --- watchlist ----------------------------------------------------------
@@ -90,13 +107,25 @@ object LocalStore {
         val next = listOf(entry) + _history.value.filterNot { it.item.subjectId == item.subjectId }
         _history.value = next.take(50)
         persist(KEY_HISTORY, HistoryEntry.serializer(), _history.value)
+
+        // Also remember this episode's own position independently of Continue Watching.
+        val ep0 = EpProgress(item.subjectId, se, ep, positionMs, durationMs)
+        val eps = listOf(ep0) + _epProgress.value.filterNot {
+            it.subjectId == item.subjectId && it.se == se && it.ep == ep
+        }
+        _epProgress.value = eps.take(500)
+        persist(KEY_EP_PROGRESS, EpProgress.serializer(), _epProgress.value)
     }
 
-    /** Saved position for a specific title/season/episode, or null if none. */
+    /**
+     * Saved resume position for a specific title/season/episode, or null if the
+     * episode was never played (→ start from 0) or was already watched to the end
+     * (→ start over rather than resume at the credits).
+     */
     fun progressFor(subjectId: String, se: Int, ep: Int): Long? =
-        _history.value.firstOrNull {
-            it.item.subjectId == subjectId && it.se == se && it.ep == ep
-        }?.positionMs
+        _epProgress.value.firstOrNull {
+            it.subjectId == subjectId && it.se == se && it.ep == ep
+        }?.takeIf { !it.finished }?.positionMs
 
     /** Continue Watching entries: in-progress (not finished), newest first. */
     fun continueWatching(): List<HistoryEntry> =
@@ -105,6 +134,8 @@ object LocalStore {
     fun clearHistory() {
         _history.value = emptyList()
         persist(KEY_HISTORY, HistoryEntry.serializer(), emptyList())
+        _epProgress.value = emptyList()
+        persist(KEY_EP_PROGRESS, EpProgress.serializer(), emptyList())
     }
 
     // --- io -----------------------------------------------------------------
@@ -123,7 +154,20 @@ object LocalStore {
 
     private val HistoryEntry.finished: Boolean
         get() = durationMs > 0 && positionMs >= durationMs * FINISHED_FRACTION
+
+    private val EpProgress.finished: Boolean
+        get() = durationMs > 0 && positionMs >= durationMs * FINISHED_FRACTION
 }
+
+/** Per-episode resume point. For movies [se]/[ep] are 0. */
+@Serializable
+data class EpProgress(
+    val subjectId: String,
+    val se: Int,
+    val ep: Int,
+    val positionMs: Long,
+    val durationMs: Long,
+)
 
 /**
  * One Continue-Watching record. [item] is the primary [SubjectItem] (enough to

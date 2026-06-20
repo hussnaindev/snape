@@ -296,9 +296,9 @@ fun DetailScreen(
                             currentSe = currentSe,
                             currentEp = currentEp,
                             onSelectEpisode = { se, ep -> play(se, ep) },
-                            onProgress = { pos, dur ->
+                            onProgress = { se, ep, pos, dur ->
                                 com.snape.flix.data.LocalStore.recordProgress(
-                                    s.group.primary, currentSe, currentEp, pos, dur,
+                                    s.group.primary, se, ep, pos, dur,
                                 )
                             },
                         )
@@ -384,26 +384,37 @@ fun DetailScreen(
         }
 
         // ── fullscreen player overlay (same exo instance as inline) ───────────
-        if (playerActive && fullscreen && ready != null && exo != null) {
-            StreamPlayerChrome(
-                exo = exo,
-                ready = ready,
-                variants = ordered,
-                selectedId = ready.subjectId,
-                onSelectVariant = { requestedId = it },
-                fullscreen = true,
-                onToggleFullscreen = { fullscreen = false },
-                modifier = Modifier.fillMaxSize().zIndex(10f),
-                episodes = playerEpisodes,
-                currentSe = currentSe,
-                currentEp = currentEp,
-                onSelectEpisode = { se, ep -> play(se, ep) },
-                onProgress = { pos, dur ->
-                    com.snape.flix.data.LocalStore.recordProgress(
-                        s.group.primary, currentSe, currentEp, pos, dur,
+        // The black surface stays mounted for the whole fullscreen session, so
+        // switching episodes (which briefly drops `ready` to null while the next
+        // stream resolves) shows a spinner in place — the player never flickers out
+        // to reveal the detail page behind it.
+        if (playerActive && fullscreen) {
+            Box(Modifier.fillMaxSize().background(Color.Black).zIndex(10f)) {
+                when {
+                    ready != null && exo != null -> StreamPlayerChrome(
+                        exo = exo,
+                        ready = ready,
+                        variants = ordered,
+                        selectedId = ready.subjectId,
+                        onSelectVariant = { requestedId = it },
+                        fullscreen = true,
+                        onToggleFullscreen = { fullscreen = false },
+                        modifier = Modifier.fillMaxSize(),
+                        episodes = playerEpisodes,
+                        currentSe = currentSe,
+                        currentEp = currentEp,
+                        onSelectEpisode = { se, ep -> play(se, ep) },
+                        onProgress = { se, ep, pos, dur ->
+                            com.snape.flix.data.LocalStore.recordProgress(
+                                s.group.primary, se, ep, pos, dur,
+                            )
+                        },
                     )
-                },
-            )
+                    pState is PlayerLoadState.Error ->
+                        HeroStatus((pState as PlayerLoadState.Error).message, onBack = { fullscreen = false })
+                    else -> HeroStatus("Loading…", spinner = true)
+                }
+            }
         }
     }
 }
