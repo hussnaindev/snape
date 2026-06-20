@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -22,7 +24,7 @@ android {
         //   3. committed fallback so CI never ships an empty key (an unset secret
         //      expands to "" → LD init skipped → no events). Mobile keys are not
         //      secret per LaunchDarkly's docs, so committing the default is fine.
-        val localProps = java.util.Properties().apply {
+        val localProps = Properties().apply {
             val f = rootProject.file("local.properties")
             if (f.exists()) f.inputStream().use { load(it) }
         }
