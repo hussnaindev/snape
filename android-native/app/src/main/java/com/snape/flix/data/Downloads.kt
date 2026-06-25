@@ -2,6 +2,7 @@ package com.snape.flix.data
 
 import android.app.Notification
 import android.content.Context
+import android.net.Uri
 import android.content.SharedPreferences
 import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
@@ -65,6 +66,9 @@ data class DownloadMeta(
     val rating: Double? = null,
     val quality: String = "",
     val subtitleLocalPath: String? = null,
+    // Language of the saved subtitle, so the offline player can label/select it.
+    val subtitleLan: String = "",
+    val subtitleLanName: String = "",
 )
 
 /** A flattened, UI-facing view of one Media3 download (rebuilt on every change). */
@@ -128,8 +132,14 @@ object Downloads {
     @Volatile private var manager: DownloadManager? = null
     private var notificationHelper: DownloadNotificationHelper? = null
 
-    // host -> CloudFront Cookie. Applied to the manifest and all of its segments.
-    private val cookieByHost = ConcurrentHashMap<String, String>()
+    // URL prefix (scheme://host/dir/) -> CloudFront Cookie. Applied to the manifest
+    // and all of its segments. Keyed by *path prefix*, NOT just host: CloudFront
+    // signed cookies are resource-scoped (their policy pins a specific path), so two
+    // parallel downloads served from the same CDN host each need their own cookie.
+    // A host-only key let the second download's cookie clobber the first's, which
+    // then 403'd on its next segment and "failed until you resumed" — the exact
+    // parallel-download bug. Path-prefix keying keeps every download's cookie distinct.
+    private val cookieByPrefix = ConcurrentHashMap<String, String>()
 
     private val _items = MutableStateFlow<List<DownloadItem>>(emptyList())
     val items: StateFlow<List<DownloadItem>> = _items.asStateFlow()
@@ -213,15 +223,43 @@ object Downloads {
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
     }
 
-    /** The stored [MediaItem] (uri + mime + stream keys) for offline playback. */
-    fun mediaItem(id: String): MediaItem? = downloadById(id)?.request?.toMediaItem()
+    /** A saved subtitle sidecar for an offline download (local .srt + its language). */
+    data class OfflineSubtitle(val path: String, val lan: String, val lanName: String)
+
+    /**
+     * The saved subtitle for a download, if one was fetched at download time and the
+     * file still exists. Drives the offline player's subtitle button + track.
+     */
+    fun offlineSubtitle(id: String): OfflineSubtitle? {
+        val download = downloadById(id) ?: return null
+        val meta = runCatching { json.decodeFromString(DownloadMeta.serializer(), String(download.request.data)) }.getOrNull() ?: return null
+        val path = meta.subtitleLocalPath?.takeIf { it.isNotBlank() } ?: return null
+        if (!File(path).exists()) return null
+        return OfflineSubtitle(path, meta.subtitleLan.ifBlank { "und" }, meta.subtitleLanName.ifBlank { "Subtitle" })
+    }
+
+    /**
+     * The stored [MediaItem] (uri + mime + stream keys) for offline playback, with the
+     * saved subtitle sidecar attached as a [MediaItem.SubtitleConfiguration] (read from
+     * the local file) so the offline player can render and toggle it.
+     */
+    fun mediaItem(id: String): MediaItem? {
+        val base = downloadById(id)?.request?.toMediaItem() ?: return null
+        val sub = offlineSubtitle(id) ?: return base
+        val config = MediaItem.SubtitleConfiguration.Builder(Uri.fromFile(File(sub.path)))
+            .setMimeType(MimeTypes.APPLICATION_SUBRIP)
+            .setLanguage(sub.lan)
+            .setLabel(sub.lanName)
+            .build()
+        return base.buildUpon().setSubtitleConfigurations(listOf(config)).build()
+    }
 
     private fun upstreamFactory(): DataSource.Factory {
         val http = DefaultHttpDataSource.Factory()
             .setUserAgent(MovieBoxSign.USER_AGENT)
             .setAllowCrossProtocolRedirects(true)
         return ResolvingDataSource.Factory(http) { dataSpec ->
-            val cookie = dataSpec.uri.host?.let { cookieByHost[it] }
+            val cookie = cookieFor(dataSpec.uri)
             if (!cookie.isNullOrBlank()) dataSpec.withAdditionalHeaders(mapOf("Cookie" to cookie)) else dataSpec
         }
     }
@@ -243,6 +281,8 @@ object Downloads {
         signCookie: String,
         format: String,
         subtitleUrl: String? = null,
+        subtitleLan: String = "",
+        subtitleLanName: String = "",
     ) {
         val ctx = appContext
         rememberCookie(url, signCookie)
@@ -268,7 +308,12 @@ object Downloads {
                     "DASH" -> MimeTypes.APPLICATION_MPD
                     else -> null
                 }
-                val meta = DownloadMeta(subjectId, se, ep, title, isSeries, posterUrl, logoUrl, year, rating, quality, subtitleLocalPath = subtitleLocalPath)
+                val meta = DownloadMeta(
+                    subjectId, se, ep, title, isSeries, posterUrl, logoUrl, year, rating, quality,
+                    subtitleLocalPath = subtitleLocalPath,
+                    subtitleLan = if (subtitleLocalPath != null) subtitleLan else "",
+                    subtitleLanName = if (subtitleLocalPath != null) subtitleLanName else "",
+                )
                 val data = json.encodeToString(DownloadMeta.serializer(), meta).toByteArray()
                 val mediaItem = MediaItem.Builder().setUri(url)
                     .apply { if (mime != null) setMimeType(mime) }
@@ -457,13 +502,39 @@ object Downloads {
 
     private fun rememberCookie(url: String, cookie: String) {
         if (cookie.isBlank()) return
-        val host = runCatching { URI(url).host }.getOrNull() ?: return
-        cookieByHost[host] = cookie
-        runCatching { prefs.edit().putString(KEY_COOKIES, json.encodeToString(cookieByHost.toMap())).apply() }
+        val prefix = prefixOf(url) ?: return
+        cookieByPrefix[prefix] = cookie
+        runCatching { prefs.edit().putString(KEY_COOKIES, json.encodeToString(cookieByPrefix.toMap())).apply() }
     }
 
     private fun loadCookies() {
         val raw = prefs.getString(KEY_COOKIES, null) ?: return
-        runCatching { json.decodeFromString<Map<String, String>>(raw) }.getOrNull()?.let { cookieByHost.putAll(it) }
+        runCatching { json.decodeFromString<Map<String, String>>(raw) }.getOrNull()?.let { cookieByPrefix.putAll(it) }
+    }
+
+    /** scheme://host/<dir>/ — the directory the manifest (and its segments) live under. */
+    private fun prefixOf(url: String): String? {
+        val u = runCatching { URI(url) }.getOrNull() ?: return null
+        val host = u.host ?: return null
+        val dir = (u.path ?: "").substringBeforeLast('/', "")
+        return "${u.scheme}://$host$dir/"
+    }
+
+    /**
+     * Pick the cookie for a request URI. Prefer the longest stored path prefix the
+     * URI falls under (so each parallel download gets *its own* resource-scoped
+     * cookie); fall back to any cookie for the same host (covers a segment hosted a
+     * directory above its manifest, or a cross-path redirect).
+     */
+    private fun cookieFor(uri: android.net.Uri): String? {
+        val key = "${uri.scheme}://${uri.host}${uri.path ?: ""}"
+        cookieByPrefix.entries
+            .filter { key.startsWith(it.key) }
+            .maxByOrNull { it.key.length }
+            ?.let { return it.value }
+        val host = uri.host ?: return null
+        return cookieByPrefix.entries
+            .firstOrNull { runCatching { URI(it.key).host }.getOrNull() == host }
+            ?.value
     }
 }

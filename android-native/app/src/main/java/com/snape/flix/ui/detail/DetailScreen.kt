@@ -373,6 +373,7 @@ fun DetailScreen(
                     rating = s.rating,
                     initialSe = lSe,
                     initialEp = lEp,
+                    lockSelection = true,
                 )
             }
 
@@ -646,7 +647,6 @@ private fun HeroStatus(message: String, spinner: Boolean = false, onBack: (() ->
 
 @Composable
 private fun MetaCard(s: DetailUiState, onWatch: () -> Unit) {
-    val context = LocalContext.current
     var downloadOpen by remember { mutableStateOf(false) }
     if (downloadOpen) {
         DownloadSheet(
@@ -747,7 +747,6 @@ private fun MetaCard(s: DetailUiState, onWatch: () -> Unit) {
                     DownloadActionIcon(
                         group = s.group,
                         onDownload = { downloadOpen = true },
-                        onNavigateToDownloads = { com.snape.flix.ui.downloads.DownloadsActivity.start(context) },
                     )
                     WatchlistIcon(item = s.group.primary)
                 }
@@ -904,42 +903,40 @@ private fun WatchButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
 
 /**
  * The detail-page download button — identical footprint to the watchlist icon
- * (36dp circle). When a download for any audio variant of this title exists (in
- * flight or complete), tapping navigates to the downloads page instead of
- * re-opening the download options sheet.
+ * (36dp circle). It only ever opens the download-options sheet: a single saved
+ * variant doesn't mean the *title* is downloaded, so we never show a "done" tick
+ * here. While a variant is actively downloading we ring the icon with its
+ * progress; once complete the icon reverts to the plain glyph and tapping it
+ * re-opens the options sheet (which itself surfaces the downloaded/in-progress
+ * state for the exact variant + quality the user picks).
  */
 @Composable
 private fun DownloadActionIcon(
     group: com.snape.flix.data.SubjectGroup,
     onDownload: () -> Unit,
-    onNavigateToDownloads: () -> Unit,
 ) {
-    val context = LocalContext.current
     val items by com.snape.flix.data.Downloads.items.collectAsStateWithLifecycle()
     val variantIds = remember(group) { group.variants.map { it.subjectId }.toSet() }
-    val match = items.firstOrNull { it.subjectId in variantIds }
-    val completed = match?.status == com.snape.flix.data.DownloadStatus.COMPLETED
+    val active = items.firstOrNull {
+        it.subjectId in variantIds && it.status != com.snape.flix.data.DownloadStatus.COMPLETED
+    }
     Box(
         Modifier
             .size(36.dp)
             .clip(CircleShape)
-            .background(if (completed) Color(0xFF10B981) else Color(0x99000000))
-            .border(1.dp, if (completed) Color(0xFF10B981) else Color(0x4DFFFFFF), CircleShape)
-            .clickable(onClick = if (match != null) { { com.snape.flix.ui.downloads.DownloadsActivity.start(context) } } else onDownload),
+            .background(Color(0x99000000))
+            .border(1.dp, Color(0x4DFFFFFF), CircleShape)
+            .clickable(onClick = onDownload),
         contentAlignment = Alignment.Center,
     ) {
-        if (match != null && !completed) {
+        if (active != null) {
             com.snape.flix.ui.components.ProgressRing(
-                progress = match.fraction,
+                progress = active.fraction,
                 modifier = Modifier.fillMaxSize(),
                 strokeWidth = 2.5.dp,
             )
         }
-        if (completed) {
-            Icon(Icons.Rounded.Check, contentDescription = "Downloaded", tint = Color.White, modifier = Modifier.size(16.dp))
-        } else {
-            com.snape.flix.ui.components.DownloadGlyph(modifier = Modifier.size(16.dp), tint = Color.White)
-        }
+        com.snape.flix.ui.components.DownloadGlyph(modifier = Modifier.size(16.dp), tint = Color.White)
     }
 }
 

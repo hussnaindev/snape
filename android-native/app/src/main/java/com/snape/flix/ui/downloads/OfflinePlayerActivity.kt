@@ -21,10 +21,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import com.snape.flix.data.Caption
 import com.snape.flix.data.Downloads
 import com.snape.flix.ui.player.PlayerLoadState
 import com.snape.flix.ui.player.StreamPlayerChrome
@@ -60,26 +63,44 @@ class OfflinePlayerActivity : ComponentActivity() {
         }
 
         val id = intent.getStringExtra(EXTRA_ID)
-        val mediaItem = id?.let { Downloads.mediaItem(it) }
+        if (id == null) {
+            finish()
+            return
+        }
+        val mediaItem = Downloads.mediaItem(id)
         if (mediaItem == null) {
             finish()
             return
         }
+        val subtitle = Downloads.offlineSubtitle(id)
 
-        setContent { OfflinePlayer(mediaItem, onExit = ::finish) }
+        setContent { OfflinePlayer(mediaItem, subtitle, onExit = ::finish) }
     }
 }
 
 @OptIn(UnstableApi::class)
 @Composable
-private fun OfflinePlayer(mediaItem: MediaItem, onExit: () -> Unit) {
+private fun OfflinePlayer(
+    mediaItem: MediaItem,
+    subtitle: Downloads.OfflineSubtitle?,
+    onExit: () -> Unit,
+) {
     val context = LocalContext.current
     val exo = remember(mediaItem) {
+        // Wrap the cache (HTTP) factory in DefaultDataSource so the sideloaded
+        // subtitle — a local file:// URI — is read off disk while the video segments
+        // still come from the download cache. The HTTP factory alone can't open file
+        // URIs, so without this the subtitle track silently fails to load.
+        val dataSource = DefaultDataSource.Factory(context, Downloads.playbackFactory(context))
         ExoPlayer.Builder(context)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(Downloads.playbackFactory(context)))
+            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSource))
             .build()
             .apply {
                 setMediaItem(mediaItem)
+                // Subtitles off until the user picks them from the menu (matches online).
+                trackSelectionParameters = trackSelectionParameters.buildUpon()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                    .build()
                 prepare()
                 playWhenReady = true
             }
@@ -98,16 +119,19 @@ private fun OfflinePlayer(mediaItem: MediaItem, onExit: () -> Unit) {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // The chrome reads `captions`/`qualities` to drive its menus; offline content was
-    // downloaded at a single quality with no fetched subtitle tracks, so both are empty
-    // (quality menu shows "Auto" only, the subtitles button is hidden).
-    val ready = remember {
+    // The chrome reads `captions`/`qualities` to drive its menus. Offline content is
+    // downloaded at a single quality (quality menu shows "Auto" only). If a subtitle
+    // was saved, expose it as a single caption so the subtitles button appears and its
+    // language matches the sideloaded track for selection.
+    val ready = remember(subtitle) {
         PlayerLoadState.Ready(
             subjectId = "",
             mpdUrl = "",
             signCookie = "",
             format = "",
-            captions = emptyList(),
+            captions = subtitle?.let {
+                listOf(Caption(id = it.lan, lan = it.lan, lanName = it.lanName, url = ""))
+            } ?: emptyList(),
             qualities = emptyList(),
         )
     }

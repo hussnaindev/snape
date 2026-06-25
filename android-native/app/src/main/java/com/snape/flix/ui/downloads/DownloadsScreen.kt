@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.snape.flix.data.DownloadItem
@@ -130,6 +131,17 @@ fun DownloadsScreen(onBack: () -> Unit) {
 @Composable
 private fun DownloadRow(item: DownloadItem, isResuming: Boolean, isRemoving: Boolean) {
     val context = LocalContext.current
+    var confirmDelete by remember { mutableStateOf(false) }
+    if (confirmDelete) {
+        ConfirmDeleteDialog(
+            title = item.title,
+            onConfirm = {
+                confirmDelete = false
+                Downloads.cancel(item.id)
+            },
+            onDismiss = { confirmDelete = false },
+        )
+    }
     Row(
         Modifier
             .fillMaxWidth()
@@ -273,7 +285,7 @@ private fun DownloadRow(item: DownloadItem, isResuming: Boolean, isRemoving: Boo
                 if (isRemoving) {
                     ActionButtonLoading(label = "Deleting")
                 } else {
-                    ActionButton(icon = Icons.Rounded.DeleteOutline, label = "Delete", danger = true) { Downloads.cancel(item.id) }
+                    ActionButton(icon = Icons.Rounded.DeleteOutline, label = "Delete", danger = true) { confirmDelete = true }
                 }
             } else if (item.status != DownloadStatus.REMOVING) {
                 if (isRemoving) {
@@ -364,6 +376,70 @@ private fun Chip(text: String) {
             .padding(horizontal = 8.dp, vertical = 2.dp),
     ) {
         Text(text, color = Color(0xCCFFFFFF), fontFamily = ChesnaGrotesk, fontWeight = FontWeight.Medium, fontSize = 9.sp, letterSpacing = 0.4.sp)
+    }
+}
+
+/**
+ * Confirmation guard for the irreversible Delete action — a misclick on the small
+ * row button shouldn't wipe a saved file. Dark, app-styled modal with Cancel /
+ * Delete actions.
+ */
+@Composable
+private fun ConfirmDeleteDialog(title: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color(0xFF111613))
+                .border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(20.dp))
+                .padding(20.dp),
+        ) {
+            Text(
+                "Delete download?",
+                color = Color.White,
+                fontFamily = ChesnaGrotesk,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "“$title” will be removed from your device. This can't be undone.",
+                color = Color(0x99FFFFFF),
+                fontFamily = ChesnaGrotesk,
+                fontSize = 13.sp,
+            )
+            Spacer(Modifier.height(20.dp))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color(0x14FFFFFF))
+                        .border(1.dp, Color(0x26FFFFFF), RoundedCornerShape(50))
+                        .clickable(onClick = onDismiss),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("CANCEL", color = Color.White, fontFamily = ChesnaGrotesk, fontWeight = FontWeight.Medium, fontSize = 12.sp, letterSpacing = 1.sp)
+                }
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color(0x1AF87171))
+                        .border(1.dp, Color(0x66F87171), RoundedCornerShape(50))
+                        .clickable(onClick = onConfirm),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("DELETE", color = Color(0xFFF87171), fontFamily = ChesnaGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, letterSpacing = 1.sp)
+                }
+            }
+        }
     }
 }
 

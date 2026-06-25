@@ -547,6 +547,9 @@ private fun ExoPlayer.setSubtitle(lang: String?) {
         } else {
             setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
             setPreferredTextLanguage(lang)
+            // Fall back to an undetermined-language track (e.g. an offline sidecar
+            // saved without a language code) so it's still selectable.
+            setSelectUndeterminedTextLanguage(true)
         }
     }.build()
 }

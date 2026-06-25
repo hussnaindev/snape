@@ -1,6 +1,7 @@
 package com.snape.flix.ui.detail
 
 import android.widget.Toast
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -37,13 +38,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.snape.flix.data.Caption
 import com.snape.flix.data.DownloadItem
 import com.snape.flix.data.DownloadStatus
 import com.snape.flix.data.Downloads
@@ -70,6 +80,9 @@ fun DownloadSheet(
     rating: Double? = null,
     initialSe: Int? = null,
     initialEp: Int? = null,
+    // When opened from a long-press on a specific episode card, lock to that
+    // episode — show only its download options, not the season/episode pickers.
+    lockSelection: Boolean = false,
     vm: DownloadViewModel = viewModel(),
 ) {
     val context = LocalContext.current
@@ -154,7 +167,17 @@ fun DownloadSheet(
                     Text("This title isn't available to download right now.", color = Color(0x80FFFFFF), fontSize = 13.sp)
                 }
                 is DownloadState.Ready -> {
-                    if (isSeries && seasonItems.isNotEmpty()) {
+                    // Language / Audio first — it determines which subject the season,
+                    // episode and quality options are resolved from.
+                    if (group.variants.size > 1) {
+                        Field("Language / Audio") {
+                            ChipRow(group.variants.map { it.variantLabel }, group.variants[audioIdx].variantLabel) { label ->
+                                audioIdx = group.variants.indexOfFirst { it.variantLabel == label }.coerceAtLeast(0)
+                            }
+                        }
+                        Spacer(Modifier.height(16.dp))
+                    }
+                    if (isSeries && !lockSelection && seasonItems.isNotEmpty()) {
                         Field("Season") {
                             ChipRow(seasonItems.map { it.se.toString() }, selectedSeason.toString()) { v ->
                                 val newSeason = v.toIntOrNull() ?: return@ChipRow
@@ -174,14 +197,6 @@ fun DownloadSheet(
                     if (st.qualities.isNotEmpty()) {
                         Field("Quality") {
                             ChipRow(st.qualities, quality) { quality = it }
-                        }
-                    }
-                    if (group.variants.size > 1) {
-                        Spacer(Modifier.height(16.dp))
-                        Field("Language / Audio") {
-                            ChipRow(group.variants.map { it.variantLabel }, group.variants[audioIdx].variantLabel) { label ->
-                                audioIdx = group.variants.indexOfFirst { it.variantLabel == label }.coerceAtLeast(0)
-                            }
                         }
                     }
                     Spacer(Modifier.height(16.dp))
@@ -217,8 +232,8 @@ fun DownloadSheet(
                                     .clip(RoundedCornerShape(50))
                                     .background(Color.White)
                                     .clickable {
-                                        val subUrl = if (subIdx >= 0) st.subtitles.getOrNull(subIdx)?.url else null
-                                        enqueue(st, group, audioIdx, isSeries, selectedSeason, selectedEpisode, quality, posterUrl, logoUrl, year, rating, subUrl)
+                                        val sub = if (subIdx >= 0) st.subtitles.getOrNull(subIdx) else null
+                                        enqueue(st, group, audioIdx, isSeries, selectedSeason, selectedEpisode, quality, posterUrl, logoUrl, year, rating, sub)
                                         Toast.makeText(context, "Download started · $heading ($quality)", Toast.LENGTH_SHORT).show()
                                         onDismiss()
                                     },
@@ -232,14 +247,15 @@ fun DownloadSheet(
                             }
                         }
                         isCompleted -> {
-                            // Completed — green outline with checkmark, navigates to downloads.
+                            // This exact variant + quality is saved — black pill with a
+                            // green label. Tapping jumps to the downloads page.
                             Box(
                                 Modifier
                                     .fillMaxWidth()
                                     .height(48.dp)
                                     .clip(RoundedCornerShape(50))
-                                    .background(Color(0x15FF10B981))
-                                    .border(1.dp, Color(0x66FF10B981), RoundedCornerShape(50))
+                                    .background(Color.Black)
+                                    .border(1.dp, Color(0x4D34D399), RoundedCornerShape(50))
                                     .clickable {
                                         com.snape.flix.ui.downloads.DownloadsActivity.start(context)
                                         onDismiss()
@@ -255,40 +271,33 @@ fun DownloadSheet(
                         }
                         isActive -> {
                             val activeMatch = match!!
-                            // In progress — green outline with progress bar, navigates to downloads.
+                            // This variant is already downloading — blackish pill with a
+                            // green progress stroke around the border and a white label.
+                            // Tapping jumps to the downloads page.
                             Box(
                                 Modifier
                                     .fillMaxWidth()
                                     .height(48.dp)
                                     .clip(RoundedCornerShape(50))
-                                    .background(Color(0x15FF10B981))
-                                    .border(1.dp, Color(0x66FF10B981), RoundedCornerShape(50))
+                                    .background(Color(0xFF0B0B0C))
                                     .clickable {
                                         com.snape.flix.ui.downloads.DownloadsActivity.start(context)
                                         onDismiss()
                                     },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Box(
-                                    Modifier
-                                        .matchParentSize()
-                                        .clip(RoundedCornerShape(50))
-                                        .background(Color(0x10FF10B981)),
-                                )
-                                Box(
-                                    Modifier
-                                        .align(Alignment.CenterStart)
-                                        .fillMaxWidth(activeMatch.fraction.coerceAtLeast(0.03f))
-                                        .height(48.dp)
-                                        .clip(RoundedCornerShape(50))
-                                        .background(Color(0x20FF10B981)),
+                                ProgressBorder(
+                                    fraction = activeMatch.fraction,
+                                    modifier = Modifier.matchParentSize(),
+                                    cornerRadius = 24.dp,
+                                    strokeWidth = 2.dp,
                                 )
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    com.snape.flix.ui.components.DownloadGlyph(modifier = Modifier.size(16.dp), tint = Color(0xFF34D399))
+                                    com.snape.flix.ui.components.DownloadGlyph(modifier = Modifier.size(16.dp), tint = Color.White)
                                     Spacer(Modifier.width(8.dp))
                                     Text(
                                         if (activeMatch.status == DownloadStatus.PAUSED) "PAUSED" else "IN PROGRESS",
-                                        color = Color(0xFF34D399),
+                                        color = Color.White,
                                         fontFamily = ChesnaGrotesk,
                                         fontWeight = FontWeight.SemiBold,
                                         fontSize = 12.sp,
@@ -316,7 +325,7 @@ private fun enqueue(
     logoUrl: String?,
     year: String,
     rating: Double?,
-    subtitleUrl: String? = null,
+    subtitle: Caption? = null,
 ) {
     val variant = group.variants.getOrNull(audioIdx) ?: group.primary
     Downloads.enqueue(
@@ -333,7 +342,9 @@ private fun enqueue(
         url = ready.url,
         signCookie = ready.signCookie,
         format = ready.format,
-        subtitleUrl = subtitleUrl,
+        subtitleUrl = subtitle?.url,
+        subtitleLan = subtitle?.lan ?: "",
+        subtitleLanName = subtitle?.lanName ?: "",
     )
 }
 
@@ -351,6 +362,37 @@ private fun Field(label: String, content: @Composable () -> Unit) {
 private fun ChipRow(options: List<String>, selected: String, onSelect: (String) -> Unit) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEach { Chip(it, it == selected) { onSelect(it) } }
+    }
+}
+
+/**
+ * A green progress stroke swept around a pill-shaped button's border. [fraction] is
+ * 0f‥1f. Drawn as a partial rounded-rect outline so the button shows download
+ * progress on its edge rather than as a fill.
+ */
+@Composable
+private fun ProgressBorder(
+    fraction: Float,
+    modifier: Modifier = Modifier,
+    cornerRadius: Dp = 24.dp,
+    strokeWidth: Dp = 2.dp,
+    track: Color = Color(0x1AFFFFFF),
+    progress: Color = Color(0xFF34D399),
+) {
+    Canvas(modifier) {
+        val sw = strokeWidth.toPx()
+        val r = cornerRadius.toPx()
+        val rect = Rect(sw / 2f, sw / 2f, size.width - sw / 2f, size.height - sw / 2f)
+        val outline = Path().apply { addRoundRect(RoundRect(rect, CornerRadius(r, r))) }
+        // Faint full track first, then the green progress arc on top.
+        drawPath(outline, color = track, style = Stroke(width = sw))
+        val frac = fraction.coerceIn(0f, 1f)
+        if (frac > 0f) {
+            val measure = PathMeasure().apply { setPath(outline, false) }
+            val segment = Path()
+            measure.getSegment(0f, measure.length * frac, segment, true)
+            drawPath(segment, color = progress, style = Stroke(width = sw, cap = StrokeCap.Round))
+        }
     }
 }
 
