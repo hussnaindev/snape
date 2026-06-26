@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Snape</title>
+    <link rel="stylesheet" href="styles.css" />
+    <!-- Shaka Player ships the only browser-side DASH engine we need. -->
+    <script src="../../node_modules/shaka-player/dist/shaka-player.compiled.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <span class="brand">Snape</span>
+      <form id="search-form" class="search">
+        <input
+          id="search-input"
+          type="search"
+          placeholder="Search movies & series…"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </form>
+    </header>
+
+    <main id="results" class="grid" aria-live="polite"></main>
+    <div id="status" class="status"></div>
+
+    <!-- Fullscreen player overlay -->
+    <div id="player-overlay" class="player-overlay hidden">
+      <button id="player-close" class="player-close" aria-label="Close">✕</button>
+      <div class="player-title" id="player-title"></div>
+      <video id="video" class="video" controls autoplay></video>
+      <div id="player-status" class="player-status"></div>
+    </div>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>
