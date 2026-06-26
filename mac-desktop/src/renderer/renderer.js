@@ -1,6 +1,6 @@
-// Renderer: search box -> result cards -> click a card -> the custom player
-// (player.js, a port of the Android StreamPlayerChrome) plays the DASH stream.
-// All MovieBox calls go through window.api (main process).
+// Renderer: sidebar search -> results (one per row) -> click a row -> the custom
+// player (player.js, a port of the Android StreamPlayerChrome) plays the DASH
+// stream in the right pane. All MovieBox calls go through window.api.
 
 const form = document.getElementById('search-form');
 const input = document.getElementById('search-input');
@@ -11,11 +11,12 @@ const overlay = document.getElementById('player-overlay');
 const video = document.getElementById('video');
 const playerTitle = document.getElementById('player-title');
 const playerStatus = document.getElementById('player-status');
-document.getElementById('player-close').addEventListener('click', closePlayer);
+const idle = document.getElementById('idle');
 
 const player = window.createStreamPlayer(video, overlay);
 let searchSeq = 0;
 let playToken = 0;
+let activeRow = null;
 
 // --- search -----------------------------------------------------------------
 
@@ -42,7 +43,7 @@ async function runSearch() {
   try {
     const cards = await window.api.search(keyword);
     if (seq !== searchSeq) return; // a newer search superseded this one
-    renderCards(cards);
+    renderResults(cards);
     status.textContent = cards.length ? '' : 'No results.';
   } catch (err) {
     if (seq !== searchSeq) return;
@@ -51,32 +52,42 @@ async function runSearch() {
   }
 }
 
-function renderCards(cards) {
+function renderResults(cards) {
   results.innerHTML = '';
+  activeRow = null;
   for (const c of cards) {
-    const card = document.createElement('button');
-    card.className = 'card';
-    card.innerHTML = `
-      <div class="poster">
-        ${c.posterUrl ? `<img loading="lazy" src="${c.posterUrl}" alt="">` : ''}
-        <span class="badge">${c.isSeries ? 'Series' : 'Movie'}</span>
-        ${c.rating ? `<span class="badge rating">★ ${c.rating.toFixed(1)}</span>` : ''}
-      </div>
-      <div class="meta">
-        <div class="title"></div>
-        <div class="sub">${[c.year, c.isSeries ? 'Series' : c.duration].filter(Boolean).join(' · ')}</div>
+    const row = document.createElement('button');
+    row.className = 'result';
+    row.innerHTML = `
+      <div class="thumb">${c.posterUrl ? `<img loading="lazy" src="${c.posterUrl}" alt="">` : ''}</div>
+      <div class="info">
+        <div class="r-title"></div>
+        <div class="r-sub">
+          ${[c.year, c.isSeries ? 'Series' : 'Movie'].filter(Boolean).join(' · ')}${
+            c.rating ? ` · <span class="star">★ ${c.rating.toFixed(1)}</span>` : ''
+          }
+        </div>
       </div>`;
-    card.querySelector('.title').textContent = c.title;
-    card.addEventListener('click', () => playCard(c));
-    results.appendChild(card);
+    row.querySelector('.r-title').textContent = c.title;
+    row.addEventListener('click', () => {
+      setActiveRow(row);
+      playCard(c);
+    });
+    results.appendChild(row);
   }
+}
+
+function setActiveRow(row) {
+  if (activeRow) activeRow.classList.remove('active');
+  activeRow = row;
+  row.classList.add('active');
 }
 
 // --- playback ---------------------------------------------------------------
 
 async function playCard(card) {
-  openPlayer(card.title);
-  // Default audio variant = the card's primary (first in the variants list).
+  idle.classList.add('hidden');
+  playerTitle.textContent = card.title;
   const variants = card.variants || [];
   const startId = variants[0]?.id || card.subjectId;
   await playVariant(card, startId);
@@ -117,19 +128,6 @@ function switchVariant(card, variantId) {
   playVariant(card, variantId, video.currentTime || 0);
 }
 
-function openPlayer(title) {
-  playerTitle.textContent = title;
-  overlay.classList.remove('hidden');
-}
-
-async function closePlayer() {
-  playToken++;
-  overlay.classList.add('hidden');
-  video.pause();
-  await player.unload();
-  playerStatus.textContent = '';
-}
-
 // Shaka error 4032 = CONTENT_UNSUPPORTED_BY_BROWSER — for these HEVC-only
 // streams it means this Mac has no usable HEVC hardware decoder.
 window.onPlayerError = (detail) => {
@@ -143,8 +141,8 @@ window.onPlayerError = (detail) => {
 };
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !overlay.classList.contains('hidden')) {
-    if (document.fullscreenElement) return; // let Esc exit fullscreen first
-    closePlayer();
+  if (e.key === 'Escape' && document.fullscreenElement) {
+    // let the browser exit fullscreen; keep playing in the pane
+    return;
   }
 });

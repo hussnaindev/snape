@@ -20,35 +20,52 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 5;
+/* --- two-pane layout: sidebar (search + results) | stage (player) --- */
+
+.app {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 360px;
+  min-width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: #0d0d0d;
+  border-right: 1px solid var(--ring);
+}
+
+.sidebar-head {
   display: flex;
   align-items: center;
-  gap: 20px;
-  padding: 14px 22px;
-  background: rgba(10, 10, 10, 0.92);
-  backdrop-filter: blur(12px);
+  gap: 12px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--ring);
 }
 
-.brand {
-  font-weight: 800;
-  font-size: 20px;
-  letter-spacing: 0.5px;
+.logo {
+  flex-shrink: 0;
+  display: inline-flex;
   color: #fff;
+}
+.logo svg {
+  width: 30px;
+  height: 30px;
+  display: block;
 }
 
 .search {
   flex: 1;
-  max-width: 520px;
+  min-width: 0;
 }
 
 .search input {
   width: 100%;
-  padding: 9px 14px;
-  border-radius: 10px;
+  padding: 9px 16px;
+  border-radius: 999px; /* fully rounded */
   border: 1px solid var(--ring);
   background: #1c1c1c;
   color: var(--text);
@@ -60,66 +77,60 @@ body {
   border-color: rgba(255, 255, 255, 0.25);
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 16px;
-  padding: 22px;
+/* results — one item per row */
+.results-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
 }
 
-.card {
-  cursor: pointer;
+.result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px;
   border: none;
-  padding: 0;
+  border-radius: 10px;
   background: transparent;
-  text-align: left;
   color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.poster {
+.result:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.result.active {
+  background: rgba(229, 9, 20, 0.16);
+}
+
+.result .thumb {
   position: relative;
-  aspect-ratio: 2 / 3;
-  border-radius: 12px;
+  flex-shrink: 0;
+  width: 54px;
+  height: 81px;
+  border-radius: 6px;
   overflow: hidden;
   background: var(--card);
   box-shadow: inset 0 0 0 1px var(--ring);
 }
 
-.poster img {
+.result .thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.card:hover .poster {
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+.result .info {
+  min-width: 0;
+  flex: 1;
 }
 
-.badge {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  padding: 2px 7px;
-  font-size: 10px;
-  font-weight: 700;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.7);
-  color: #fff;
-}
-
-.badge.rating {
-  left: auto;
-  right: 8px;
-  color: #ffd34d;
-}
-
-.meta {
-  padding: 8px 2px 0;
-}
-
-.meta .title {
-  font-size: 13px;
+.result .r-title {
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.25;
   display: -webkit-box;
@@ -128,30 +139,55 @@ body {
   overflow: hidden;
 }
 
-.meta .sub {
-  margin-top: 2px;
-  font-size: 11px;
+.result .r-sub {
+  margin-top: 3px;
+  font-size: 12px;
   color: var(--muted);
+}
+.result .r-sub .star {
+  color: #ffd34d;
 }
 
 .status {
-  padding: 0 22px 40px;
+  padding: 4px 16px 16px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
 }
 
-/* Player overlay */
-.player-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
+/* --- stage / player pane --- */
+
+.stage {
+  flex: 1;
+  min-width: 0;
   background: #000;
+  position: relative;
+}
+
+.player-pane {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  overflow: hidden;
+}
+
+/* hide the mouse cursor when the chrome is hidden during playback */
+.player-pane.cursor-hidden {
+  cursor: none;
+}
+
+.idle {
+  position: absolute;
+  inset: 0;
+  z-index: 18;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 16px;
+  color: var(--muted);
+  background: #000;
 }
-
-.player-overlay.hidden {
+.idle.hidden {
   display: none;
 }
 
@@ -168,19 +204,18 @@ body {
   color: transparent;
 }
 
-.player-close {
-  position: absolute;
-  top: 16px;
-  right: 18px;
-  z-index: 24;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(0, 0, 0, 0.5);
-  color: #fff;
-  font-size: 16px;
-  cursor: pointer;
+.idle-logo {
+  display: inline-flex;
+  color: rgba(255, 255, 255, 0.18);
+}
+.idle-logo svg {
+  width: 96px;
+  height: 96px;
+  display: block;
+}
+.idle p {
+  margin: 0;
+  font-size: 14px;
 }
 
 .player-title {

@@ -341,6 +341,25 @@ function createStreamPlayer(video, overlay) {
     }
   });
 
+  // Reveal the chrome on hover/move (not just on click), like a desktop player.
+  // Cheap: only full-render on the hidden->shown transition; otherwise just
+  // push back the auto-hide timer so an open menu doesn't rebuild on every move.
+  function onActivity() {
+    if (!controlsShown) {
+      controlsShown = true;
+      render();
+    }
+    scheduleHide();
+  }
+  overlay.addEventListener('mousemove', onActivity);
+  overlay.addEventListener('mouseleave', () => {
+    if (!video.paused && menu === 'none') {
+      controlsShown = false;
+      clearTimeout(hideTimer);
+      render();
+    }
+  });
+
   // --- transport ------------------------------------------------------------
 
   function togglePlay() {
@@ -394,6 +413,7 @@ function createStreamPlayer(video, overlay) {
     const chromeVisible = controlsShown || video.paused;
 
     el.chrome.classList.toggle('hidden', !chromeVisible);
+    overlay.classList.toggle('cursor-hidden', !chromeVisible && !video.paused);
     el.buffering.classList.toggle('hidden', !buffering);
     el.center.classList.toggle('hidden', buffering || !chromeVisible);
     el.center.innerHTML = playing ? ICON.pause : ICON.play;
