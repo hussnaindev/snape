@@ -63,8 +63,10 @@ ipcMain.handle('moviebox:search', async (_e, keyword) => {
   return moviebox.search(keyword);
 });
 
-ipcMain.handle('moviebox:play', async (_e, { subjectId, isSeries }) => {
-  const stream = await moviebox.playInfo(subjectId, isSeries);
+ipcMain.handle('moviebox:seasons', async (_e, subjectId) => moviebox.seasons(subjectId));
+
+ipcMain.handle('moviebox:play', async (_e, { subjectId, se, ep }) => {
+  const stream = await moviebox.playInfo(subjectId, se, ep);
   if (!stream) {
     activeStream = { origin: null, cookie: '' };
     return null;

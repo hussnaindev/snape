@@ -38,8 +38,21 @@ using the **same SVG control glyphs** (`PlayerIcons.kt`) and behaviours:
   - Subtitles: sideloaded `.srt` (`get-ext-captions`) converted to WebVTT and
     drawn in a **monospace** overlay on a 60%-black band — same as the app
     (its built-in subtitle view ignored the custom font, so it mirrors cues too).
+- **In-player episode selector** (series) — the list button opens a horizontal
+  strip of the current season's episodes (current one ringed), like the app's
+  EpisodesOverlay.
 - Single-tap toggles controls; **double-tap** left/right third seeks ∓10s;
-  controls auto-hide after 3.2 s. Video fills the screen by default (cover).
+  controls auto-hide after 3.2 s; the chrome also reveals on **hover**. Video
+  fills the screen by default (cover).
+- **Keyboard:** `space`/`k` play-pause, `←`/`→` ∓5 s, `j`/`l` ∓10 s, `↑`/`↓`
+  volume, `m` mute, `c` captions, `f` fullscreen, `0`–`9` seek to 0–90%.
+
+## Series
+
+Series rows in the sidebar expand to **Season pills + an Episode grid** (from
+`season-info`); picking an episode plays it. The first episode auto-plays on
+expand. The same season's episodes are also switchable from the in-player
+episode strip.
 
 The stream is an adaptive **DASH `.mpd`**; macOS's `AVPlayer` can't play DASH,
 so the app uses Chromium + Shaka Player. The signed `Cookie` (and mobile

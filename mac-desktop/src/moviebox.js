@@ -12,6 +12,7 @@ const BASE = 'https://api.inmoviebox.com';
 const P_HOME = '/wefeed-mobile-bff/tab-operating';
 const P_SEARCH = '/wefeed-mobile-bff/subject-api/search';
 const P_PLAY = '/wefeed-mobile-bff/subject-api/play-info';
+const P_SEASON = '/wefeed-mobile-bff/subject-api/season-info';
 const P_RESOURCE = '/wefeed-mobile-bff/subject-api/resource';
 const P_CAPTIONS = '/wefeed-mobile-bff/subject-api/get-ext-captions';
 
@@ -217,47 +218,43 @@ function toCard({ primary, variants }) {
   };
 }
 
+/** Seasons (with episode counts) for a series — `[{ se, maxEp }]`. */
+async function seasons(subjectId) {
+  const data =
+    (await signedGet(P_SEASON, [['subjectId', subjectId]])).data || {};
+  return (data.seasons || [])
+    .map((s) => ({ se: s.se || 0, maxEp: s.maxEp || 0 }))
+    .filter((s) => s.maxEp > 0);
+}
+
 /**
- * Resolve an adaptive DASH stream for a subject. Movies use se=0/ep=0; series
- * start at se=1/ep=1 ("simply play that video"), with a fallback to the other
- * shape. Returns { url, signCookie, format, resolutions:[..], se, ep } or null.
+ * Resolve an adaptive DASH stream for a subject at a specific season/episode.
+ * Movies use se=0/ep=0. Returns { url, signCookie, format, resolutions:[..],
+ * title, se, ep } or null.
  */
-async function playInfo(subjectId, isSeries) {
-  const attempts = isSeries
-    ? [
-        [1, 1],
-        [0, 0],
-      ]
-    : [
-        [0, 0],
-        [1, 1],
-      ];
-  for (const [se, ep] of attempts) {
-    const data =
-      (await signedGet(P_PLAY, [
-        ['subjectId', subjectId],
-        ['se', String(se)],
-        ['ep', String(ep)],
-      ])).data || {};
-    const stream = (data.streams || []).find((s) => s.url && s.url.trim());
-    if (stream) {
-      const resolutions = (stream.resolutions || '')
-        .split(',')
-        .map((r) => Number.parseInt(r, 10))
-        .filter((n) => Number.isFinite(n))
-        .sort((a, b) => b - a);
-      return {
-        url: stream.url,
-        signCookie: stream.signCookie || '',
-        format: (stream.format || 'DASH').toUpperCase(),
-        resolutions,
-        title: data.title || '',
-        se,
-        ep,
-      };
-    }
-  }
-  return null;
+async function playInfo(subjectId, se = 0, ep = 0) {
+  const data =
+    (await signedGet(P_PLAY, [
+      ['subjectId', subjectId],
+      ['se', String(se)],
+      ['ep', String(ep)],
+    ])).data || {};
+  const stream = (data.streams || []).find((s) => s.url && s.url.trim());
+  if (!stream) return null;
+  const resolutions = (stream.resolutions || '')
+    .split(',')
+    .map((r) => Number.parseInt(r, 10))
+    .filter((n) => Number.isFinite(n))
+    .sort((a, b) => b - a);
+  return {
+    url: stream.url,
+    signCookie: stream.signCookie || '',
+    format: (stream.format || 'DASH').toUpperCase(),
+    resolutions,
+    title: data.title || '',
+    se,
+    ep,
+  };
 }
 
 /** Sideloadable subtitle tracks for an episode (best-effort), like the app. */
@@ -312,4 +309,4 @@ async function captionVtt(url) {
   );
 }
 
-module.exports = { search, playInfo, captions, captionVtt, USER_AGENT };
+module.exports = { search, seasons, playInfo, captions, captionVtt, USER_AGENT };

@@ -54,6 +54,7 @@ const ICON = {
   fill: svgFill('6 6 24 24', [P.fill]),
   fsEnter: svgFill('0 0 24 24', [P.fsEnter]),
   fsExit: svgFill('0 0 24 24', [P.fsExit]),
+  episodes: svgStroke('0 0 24 24', ['M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01']),
 };
 
 // --- helpers ----------------------------------------------------------------
@@ -96,12 +97,14 @@ function createStreamPlayer(video, overlay) {
         <button class="ctrl" data-el="mute" aria-label="Mute"></button>
         <span class="time" data-el="time">0:00  /  0:00</span>
         <span class="spacer"></span>
+        <button class="ctrl" data-el="episodes" aria-label="Episodes" hidden>${ICON.episodes}</button>
         <button class="ctrl" data-el="cc" aria-label="Subtitles" hidden>${ICON.captions}</button>
         <button class="ctrl" data-el="settings" aria-label="Settings">${ICON.settings}</button>
         <button class="ctrl" data-el="fill" aria-label="Fill screen">${ICON.fill}</button>
         <button class="ctrl" data-el="fs" aria-label="Fullscreen">${ICON.fsEnter}</button>
       </div>
     </div>
+    <div class="ep-overlay" data-el="epov" hidden></div>
     <div class="menu-popup" data-el="menu" hidden></div>
   `,
   );
@@ -126,6 +129,12 @@ function createStreamPlayer(video, overlay) {
   let variants = [];
   let selectedVariantId = null;
   let onSelectVariant = null;
+  let episodes = [];
+  let currentSe = 0;
+  let currentEp = 0;
+  let onSelectEpisode = null;
+  let episodesShown = false;
+  let loaded = false;
   const loadedTracks = new Map(); // captionId -> <track>
 
   video.style.objectFit = 'cover';
@@ -331,8 +340,9 @@ function createStreamPlayer(video, overlay) {
       return;
     }
     lastTap = now;
-    if (menu !== 'none') {
+    if (menu !== 'none' || episodesShown) {
       menu = 'none';
+      episodesShown = false;
       render();
     } else {
       controlsShown = !controlsShown;
@@ -372,6 +382,22 @@ function createStreamPlayer(video, overlay) {
       Math.min(video.duration || Infinity, video.currentTime + sec),
     );
   }
+  function toggleMute() {
+    muted = !muted;
+    video.muted = muted;
+    render();
+  }
+  function setVolume(delta) {
+    muted = false;
+    video.muted = false;
+    video.volume = Math.max(0, Math.min(1, (video.volume || 0) + delta));
+    render();
+  }
+  function cycleCaption() {
+    if (!captionList.length) return;
+    selectCaption(activeCaptionId == null ? captionList[0] : null);
+    render();
+  }
 
   el.center.addEventListener('click', togglePlay);
   el.playpause.addEventListener('click', togglePlay);
@@ -383,10 +409,12 @@ function createStreamPlayer(video, overlay) {
     seekBy(10);
     showControls();
   });
-  el.mute.addEventListener('click', () => {
-    muted = !muted;
-    video.muted = muted;
+  el.mute.addEventListener('click', toggleMute);
+  el.episodes.addEventListener('click', () => {
+    episodesShown = !episodesShown;
+    menu = 'none';
     render();
+    scheduleHide();
   });
   el.cc.addEventListener('click', () => openMenu('subtitles'));
   el.settings.addEventListener('click', () =>
@@ -404,6 +432,57 @@ function createStreamPlayer(video, overlay) {
     else overlay.requestFullscreen?.();
   }
   document.addEventListener('fullscreenchange', render);
+
+  // Keyboard shortcuts (active only while a stream is loaded and not typing).
+  document.addEventListener('keydown', (e) => {
+    if (!loaded) return;
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    let handled = true;
+    switch (e.key) {
+      case ' ':
+      case 'k':
+        togglePlay();
+        break;
+      case 'ArrowRight':
+        seekBy(5);
+        break;
+      case 'ArrowLeft':
+        seekBy(-5);
+        break;
+      case 'l':
+        seekBy(10);
+        break;
+      case 'j':
+        seekBy(-10);
+        break;
+      case 'ArrowUp':
+        setVolume(0.1);
+        break;
+      case 'ArrowDown':
+        setVolume(-0.1);
+        break;
+      case 'm':
+        toggleMute();
+        break;
+      case 'f':
+        toggleFullscreen();
+        break;
+      case 'c':
+        cycleCaption();
+        break;
+      default:
+        if (e.key >= '0' && e.key <= '9' && video.duration) {
+          video.currentTime = (Number(e.key) / 10) * video.duration;
+        } else {
+          handled = false;
+        }
+    }
+    if (handled) {
+      e.preventDefault();
+      showControls();
+    }
+  });
 
   // --- render loop ----------------------------------------------------------
 
@@ -423,10 +502,36 @@ function createStreamPlayer(video, overlay) {
     el.fill.classList.toggle('active', fillScreen);
     el.cc.classList.toggle('active', activeCaptionId != null);
     el.cc.hidden = captionList.length === 0;
+    el.episodes.hidden = episodes.length === 0;
+    el.episodes.classList.toggle('active', episodesShown);
     el.settings.classList.toggle('active', menu !== 'none');
     el.fs.innerHTML = document.fullscreenElement ? ICON.fsExit : ICON.fsEnter;
 
     renderMenu();
+    renderEpisodes();
+  }
+
+  // In-player episode strip (port of StreamPlayerChrome's EpisodesOverlay).
+  function renderEpisodes() {
+    const show = episodesShown && episodes.length > 0 && (controlsShown || video.paused);
+    el.epov.hidden = !show;
+    if (!show) return;
+    const tiles = episodes
+      .map((e) => {
+        const on = e.se === currentSe && e.ep === currentEp;
+        return `<button class="ep-cell${on ? ' on' : ''}" data-se="${e.se}" data-ep="${e.ep}">${e.label}</button>`;
+      })
+      .join('');
+    el.epov.innerHTML = `<div class="ep-strip-label">EPISODES</div><div class="ep-strip">${tiles}</div>`;
+    el.epov.querySelectorAll('.ep-cell').forEach((c) =>
+      c.addEventListener('click', () => {
+        const se = Number(c.dataset.se);
+        const ep = Number(c.dataset.ep);
+        episodesShown = false;
+        render();
+        if ((se !== currentSe || ep !== currentEp) && onSelectEpisode) onSelectEpisode(se, ep);
+      }),
+    );
   }
 
   function tick() {
@@ -453,7 +558,8 @@ function createStreamPlayer(video, overlay) {
   async function ensureShaka() {
     if (shakaPlayer) return;
     shaka.polyfill.installAll();
-    shakaPlayer = new shaka.Player(video);
+    shakaPlayer = new shaka.Player();
+    await shakaPlayer.attach(video);
     shakaPlayer.addEventListener('error', (e) => {
       if (typeof window.onPlayerError === 'function') window.onPlayerError(e.detail);
     });
@@ -472,6 +578,11 @@ function createStreamPlayer(video, overlay) {
     variants = opts.variants || [];
     selectedVariantId = opts.selectedVariantId ?? null;
     onSelectVariant = opts.onSelectVariant || null;
+    episodes = opts.episodes || [];
+    currentSe = opts.currentSe ?? 0;
+    currentEp = opts.currentEp ?? 0;
+    onSelectEpisode = opts.onSelectEpisode || null;
+    episodesShown = false;
     // Fresh stream: reset transient menu state (mirrors per-stream ExoPlayer).
     qualityHeight = null;
     speed = 1;
@@ -488,6 +599,7 @@ function createStreamPlayer(video, overlay) {
     await shakaPlayer.load(stream.url, opts.startTime || 0);
     video.muted = muted;
     video.play().catch(() => {});
+    loaded = true;
     controlsShown = true;
     if (!raf) raf = requestAnimationFrame(tick);
     render();
@@ -500,6 +612,9 @@ function createStreamPlayer(video, overlay) {
   }
 
   async function unload() {
+    loaded = false;
+    episodes = [];
+    episodesShown = false;
     clearTimeout(hideTimer);
     if (raf) {
       cancelAnimationFrame(raf);

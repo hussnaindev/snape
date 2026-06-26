@@ -1,6 +1,6 @@
-// Renderer: sidebar search -> results (one per row) -> click a row -> the custom
-// player (player.js, a port of the Android StreamPlayerChrome) plays the DASH
-// stream in the right pane. All MovieBox calls go through window.api.
+// Renderer: sidebar search -> results (one per row, chip cards) -> play in the
+// right pane. Series rows expand to Season/Episode selectors; the player shows
+// an in-player episode selector too. All MovieBox calls go through window.api.
 
 const form = document.getElementById('search-form');
 const input = document.getElementById('search-input');
@@ -16,7 +16,9 @@ const idle = document.getElementById('idle');
 const player = window.createStreamPlayer(video, overlay);
 let searchSeq = 0;
 let playToken = 0;
-let activeRow = null;
+
+// The thing currently playing (drives episode switching + the player overlay).
+let current = null; // { card, variantId, isSeries, seasons, seasonIdx, se, ep, panel }
 
 // --- search -----------------------------------------------------------------
 
@@ -54,50 +56,157 @@ async function runSearch() {
 
 function renderResults(cards) {
   results.innerHTML = '';
-  activeRow = null;
   for (const c of cards) {
-    const row = document.createElement('button');
-    row.className = 'result';
-    row.innerHTML = `
-      <div class="thumb">${c.posterUrl ? `<img loading="lazy" src="${c.posterUrl}" alt="">` : ''}</div>
-      <div class="info">
-        <div class="r-title"></div>
-        <div class="r-sub">
-          ${[c.year, c.isSeries ? 'Series' : 'Movie'].filter(Boolean).join(' · ')}${
-            c.rating ? ` · <span class="star">★ ${c.rating.toFixed(1)}</span>` : ''
-          }
+    const item = document.createElement('div');
+    item.className = 'result-item';
+    const chips = [
+      `<span class="chip">${c.isSeries ? 'SERIES' : 'FILM'}</span>`,
+      c.year ? `<span class="chip">${c.year}</span>` : '',
+      c.rating ? `<span class="chip">★ ${c.rating.toFixed(1)}</span>` : '',
+      !c.isSeries && c.duration ? `<span class="chip">${c.duration}</span>` : '',
+    ]
+      .filter(Boolean)
+      .join('');
+    item.innerHTML = `
+      <button class="result">
+        <div class="thumb">${c.posterUrl ? `<img loading="lazy" src="${c.posterUrl}" alt="">` : ''}</div>
+        <div class="info">
+          <div class="r-title"></div>
+          <div class="chips">${chips}</div>
         </div>
-      </div>`;
-    row.querySelector('.r-title').textContent = c.title;
-    row.addEventListener('click', () => {
-      setActiveRow(row);
-      playCard(c);
-    });
-    results.appendChild(row);
+        ${c.isSeries ? '<span class="chevron">▾</span>' : ''}
+      </button>
+      ${c.isSeries ? '<div class="series-panel hidden"></div>' : ''}`;
+    item.querySelector('.r-title').textContent = c.title;
+    const rowEl = item.querySelector('.result');
+    rowEl.addEventListener('click', () => onRowClick(c, item, rowEl));
+    results.appendChild(item);
   }
 }
 
-function setActiveRow(row) {
-  if (activeRow) activeRow.classList.remove('active');
-  activeRow = row;
-  row.classList.add('active');
+function clearActive() {
+  results.querySelectorAll('.result.active').forEach((r) => r.classList.remove('active'));
+  results.querySelectorAll('.series-panel').forEach((p) => {
+    p.classList.add('hidden');
+    p.previousElementSibling?.classList.remove('open');
+  });
+}
+
+// --- row interaction --------------------------------------------------------
+
+async function onRowClick(card, item, rowEl) {
+  if (!card.isSeries) {
+    clearActive();
+    rowEl.classList.add('active');
+    startMovie(card);
+    return;
+  }
+  // Series: accordion expand + load seasons, then auto-play S1E1.
+  const panel = item.querySelector('.series-panel');
+  const wasOpen = !panel.classList.contains('hidden');
+  clearActive();
+  if (wasOpen) return; // toggle closed
+  rowEl.classList.add('active', 'open');
+  panel.classList.remove('hidden');
+  if (!card._seasons) {
+    panel.innerHTML = '<div class="panel-msg">Loading seasons…</div>';
+    card._seasons = await window.api.seasons(card.subjectId).catch(() => []);
+  }
+  const seasons = card._seasons;
+  if (!seasons.length) {
+    panel.innerHTML = '<div class="panel-msg">No episodes found.</div>';
+    return;
+  }
+  renderPanel(card, panel, seasons, 0);
+  // Auto-play the first episode of the first season.
+  startEpisode(card, panel, seasons, 0, seasons[0].se, 1);
+}
+
+function renderPanel(card, panel, seasons, seasonIdx) {
+  const season = seasons[seasonIdx] || seasons[0];
+  const pills =
+    seasons.length > 1
+      ? `<div class="season-pills">${seasons
+          .map(
+            (s, i) =>
+              `<button class="season-pill${i === seasonIdx ? ' on' : ''}" data-si="${i}">SEASON ${s.se}</button>`,
+          )
+          .join('')}</div>`
+      : '';
+  const grid = `<div class="ep-grid">${Array.from(
+    { length: season.maxEp },
+    (_, i) => {
+      const ep = i + 1;
+      const on = current && current.card === card && current.se === season.se && current.ep === ep;
+      return `<button class="ep-tile${on ? ' on' : ''}" data-ep="${ep}">${ep}</button>`;
+    },
+  ).join('')}</div>`;
+  panel.innerHTML = pills + grid;
+  panel.querySelectorAll('.season-pill').forEach((b) =>
+    b.addEventListener('click', () => renderPanel(card, panel, seasons, Number(b.dataset.si))),
+  );
+  panel.querySelectorAll('.ep-tile').forEach((b) =>
+    b.addEventListener('click', () =>
+      startEpisode(card, panel, seasons, seasonIdx, season.se, Number(b.dataset.ep)),
+    ),
+  );
 }
 
 // --- playback ---------------------------------------------------------------
 
-async function playCard(card) {
+function startMovie(card) {
   idle.classList.add('hidden');
   playerTitle.textContent = card.title;
-  const variants = card.variants || [];
-  const startId = variants[0]?.id || card.subjectId;
-  await playVariant(card, startId);
+  current = {
+    card,
+    variantId: card.variants?.[0]?.id || card.subjectId,
+    isSeries: false,
+    se: 0,
+    ep: 0,
+  };
+  loadCurrent(0);
 }
 
-async function playVariant(card, variantId, startTime = 0) {
+function startEpisode(card, panel, seasons, seasonIdx, se, ep) {
+  idle.classList.add('hidden');
+  playerTitle.textContent = `${card.title}  ·  S${se}E${ep}`;
+  current = {
+    card,
+    panel,
+    seasons,
+    seasonIdx,
+    variantId: card.variants?.[0]?.id || card.subjectId,
+    isSeries: true,
+    se,
+    ep,
+  };
+  highlightEpisode();
+  loadCurrent(0);
+}
+
+function highlightEpisode() {
+  if (!current?.panel) return;
+  current.panel.querySelectorAll('.ep-tile').forEach((t) => {
+    t.classList.toggle('on', Number(t.dataset.ep) === current.ep);
+  });
+}
+
+function buildEpisodes() {
+  if (!current?.isSeries) return [];
+  const season = current.seasons[current.seasonIdx];
+  return Array.from({ length: season.maxEp }, (_, i) => ({
+    se: season.se,
+    ep: i + 1,
+    label: `E${i + 1}`,
+  }));
+}
+
+async function loadCurrent(startTime) {
   const token = ++playToken;
+  const { card, variantId, se, ep, isSeries } = current;
   playerStatus.textContent = 'Loading stream…';
   try {
-    const stream = await window.api.play(variantId, card.isSeries);
+    const stream = await window.api.play(variantId, se, ep);
     if (token !== playToken) return;
     if (!stream) {
       playerStatus.textContent = 'No playable stream for this title.';
@@ -107,11 +216,17 @@ async function playVariant(card, variantId, startTime = 0) {
       startTime,
       variants: card.variants || [],
       selectedVariantId: variantId,
-      onSelectVariant: (id) => switchVariant(card, id),
+      onSelectVariant: (id) => {
+        current.variantId = id;
+        loadCurrent(video.currentTime || 0);
+      },
+      episodes: isSeries ? buildEpisodes() : [],
+      currentSe: se,
+      currentEp: ep,
+      onSelectEpisode: (s, e) => onPlayerEpisode(s, e),
     });
     if (token !== playToken) return;
     playerStatus.textContent = '';
-    // Subtitles load best-effort in the background (like the app's detail VM).
     window.api
       .captions(variantId, stream.se, stream.ep)
       .then((caps) => {
@@ -123,9 +238,14 @@ async function playVariant(card, variantId, startTime = 0) {
   }
 }
 
-// Switching audio variant refetches that variant's stream, preserving position.
-function switchVariant(card, variantId) {
-  playVariant(card, variantId, video.currentTime || 0);
+// Episode picked from the in-player overlay (same season).
+function onPlayerEpisode(se, ep) {
+  if (!current?.isSeries) return;
+  current.se = se;
+  current.ep = ep;
+  playerTitle.textContent = `${current.card.title}  ·  S${se}E${ep}`;
+  highlightEpisode();
+  loadCurrent(0);
 }
 
 // Shaka error 4032 = CONTENT_UNSUPPORTED_BY_BROWSER — for these HEVC-only
@@ -139,10 +259,3 @@ window.onPlayerError = (detail) => {
     playerStatus.textContent = `Player error ${code ?? ''}: ${detail?.message || 'playback failed'}`;
   }
 };
-
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && document.fullscreenElement) {
-    // let the browser exit fullscreen; keep playing in the pane
-    return;
-  }
-});
