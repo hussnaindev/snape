@@ -507,6 +507,12 @@ body {
   justify-content: center;
   border-radius: 8px;
 }
+/* `.ctrl` sets display:inline-flex, which would otherwise beat the UA
+   [hidden] rule — so a hidden control (e.g. Episodes when not a series, or CC
+   with no captions) would still show. Re-assert hidden here. */
+.ctrl[hidden] {
+  display: none;
+}
 .ctrl svg {
   width: 24px;
   height: 24px;
