@@ -1,3 +1,12 @@
+/* Same display face as the web/mobile apps. */
+@font-face {
+  font-family: "Chesna Grotesk";
+  src: url("fonts/chesnagrotesk-regular-webfont.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --bg: #0a0a0a;
   --card: #161616;
@@ -5,6 +14,7 @@
   --text: #f5f5f5;
   --muted: #9a9a9a;
   --accent: #e50914;
+  --font-display: "Chesna Grotesk", ui-sans-serif, system-ui, sans-serif;
 }
 
 * {
@@ -130,6 +140,7 @@ body {
 }
 
 .result .r-title {
+  font-family: var(--font-display);
   font-size: 14px;
   font-weight: 600;
   line-height: 1.25;
@@ -151,6 +162,7 @@ body {
   align-items: center;
   padding: 2px 8px;
   border-radius: 999px;
+  font-family: var(--font-display);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.4px;
@@ -198,6 +210,7 @@ body {
 .season-pill {
   padding: 5px 12px;
   border-radius: 999px;
+  font-family: var(--font-display);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.6px;
@@ -220,6 +233,7 @@ body {
   width: 38px;
   height: 38px;
   border-radius: 50%;
+  font-family: var(--font-display);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -310,8 +324,10 @@ body {
   top: 20px;
   left: 22px;
   z-index: 24;
+  font-family: var(--font-display);
   font-size: 15px;
   font-weight: 600;
+  letter-spacing: 0.5px;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
@@ -565,9 +581,9 @@ body {
   bottom: 72px;
   z-index: 15;
   padding: 16px 12px 12px;
-  background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.92));
 }
 .ep-strip-label {
+  font-family: var(--font-display);
   color: #fff;
   font-size: 11px;
   letter-spacing: 2px;
@@ -584,6 +600,7 @@ body {
   min-width: 56px;
   height: 40px;
   border-radius: 8px;
+  font-family: var(--font-display);
   font-size: 13px;
   font-weight: 600;
   color: #fff;
