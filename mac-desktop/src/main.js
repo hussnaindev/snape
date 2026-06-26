@@ -7,6 +7,14 @@ const { app, BrowserWindow, ipcMain, session } = require('electron');
 const path = require('node:path');
 const moviebox = require('./moviebox');
 
+// Many MovieBox titles stream HEVC/H.265 only (no H.264 fallback) — Android's
+// ExoPlayer hardware-decodes them. Chromium plays HEVC only via the OS hardware
+// decoder; enable it explicitly so it's on regardless of Electron version. Works
+// on Apple Silicon and Intel Macs with an HEVC-capable GPU (≈2016+); very old
+// Intel Macs without HEVC hardware can't decode these (Chromium has no software
+// HEVC path).
+app.commandLine.appendSwitch('enable-features', 'PlatformHEVCDecoderSupport');
+
 // The stream the renderer is currently playing. CDN requests (manifest +
 // segments) for this origin get the signed cookie + UA injected below.
 let activeStream = { origin: null, cookie: '' };

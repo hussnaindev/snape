@@ -50,6 +50,16 @@ right-click → Open, or `xattr -dr com.apple.quarantine /Applications/Snape.app
 
 - `webSecurity` is disabled so Shaka can read the CDN's CORS-less responses,
   exactly as the native players do. Fine for a personal test build.
+- **Codecs**: most MovieBox streams are **HEVC/H.265 only** (no H.264 variant —
+  Android's ExoPlayer hardware-decodes them). Chromium plays HEVC only via the
+  OS hardware decoder, enabled here with the `PlatformHEVCDecoderSupport` switch
+  (`main.js`). It works on Apple Silicon and Intel Macs with an HEVC-capable GPU
+  (≈2016+); pre-HEVC Intel Macs can't play these (Chromium has no software HEVC
+  path) and show a clear "needs an HEVC-capable GPU" message. Some manifests also
+  declare a bare `codecs="hev1"` (no profile/level), which `isTypeSupported()`
+  rejects even when HEVC works — the renderer patches those to
+  `hev1.1.6.L120.90` (Main / level 4.0, covers ≤1080p) via a Shaka manifest
+  response filter.
 - Series play the first episode (S1E1); there's no episode picker — that's the
   mobile app's job, deliberately out of scope here.
 - If search starts returning `407 Signature invalid`, the MovieBox HMAC key

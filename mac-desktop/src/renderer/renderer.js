@@ -92,9 +92,21 @@ async function loadStream(stream) {
   if (!player) {
     shaka.polyfill.installAll();
     player = new shaka.Player(video);
-    player.addEventListener('error', (e) => {
-      playerStatus.textContent = `Player error: ${e.detail?.message || e.detail?.code || 'unknown'}`;
-    });
+    player.addEventListener('error', (e) => onPlayerError(e.detail));
+
+    // Some MovieBox manifests declare a BARE HEVC codec (codecs="hev1") with no
+    // profile/level. MediaSource.isTypeSupported() rejects a bare string even
+    // when HEVC decoding works, so Shaka fails with 4032 CONTENT_UNSUPPORTED.
+    // Patch the manifest to add a Main-profile / level-4.0 descriptor (covers up
+    // to 1080p) so it's accepted; full codec strings are left untouched.
+    player
+      .getNetworkingEngine()
+      .registerResponseFilter((type, response) => {
+        if (type !== shaka.net.NetworkingEngine.RequestType.MANIFEST) return;
+        const text = new TextDecoder().decode(response.data);
+        const patched = text.replace(/codecs="(hev1|hvc1)"/g, 'codecs="$1.1.6.L120.90"');
+        if (patched !== text) response.data = new TextEncoder().encode(patched).buffer;
+      });
   }
   // The main process injects the CloudFront cookie + UA on CDN requests, so
   // Shaka just loads the manifest URL directly.
@@ -114,6 +126,18 @@ async function closePlayer() {
     await player.unload().catch(() => {});
   }
   playerStatus.textContent = '';
+}
+
+// Shaka error 4032 = CONTENT_UNSUPPORTED_BY_BROWSER — for these HEVC-only
+// streams it means this Mac has no usable HEVC hardware decoder.
+function onPlayerError(detail) {
+  const code = detail?.code;
+  if (code === 4032) {
+    playerStatus.textContent =
+      'This title is HEVC/H.265 and your Mac can’t decode it (needs an HEVC-capable GPU).';
+  } else {
+    playerStatus.textContent = `Player error ${code ?? ''}: ${detail?.message || 'playback failed'}`;
+  }
 }
 
 document.addEventListener('keydown', (e) => {
