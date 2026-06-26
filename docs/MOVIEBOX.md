@@ -207,6 +207,34 @@ Both backends block datacenter IPs. Everything goes through `PROXY_LIST`. Empty
 list → `stage: no-proxy`. Flaky proxies → intermittent `error`/`no-streams`
 (retry is 4 attempts w/ backoff in `proxyFetch`).
 
+### 7. Android: 441 `"miss token"` — POST needs x-user bearer
+
+The native Android app talks to the mobile BFF directly. MovieBox now requires a
+two-step auth handshake that was not needed before mid-2026:
+
+1. **GET** endpoints (home feed, season-info, play-info, …) work without a token
+   and return an `x-user` response header containing `{"token":"<JWT>",…}`.
+2. **POST** endpoints (search) require `Authorization: Bearer <token>` using the
+   JWT from step 1. Without it the BFF returns HTTP 441 `"miss token"`.
+
+The JWT is valid for roughly 3 months and is refreshed by making another GET.
+
+**Fix (in [`MovieBoxSign.kt`](../../android-native/app/src/main/java/com/snape/flix/data/MovieBoxSign.kt)
+/ [`MovieBoxRepository.kt`](../../android-native/app/src/main/java/com/snape/flix/data/MovieBoxRepository.kt)):**
+
+- `MovieBoxSign.runtimeToken` stores the JWT; `absorbToken()` parses `x-user`
+  from any response.
+- `MovieBoxRepository.bodyString()` calls `absorbToken()` on every response, so
+  the token is captured automatically (e.g. from the first home-feed load).
+- `MovieBoxRepository.search()` calls `ensureToken()` before its POST — if no
+  token is stored yet it makes a GET to the home-feed endpoint first.
+- `applyCommonHeaders` adds `Authorization: Bearer <token>` whenever the token
+  is available (GETs ignore it harmlessly).
+
+**If 441 returns again:**
+- The stored JWT may have expired — `ensureToken()` should fetch a fresh one.
+- Check `Simatwa/moviebox-api` for changes to the `x-user` response format.
+
 ---
 
 ## Environment variables
@@ -236,3 +264,9 @@ list → `stage: no-proxy`. Flaky proxies → intermittent `error`/`no-streams`
 - **Squid Game (TV) `no-streams`:** mobile items have no `detailPath`, which web
   TV play requires. Fixed with `backfillDetailPaths` (web index by subjectId).
   Movies were unaffected (resolve on subjectId alone).
+- **Android 441 `"miss token"` (2026-06):** MovieBox added a two-step auth
+  handshake on the mobile BFF: GET endpoints work without a token and return an
+  `x-user` response header with a JWT; POST endpoints require
+  `Authorization: Bearer <token>` using that JWT. Without it they return HTTP 441
+  `"miss token"`. Fixed (see Gotcha #7) by adding `ensureToken()` to fetch the
+  token before POST and `absorbToken()` to capture it from every response.

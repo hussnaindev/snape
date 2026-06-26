@@ -6,6 +6,7 @@ import java.security.SecureRandom
 import java.util.UUID
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
+import org.json.JSONObject
 
 /**
  * Request signing for the MovieBox mobile BFF. Ported from the proven
@@ -27,6 +28,18 @@ object MovieBoxSign {
     private const val BODY_MAX_BYTES = 102_400
 
     private val rng = SecureRandom()
+
+    @Volatile private var runtimeToken: String? = null
+
+    fun absorbToken(responseHeaders: Map<String, List<String>>?) {
+        if (responseHeaders == null) return
+        val raw = responseHeaders["x-user"]?.firstOrNull() ?: responseHeaders["X-User"]?.firstOrNull() ?: return
+        try {
+            JSONObject(raw).optString("token").takeIf { it.isNotBlank() }?.also { runtimeToken = it }
+        } catch (_: Exception) {}
+    }
+
+    val authBearerToken: String? get() = runtimeToken
 
     private fun md5Hex(bytes: ByteArray): String {
         val digest = MessageDigest.getInstance("MD5").digest(bytes)

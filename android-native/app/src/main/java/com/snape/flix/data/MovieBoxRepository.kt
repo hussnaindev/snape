@@ -65,6 +65,17 @@ object MovieBoxRepository {
             .build()
     }
 
+    /** Acquire a runtime bearer token from a GET endpoint before POST requests. */
+    private fun ensureToken() {
+        if (MovieBoxSign.authBearerToken != null) return
+        val req = signedGet(P_HOME, listOf("tabId" to "0", "page" to "1", "version" to "3.0.03.0529.03"))
+        client.newCall(req).execute().use { resp ->
+            MovieBoxSign.absorbToken(resp.headers.toMultimap())
+            resp.body?.close()
+            if (!resp.isSuccessful) error("HTTP ${resp.code}")
+        }
+    }
+
     private fun Request.Builder.applyCommonHeaders(ts: Long, sig: String): Request.Builder = this
         .header("Accept", "application/json")
         .header("Content-Type", "application/json")
@@ -75,9 +86,13 @@ object MovieBoxRepository {
         .header("X-Client-Token", MovieBoxSign.clientToken(ts))
         .header("x-tr-signature", sig)
         .header("X-Play-Mode", "2")
+        .apply {
+            MovieBoxSign.authBearerToken?.let { header("Authorization", "Bearer $it") }
+        }
 
     private fun bodyString(req: Request): String =
         client.newCall(req).execute().use { resp ->
+            MovieBoxSign.absorbToken(resp.headers.toMultimap())
             if (!resp.isSuccessful) error("HTTP ${resp.code}")
             resp.body?.string() ?: error("empty body")
         }
@@ -91,6 +106,7 @@ object MovieBoxRepository {
      * populated `detailUrl` (unlike search hits) and `hasResource`.
      */
     suspend fun homeFeed(): List<HomeRow> = withContext(Dispatchers.IO) {
+        ensureToken()
         val req = signedGet(
             P_HOME,
             listOf("tabId" to "0", "page" to "1", "version" to "3.0.03.0529.03"),
@@ -108,6 +124,7 @@ object MovieBoxRepository {
      * remain (for the grid's infinite scroll).
      */
     suspend fun search(keyword: String, page: Int = 1): SearchPage = withContext(Dispatchers.IO) {
+        ensureToken()
         val body = json.encodeToString(
             SearchRequest.serializer(),
             SearchRequest(keyword = keyword.trim(), page = page, perPage = PER_PAGE),
@@ -149,6 +166,7 @@ object MovieBoxRepository {
 
     /** Seasons (with episode counts) for a series. */
     suspend fun seasonInfo(subjectId: String): List<SeasonItem> = withContext(Dispatchers.IO) {
+        ensureToken()
         val req = signedGet(P_SEASON, listOf("subjectId" to subjectId))
         val parsed = json.decodeFromString(SeasonInfoResponse.serializer(), bodyString(req))
         parsed.data?.seasons.orEmpty().filter { it.maxEp > 0 }
@@ -156,6 +174,7 @@ object MovieBoxRepository {
 
     /** Adaptive DASH stream + CloudFront cookie. Movies use se=0, ep=0. */
     suspend fun playInfo(subjectId: String, se: Int, ep: Int): Stream? = withContext(Dispatchers.IO) {
+        ensureToken()
         val req = signedGet(
             P_PLAY,
             listOf("subjectId" to subjectId, "se" to se.toString(), "ep" to ep.toString()),
@@ -166,6 +185,7 @@ object MovieBoxRepository {
 
     /** Sideloadable subtitle tracks for the given episode (best-effort). */
     suspend fun captions(subjectId: String, se: Int, ep: Int): List<Caption> = withContext(Dispatchers.IO) {
+        ensureToken()
         val resourceId = runCatching { resolveResourceId(subjectId, se, ep) }.getOrNull() ?: return@withContext emptyList()
         runCatching {
             val req = signedGet(P_CAPTIONS, listOf("subjectId" to subjectId, "resourceId" to resourceId))
