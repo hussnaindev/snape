@@ -19,6 +19,27 @@ warm-up) is a direct port of `android-native/.../data/MovieBoxSign.kt` +
 | Search / play-info | `MovieBoxRepository.kt` | `src/moviebox.js`, run in the **main** process (no CORS) |
 | DASH playback | Media3 / ExoPlayer | **Shaka Player** in the renderer |
 | CloudFront `signCookie` | ExoPlayer default request header | injected via `session.webRequest` in `src/main.js` |
+| Player chrome | `StreamPlayer.kt` (`StreamPlayerChrome`) | `src/renderer/player.js` — same UI 1:1 |
+
+## Player
+
+`src/renderer/player.js` is a 1:1 port of the app's `StreamPlayerChrome` — the
+browser's default `<video>` controls are replaced with the same custom overlay,
+using the **same SVG control glyphs** (`PlayerIcons.kt`) and behaviours:
+
+- Red YouTube-style **scrubber** with draggable knob + buffered bar.
+- Centered **play/pause** button and a red **buffering spinner**.
+- Controls: play/pause, ∓10s, mute, time, **Subtitles (CC)**, **Settings**,
+  **fill-screen** toggle, **fullscreen**.
+- **Settings → Quality / Speed / Audio** menu, plus a **Subtitles** menu.
+  - Quality: Auto + the stream's resolutions (Shaka track selection).
+  - Audio: switches between MovieBox audio variants (Original / Hindi / Tamil
+    …), refetching that variant's stream and preserving position.
+  - Subtitles: sideloaded `.srt` (`get-ext-captions`) converted to WebVTT and
+    drawn in a **monospace** overlay on a 60%-black band — same as the app
+    (its built-in subtitle view ignored the custom font, so it mirrors cues too).
+- Single-tap toggles controls; **double-tap** left/right third seeks ∓10s;
+  controls auto-hide after 3.2 s. Video fills the screen by default (cover).
 
 The stream is an adaptive **DASH `.mpd`**; macOS's `AVPlayer` can't play DASH,
 so the app uses Chromium + Shaka Player. The signed `Cookie` (and mobile

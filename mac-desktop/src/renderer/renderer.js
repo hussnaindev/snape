@@ -1,5 +1,6 @@
-// Renderer: search box -> result cards -> click a card -> Shaka plays the DASH
-// stream. All MovieBox calls go through window.api (main process).
+// Renderer: search box -> result cards -> click a card -> the custom player
+// (player.js, a port of the Android StreamPlayerChrome) plays the DASH stream.
+// All MovieBox calls go through window.api (main process).
 
 const form = document.getElementById('search-form');
 const input = document.getElementById('search-input');
@@ -12,8 +13,9 @@ const playerTitle = document.getElementById('player-title');
 const playerStatus = document.getElementById('player-status');
 document.getElementById('player-close').addEventListener('click', closePlayer);
 
-let player = null;
+const player = window.createStreamPlayer(video, overlay);
 let searchSeq = 0;
+let playToken = 0;
 
 // --- search -----------------------------------------------------------------
 
@@ -65,53 +67,54 @@ function renderCards(cards) {
         <div class="sub">${[c.year, c.isSeries ? 'Series' : c.duration].filter(Boolean).join(' · ')}</div>
       </div>`;
     card.querySelector('.title').textContent = c.title;
-    card.addEventListener('click', () => play(c));
+    card.addEventListener('click', () => playCard(c));
     results.appendChild(card);
   }
 }
 
 // --- playback ---------------------------------------------------------------
 
-async function play(card) {
+async function playCard(card) {
   openPlayer(card.title);
+  // Default audio variant = the card's primary (first in the variants list).
+  const variants = card.variants || [];
+  const startId = variants[0]?.id || card.subjectId;
+  await playVariant(card, startId);
+}
+
+async function playVariant(card, variantId, startTime = 0) {
+  const token = ++playToken;
   playerStatus.textContent = 'Loading stream…';
   try {
-    const stream = await window.api.play(card.subjectId, card.isSeries);
+    const stream = await window.api.play(variantId, card.isSeries);
+    if (token !== playToken) return;
     if (!stream) {
       playerStatus.textContent = 'No playable stream for this title.';
       return;
     }
-    await loadStream(stream);
+    await player.load(stream, {
+      startTime,
+      variants: card.variants || [],
+      selectedVariantId: variantId,
+      onSelectVariant: (id) => switchVariant(card, id),
+    });
+    if (token !== playToken) return;
     playerStatus.textContent = '';
+    // Subtitles load best-effort in the background (like the app's detail VM).
+    window.api
+      .captions(variantId, stream.se, stream.ep)
+      .then((caps) => {
+        if (token === playToken) player.setCaptions(caps);
+      })
+      .catch(() => {});
   } catch (err) {
-    playerStatus.textContent = `Playback failed: ${err.message}`;
+    if (token === playToken) playerStatus.textContent = `Playback failed: ${err.message}`;
   }
 }
 
-async function loadStream(stream) {
-  if (!player) {
-    shaka.polyfill.installAll();
-    player = new shaka.Player(video);
-    player.addEventListener('error', (e) => onPlayerError(e.detail));
-
-    // Some MovieBox manifests declare a BARE HEVC codec (codecs="hev1") with no
-    // profile/level. MediaSource.isTypeSupported() rejects a bare string even
-    // when HEVC decoding works, so Shaka fails with 4032 CONTENT_UNSUPPORTED.
-    // Patch the manifest to add a Main-profile / level-4.0 descriptor (covers up
-    // to 1080p) so it's accepted; full codec strings are left untouched.
-    player
-      .getNetworkingEngine()
-      .registerResponseFilter((type, response) => {
-        if (type !== shaka.net.NetworkingEngine.RequestType.MANIFEST) return;
-        const text = new TextDecoder().decode(response.data);
-        const patched = text.replace(/codecs="(hev1|hvc1)"/g, 'codecs="$1.1.6.L120.90"');
-        if (patched !== text) response.data = new TextEncoder().encode(patched).buffer;
-      });
-  }
-  // The main process injects the CloudFront cookie + UA on CDN requests, so
-  // Shaka just loads the manifest URL directly.
-  await player.load(stream.url);
-  video.play().catch(() => {});
+// Switching audio variant refetches that variant's stream, preserving position.
+function switchVariant(card, variantId) {
+  playVariant(card, variantId, video.currentTime || 0);
 }
 
 function openPlayer(title) {
@@ -120,17 +123,16 @@ function openPlayer(title) {
 }
 
 async function closePlayer() {
+  playToken++;
   overlay.classList.add('hidden');
   video.pause();
-  if (player) {
-    await player.unload().catch(() => {});
-  }
+  await player.unload();
   playerStatus.textContent = '';
 }
 
 // Shaka error 4032 = CONTENT_UNSUPPORTED_BY_BROWSER — for these HEVC-only
 // streams it means this Mac has no usable HEVC hardware decoder.
-function onPlayerError(detail) {
+window.onPlayerError = (detail) => {
   const code = detail?.code;
   if (code === 4032) {
     playerStatus.textContent =
@@ -138,8 +140,11 @@ function onPlayerError(detail) {
   } else {
     playerStatus.textContent = `Player error ${code ?? ''}: ${detail?.message || 'playback failed'}`;
   }
-}
+};
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !overlay.classList.contains('hidden')) closePlayer();
+  if (e.key === 'Escape' && !overlay.classList.contains('hidden')) {
+    if (document.fullscreenElement) return; // let Esc exit fullscreen first
+    closePlayer();
+  }
 });

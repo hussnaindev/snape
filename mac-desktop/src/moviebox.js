@@ -12,6 +12,8 @@ const BASE = 'https://api.inmoviebox.com';
 const P_HOME = '/wefeed-mobile-bff/tab-operating';
 const P_SEARCH = '/wefeed-mobile-bff/subject-api/search';
 const P_PLAY = '/wefeed-mobile-bff/subject-api/play-info';
+const P_RESOURCE = '/wefeed-mobile-bff/subject-api/resource';
+const P_CAPTIONS = '/wefeed-mobile-bff/subject-api/get-ext-captions';
 
 // HMAC key for x-tr-signature (base64 alphabet, decoded to bytes before use).
 // Can rotate server-side; override via MOVIEBOX_SECRET_KEY if search starts 407ing.
@@ -191,29 +193,34 @@ function groupVariants(items) {
     groups.get(key).push(it);
   }
   return [...groups.values()].map((variants) => {
+    // Prefer the original (un-badged) variant as the default; list all of them
+    // (primary first) for the player's Audio menu, like the Android app.
     const primary = variants.find((v) => isOriginal(v.corner)) || variants[0];
-    return primary;
+    const ordered = [primary, ...variants.filter((v) => v.subjectId !== primary.subjectId)];
+    return { primary, variants: ordered };
   });
 }
 
-function toCard(it) {
+function toCard({ primary, variants }) {
   return {
-    subjectId: it.subjectId,
-    subjectType: it.subjectType,
-    isSeries: it.subjectType === 2,
-    title: cleanTitle(it.title),
-    year: (it.releaseDate || '').slice(0, 4),
-    posterUrl: it.cover?.url || null,
-    rating: it.imdbRatingValue ? Number.parseFloat(it.imdbRatingValue) || null : null,
-    duration: it.duration || '',
-    variantLabel: it.corner || 'Original',
+    subjectId: primary.subjectId,
+    subjectType: primary.subjectType,
+    isSeries: primary.subjectType === 2,
+    title: cleanTitle(primary.title),
+    year: (primary.releaseDate || '').slice(0, 4),
+    posterUrl: primary.cover?.url || null,
+    rating: primary.imdbRatingValue ? Number.parseFloat(primary.imdbRatingValue) || null : null,
+    duration: primary.duration || '',
+    variantLabel: primary.corner || 'Original',
+    // Audio/language variants for the in-player Audio menu.
+    variants: variants.map((v) => ({ id: v.subjectId, label: v.corner || 'Original' })),
   };
 }
 
 /**
- * Resolve an adaptive DASH stream for a card. Movies use se=0/ep=0; series start
- * at se=1/ep=1 ("simply play that video"), with a fallback to the other shape.
- * Returns { url, signCookie, format, resolutions } or null.
+ * Resolve an adaptive DASH stream for a subject. Movies use se=0/ep=0; series
+ * start at se=1/ep=1 ("simply play that video"), with a fallback to the other
+ * shape. Returns { url, signCookie, format, resolutions:[..], se, ep } or null.
  */
 async function playInfo(subjectId, isSeries) {
   const attempts = isSeries
@@ -234,16 +241,75 @@ async function playInfo(subjectId, isSeries) {
       ])).data || {};
     const stream = (data.streams || []).find((s) => s.url && s.url.trim());
     if (stream) {
+      const resolutions = (stream.resolutions || '')
+        .split(',')
+        .map((r) => Number.parseInt(r, 10))
+        .filter((n) => Number.isFinite(n))
+        .sort((a, b) => b - a);
       return {
         url: stream.url,
         signCookie: stream.signCookie || '',
         format: (stream.format || 'DASH').toUpperCase(),
-        resolutions: stream.resolutions || '',
+        resolutions,
         title: data.title || '',
+        se,
+        ep,
       };
     }
   }
   return null;
 }
 
-module.exports = { search, playInfo, USER_AGENT };
+/** Sideloadable subtitle tracks for an episode (best-effort), like the app. */
+async function captions(subjectId, se, ep) {
+  const resourceId = await resolveResourceId(subjectId, se, ep).catch(() => null);
+  if (!resourceId) return [];
+  try {
+    const data =
+      (await signedGet(P_CAPTIONS, [
+        ['subjectId', subjectId],
+        ['resourceId', resourceId],
+      ])).data || {};
+    return (data.extCaptions || [])
+      .filter((c) => c.url && c.url.trim())
+      .map((c) => ({ id: c.id || '', lan: c.lan || '', lanName: c.lanName || c.lan || '', url: c.url }));
+  } catch {
+    return [];
+  }
+}
+
+/** Walk the (paginated) resource list to find a resourceId for this se/ep. */
+async function resolveResourceId(subjectId, se, ep) {
+  let page = 1;
+  for (let i = 0; i < 6; i++) {
+    const data =
+      (await signedGet(P_RESOURCE, [
+        ['subjectId', subjectId],
+        ['se', String(se)],
+        ['ep', String(ep)],
+        ['page', String(page)],
+        ['perPage', '20'],
+      ])).data || {};
+    const list = data.list || [];
+    const hit = se === 0 ? list[0] : list.find((r) => r.se === se && r.ep === ep);
+    if (hit && hit.resourceId) return hit.resourceId;
+    if (!data.pager || data.pager.hasMore !== true) return null;
+    page++;
+  }
+  return null;
+}
+
+/** Fetch a signed .srt and convert it to WebVTT (browsers parse VTT natively). */
+async function captionVtt(url) {
+  const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const srt = await res.text();
+  return (
+    'WEBVTT\n\n' +
+    srt
+      .replace(/\r+/g, '')
+      .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')
+  );
+}
+
+module.exports = { search, playInfo, captions, captionVtt, USER_AGENT };

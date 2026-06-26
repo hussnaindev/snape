@@ -25,14 +25,15 @@
     <main id="results" class="grid" aria-live="polite"></main>
     <div id="status" class="status"></div>
 
-    <!-- Fullscreen player overlay -->
+    <!-- Player overlay — chrome is built by player.js to match the native app. -->
     <div id="player-overlay" class="player-overlay hidden">
+      <video id="video" class="video" playsinline></video>
       <button id="player-close" class="player-close" aria-label="Close">✕</button>
       <div class="player-title" id="player-title"></div>
-      <video id="video" class="video" controls autoplay></video>
       <div id="player-status" class="player-status"></div>
     </div>
 
+    <script src="player.js"></script>
     <script src="renderer.js"></script>
   </body>
 </html>

@@ -75,6 +75,12 @@ ipcMain.handle('moviebox:play', async (_e, { subjectId, isSeries }) => {
   return stream;
 });
 
+ipcMain.handle('moviebox:captions', async (_e, { subjectId, se, ep }) =>
+  moviebox.captions(subjectId, se, ep),
+);
+
+ipcMain.handle('moviebox:captionVtt', async (_e, url) => moviebox.captionVtt(url));
+
 app.whenReady().then(() => {
   installHeaderInjector();
   createWindow();
