@@ -4,7 +4,6 @@ import { notFound } from 'next/navigation';
 import { CastRail } from '@/components/cast-rail';
 import { SeriesCarousel } from '@/components/series-carousel';
 import {
-  getEmbeddableTrailerKey,
   getSeriesCredits,
   getSeriesDetail,
   getSeriesImages,
@@ -12,6 +11,7 @@ import {
   getSeriesSeason,
   getSeriesVideos,
   getSeriesWatchProviders,
+  pickTrailerKey,
 } from '@/lib/tmdb';
 import { tmdbImage } from '@/lib/tmdb-image';
 import { getSeriesEmbedUrl } from '@/lib/vsembed';
@@ -72,7 +72,7 @@ export default async function SeriesPage({ params }: Props) {
     ?? null;
   const logoUrl = logoPath ? tmdbImage(logoPath, 'w500') : null;
 
-  const trailerKey = await getEmbeddableTrailerKey(videos);
+  const trailerKey = pickTrailerKey(videos);
   const backdrop = tmdbImage(series.backdrop_path, 'original');
   const poster = tmdbImage(series.poster_path, 'w500');
 

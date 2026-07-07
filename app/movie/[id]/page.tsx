@@ -4,13 +4,13 @@ import { notFound } from 'next/navigation';
 import { CastRail } from '@/components/cast-rail';
 import { MovieCarousel } from '@/components/movie-carousel';
 import {
-  getEmbeddableTrailerKey,
   getMovieCredits,
   getMovieDetail,
   getMovieImages,
   getMovieRecommendations,
   getMovieVideos,
   getMovieWatchProviders,
+  pickTrailerKey,
 } from '@/lib/tmdb';
 import { tmdbImage } from '@/lib/tmdb-image';
 import { getMovieEmbedUrl } from '@/lib/vsembed';
@@ -59,7 +59,7 @@ export default async function MoviePage({ params }: Props) {
   ]);
 
   const backdrop = tmdbImage(movie.backdrop_path, 'original');
-  const trailerKey = await getEmbeddableTrailerKey(videos);
+  const trailerKey = pickTrailerKey(videos);
   const poster = tmdbImage(movie.poster_path, 'w500');
   const year = movie.release_date?.slice(0, 4) ?? '';
   const runtime = movie.runtime

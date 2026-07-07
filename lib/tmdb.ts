@@ -486,7 +486,33 @@ export async function getSeriesSeason(seriesId: number, seasonNumber: number): P
   return tmdbFetch<TMDBSeason>(`/tv/${seriesId}/season/${seasonNumber}`);
 }
 
-/** Returns the YouTube key of the first embeddable trailer/teaser, or null. */
+/**
+ * Best trailer/teaser YouTube key, chosen without any network round-trip.
+ *
+ * Use this on the SSR render path (page components). Embeddability is NOT
+ * verified — the previous validated variant (`getEmbeddableTrailerKey`) fired a
+ * *sequential* YouTube oembed request per candidate, which on a cold Cloudflare
+ * isolate pushed the render over the Worker CPU/resource budget (Error 1102).
+ * A rare non-embeddable key just yields an empty player, which the client
+ * handles gracefully — a far cheaper failure mode than a 1102 on every page.
+ */
+export function pickTrailerKey(videos: TMDBVideosResult): string | null {
+  const candidates = videos.results.filter(
+    (v) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser'),
+  );
+  candidates.sort((a, b) => {
+    if (a.official !== b.official) return a.official ? -1 : 1;
+    if (a.type !== b.type) return a.type === 'Trailer' ? -1 : 1;
+    return 0;
+  });
+  return candidates[0]?.key ?? null;
+}
+
+/**
+ * Returns the YouTube key of the first *verified-embeddable* trailer/teaser.
+ * Does one oembed round-trip per candidate — only safe OFF the critical render
+ * path (e.g. the lazy `/api/videos/*` routes the client calls after load).
+ */
 export async function getEmbeddableTrailerKey(videos: TMDBVideosResult): Promise<string | null> {
   const candidates = videos.results.filter(
     (v) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser'),
