@@ -10,14 +10,12 @@ import { PersonCard } from '@/components/person-card';
 import { ExpandableText } from '@/components/ui/expandable-text';
 import { SectionDivider } from '@/components/ui/section-divider';
 import {
-  getEmbeddableTrailerKey,
-  getMovieDetail,
   getMovieVideos,
   getPerson,
   getPersonMovieCredits,
   getPersonSeriesCredits,
-  getSeriesDetail,
   getSeriesVideos,
+  pickTrailerKey,
 } from '@/lib/tmdb';
 import { chunk } from '@/lib/utils';
 import { filterHasImages } from '@/lib/tmdb-filters';
@@ -74,72 +72,51 @@ export default async function PersonPage({ params }: Props) {
     releaseDate: string;
   } | null = null;
 
-  // Try to find a release with a backdrop, working backwards from the latest.
-  // We fetch the top N candidates in parallel and pick the first chronological
-  // hit — sequential awaits here used to cost 5–15 round-trips of TTFB.
+  // Pick the most recent credit that already carries a backdrop. The person
+  // credits payload includes backdrop_path per title, so the hero needs no
+  // per-title detail fetch — that fan-out (up to 12 subrequests) was a cold
+  // Cloudflare isolate's fast path to Error 1102.
   const movieReleases = allMovieCredits
-    .filter((m) => m.release_date)
-    .map((m) => ({ ...m, type: 'movie' as const, airDate: m.release_date }));
+    .filter((m) => m.release_date && m.backdrop_path)
+    .map((m) => ({
+      id: m.id,
+      title: m.title,
+      type: 'movie' as const,
+      backdropPath: m.backdrop_path,
+      releaseDate: m.release_date,
+      airDate: m.release_date,
+    }));
 
   const seriesReleases = allSeriesCredits
-    .filter((s) => s.first_air_date)
-    .map((s) => ({ ...s, type: 'series' as const, airDate: s.first_air_date }));
+    .filter((s) => s.first_air_date && s.backdrop_path)
+    .map((s) => ({
+      id: s.id,
+      title: s.name,
+      type: 'series' as const,
+      backdropPath: s.backdrop_path,
+      releaseDate: s.first_air_date,
+      airDate: s.first_air_date,
+    }));
 
-  const allReleases = [...movieReleases, ...seriesReleases].sort((a, b) =>
-    b.airDate > a.airDate ? 1 : -1,
-  );
+  const winner =
+    [...movieReleases, ...seriesReleases].sort((a, b) => (b.airDate > a.airDate ? 1 : -1))[0] ??
+    null;
 
-  const candidates = allReleases.slice(0, 6);
-  const resolved = await Promise.all(
-    candidates.map(async (release) => {
-      try {
-        if (release.type === 'movie') {
-          const [detail, videos] = await Promise.all([
-            getMovieDetail(release.id).catch(() => null),
-            getMovieVideos(release.id).catch(() => ({ results: [] })),
-          ]);
-          if (!detail?.backdrop_path) return null;
-          return {
-            backdropPath: detail.backdrop_path,
-            videos,
-            info: {
-              id: release.id,
-              title: release.title,
-              type: 'movie' as const,
-              backdropPath: detail.backdrop_path,
-              releaseDate: release.release_date,
-            },
-          };
-        }
-        const [detail, videos] = await Promise.all([
-          getSeriesDetail(release.id).catch(() => null),
-          getSeriesVideos(release.id).catch(() => ({ results: [] })),
-        ]);
-        if (!detail?.backdrop_path) return null;
-        return {
-          backdropPath: detail.backdrop_path,
-          videos,
-          info: {
-            id: release.id,
-            title: release.name,
-            type: 'series' as const,
-            backdropPath: detail.backdrop_path,
-            releaseDate: release.first_air_date,
-          },
-        };
-      } catch {
-        return null;
-      }
-    }),
-  );
-
-  const winner = resolved.find((r) => r !== null);
   if (winner) {
     backdropUrl = tmdbImage(winner.backdropPath, 'original');
-    releaseWithBackdrop = winner.info;
-    if (winner.videos.results.length > 0) {
-      trailerKey = await getEmbeddableTrailerKey(winner.videos);
-    }
+    releaseWithBackdrop = {
+      id: winner.id,
+      title: winner.title,
+      type: winner.type,
+      backdropPath: winner.backdropPath,
+      releaseDate: winner.releaseDate,
+    };
+    // One videos fetch for the chosen title only (was up to 6 detail+videos pairs).
+    const videos = await (winner.type === 'movie'
+      ? getMovieVideos(winner.id)
+      : getSeriesVideos(winner.id)
+    ).catch(() => ({ results: [] }));
+    trailerKey = pickTrailerKey(videos);
   }
 
   // Known for: top 8 by popularity (same image rule as homepage)
