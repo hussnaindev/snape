@@ -54,8 +54,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import com.snape.flix.ui.tv.focusHighlight
+import com.snape.flix.ui.tv.rememberIsTv
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -246,7 +258,15 @@ fun StreamPlayerChrome(
         onDispose { if (latestPos > 0) onProgress(playingSe, playingEp, latestPos, latestDur) }
     }
 
-    var controlsShown by remember { mutableStateOf(true) }
+    // ── TV / D-pad ──
+    // On a TV the player is driven by a remote, not touch. Controls start hidden so
+    // playback opens clean; any D-pad key summons them (see the key handler below).
+    // On a phone they start shown (unchanged) and auto-hide on a timer.
+    val isTv = rememberIsTv()
+    val rootFocus = remember { FocusRequester() }
+    val playFocus = remember { FocusRequester() }
+
+    var controlsShown by remember { mutableStateOf(!isTv) }
     var openMenu by remember { mutableStateOf(Menu.NONE) }
     var episodesShown by remember { mutableStateOf(false) }
     var qualityHeight by remember { mutableStateOf<Int?>(null) }
@@ -267,13 +287,64 @@ fun StreamPlayerChrome(
     val chromeVisible = controlsShown || !playing
 
     LaunchedEffect(controlsShown, playing, openMenu) {
-        if (controlsShown && playing && openMenu == Menu.NONE) {
+        // TV keeps controls up until the user dismisses them (Back); no touch means
+        // no accidental taps to worry about, and a timed fade would yank focus away.
+        if (!isTv && controlsShown && playing && openMenu == Menu.NONE) {
             delay(3200)
             controlsShown = false
         }
     }
 
-    Box(modifier.background(Color.Black)) {
+    // TV focus: when controls appear, land focus on Play/Pause so the D-pad drives
+    // the control row; when they hide, hand focus back to the root so a key-press
+    // can summon them again.
+    LaunchedEffect(controlsShown, isTv) {
+        if (!isTv) return@LaunchedEffect
+        androidx.compose.runtime.withFrameNanos {}
+        runCatching { (if (controlsShown) playFocus else rootFocus).requestFocus() }
+    }
+
+    // Back on a TV: peel one layer at a time (open menu → episodes → controls) and
+    // only fall through to actually closing the player once everything is dismissed.
+    BackHandler(enabled = isTv && (controlsShown || openMenu != Menu.NONE || episodesShown)) {
+        when {
+            openMenu != Menu.NONE -> openMenu = Menu.NONE
+            episodesShown -> episodesShown = false
+            else -> controlsShown = false
+        }
+    }
+
+    Box(
+        modifier
+            .background(Color.Black)
+            .then(
+                if (isTv) Modifier
+                    .focusRequester(rootFocus)
+                    .focusable()
+                    .onPreviewKeyEvent { e ->
+                        if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                        // While an overlay is open let its own focus navigation run.
+                        if (openMenu != Menu.NONE || episodesShown) return@onPreviewKeyEvent false
+                        when (e.key) {
+                            Key.MediaPlayPause, Key.MediaPlay, Key.MediaPause -> {
+                                exo.togglePlay(); controlsShown = true; true
+                            }
+                            // When controls are hidden the remote drives playback
+                            // directly; when shown, fall through to the focused button.
+                            Key.DirectionCenter, Key.Enter, Key.NumPadEnter ->
+                                if (!controlsShown) { exo.togglePlay(); controlsShown = true; true } else false
+                            Key.DirectionLeft, Key.MediaRewind ->
+                                if (!controlsShown) { exo.seekBy(-10_000); controlsShown = true; true } else false
+                            Key.DirectionRight, Key.MediaFastForward ->
+                                if (!controlsShown) { exo.seekBy(10_000); controlsShown = true; true } else false
+                            Key.DirectionUp, Key.DirectionDown ->
+                                if (!controlsShown) { controlsShown = true; true } else false
+                            else -> false
+                        }
+                    }
+                else Modifier,
+            ),
+    ) {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
@@ -283,6 +354,10 @@ fun StreamPlayerChrome(
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                     setBackgroundColor(android.graphics.Color.BLACK)
                     subtitleView?.visibility = android.view.View.GONE
+                    // TV: the video surface must never capture D-pad focus, or the
+                    // remote can't reach the Compose controls layered over it.
+                    isFocusable = false
+                    descendantFocusability = android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS
                 }
             },
             update = {
@@ -386,7 +461,12 @@ fun StreamPlayerChrome(
                 Spacer(Modifier.height(4.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Ctrl(if (playing) PlayerIcons.Pause else PlayerIcons.Play, "Play/Pause", size = ctrlSize) { exo.togglePlay() }
+                    Ctrl(
+                        if (playing) PlayerIcons.Pause else PlayerIcons.Play,
+                        "Play/Pause",
+                        size = ctrlSize,
+                        modifier = Modifier.focusRequester(playFocus),
+                    ) { exo.togglePlay() }
                     if (!compact) {
                         Spacer(Modifier.width(gap))
                         Ctrl(PlayerIcons.Replay10, "Back 10s", size = ctrlSize) { exo.seekBy(-10_000) }
@@ -625,6 +705,7 @@ private fun CenterPlayButton(playing: Boolean, modifier: Modifier = Modifier, on
     Box(
         modifier
             .size(64.dp)
+            .focusHighlight(CircleShape)
             .clip(CircleShape)
             .background(Color(0x1AFFFFFF))
             .border(1.dp, Color(0x33FFFFFF), CircleShape)
@@ -646,10 +727,12 @@ private fun Ctrl(
     desc: String,
     active: Boolean = false,
     size: androidx.compose.ui.unit.Dp = 24.dp,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Box(
-        Modifier
+        modifier
+            .focusHighlight(RoundedCornerShape(8.dp), scale = 1.18f)
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
             .padding(2.dp),
@@ -704,6 +787,7 @@ private fun EpisodesOverlay(
                 Column(
                     Modifier
                         .width(150.dp)
+                        .focusHighlight(RoundedCornerShape(10.dp))
                         .clip(RoundedCornerShape(10.dp))
                         .clickable { onSelect(e.se, e.ep) },
                 ) {
@@ -752,6 +836,7 @@ private fun MenuPopup(modifier: Modifier = Modifier, content: @Composable () -> 
             .clip(RoundedCornerShape(12.dp))
             .background(Color(0xF2000000))
             .border(1.dp, Color(0x26FFFFFF), RoundedCornerShape(12.dp))
+            .focusProperties { canFocus = false }
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -767,7 +852,11 @@ private fun MenuPopup(modifier: Modifier = Modifier, content: @Composable () -> 
 @Composable
 private fun RowItem(label: String, value: String, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 10.dp),
+        Modifier
+            .fillMaxWidth()
+            .focusHighlight(RoundedCornerShape(8.dp), scale = 1f)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, color = Color.White, fontSize = 14.sp)
@@ -779,7 +868,11 @@ private fun RowItem(label: String, value: String, onClick: () -> Unit) {
 @Composable
 private fun OptItem(label: String, active: Boolean, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 10.dp),
+        Modifier
+            .fillMaxWidth()
+            .focusHighlight(RoundedCornerShape(8.dp), scale = 1f)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {

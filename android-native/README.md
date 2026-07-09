@@ -76,6 +76,41 @@ FPS meter + the "only fast fling" symptom localized it to **composition during
 fling** — i.e. `LazyColumn` virtualization. Switching to `Column + verticalScroll`
 fixed it.
 
+## Android TV / leanback
+
+The same APK runs on Android TV (and TV boxes / leanback devices) with a proper
+10-foot, D-pad experience. The phone UI is untouched — every TV affordance is
+either invisible on touch or gated on a `rememberIsTv()` check.
+
+- **Manifest** (`AndroidManifest.xml`): declares `android.software.leanback` and
+  `android.hardware.touchscreen` as `required="false"` (touchscreen-not-required is
+  what makes the app installable on a TV at all), adds the `LEANBACK_LAUNCHER`
+  category so it shows on the TV home screen, and points `android:banner` at
+  `@drawable/tv_banner` (the launcher tile).
+- **Focus system** (`ui/tv/TvUtils.kt`): the app was 100 % touch (`.clickable`,
+  tap/double-tap) with no focus indicators. `Modifier.focusHighlight(shape)` draws a
+  D-pad focus ring + lift-scale on any interactive surface; it's applied to every
+  card, button, chip, chrome icon, drawer row and player control. It is
+  **performance-safe for the home feed**: the lift-`scale` graphicsLayer is added
+  *only while focused*, so the ~80 idle cards stay layer-free (see the perf rules
+  above — the feed's model is "compose once, then translate"). `initialTvFocus()`
+  gives each primary screen a deterministic starting focus (hero WATCH on home,
+  WATCH on detail, the retry/downloads button on the error/offline screens).
+- **Player** (`ui/player/StreamPlayer.kt`): on a TV the player is remote-driven.
+  Controls start hidden; any D-pad key summons them (CENTER = play/pause, LEFT/RIGHT
+  = ∓10 s, UP/DOWN = show). While shown, focus lands on Play/Pause and the D-pad
+  walks the control row + menus; **Back** peels one layer at a time (menu → episodes
+  → controls) before exiting. The touch auto-hide timer is disabled on TV (it would
+  yank focus). Playback opens straight to **fullscreen** on TV (inline-in-hero is
+  unusable at 10 feet) and Back from fullscreen ends playback.
+- **Focus traps**: the video `PlayerView`, the hero trailer surface and the YouTube
+  trailer `WebView` are all marked non-focusable (`FOCUS_BLOCK_DESCENDANTS`), and the
+  full-screen tap-swallow scrims (drawer, menu popup) use
+  `focusProperties { canFocus = false }` — otherwise they'd silently eat the remote.
+
+Anything new that is tappable must get a `.focusHighlight(...)` (before its
+`.clickable`) or it will be invisible/unreachable on a TV.
+
 ## Build the APK
 
 ### GitHub Actions (recommended)

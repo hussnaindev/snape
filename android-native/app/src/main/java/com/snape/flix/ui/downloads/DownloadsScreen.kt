@@ -3,6 +3,7 @@ package com.snape.flix.ui.downloads
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import com.snape.flix.ui.tv.focusHighlight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -316,6 +317,7 @@ private fun ActionButton(
         Modifier
             .width(80.dp)
             .height(36.dp)
+            .focusHighlight(RoundedCornerShape(50))
             .clip(RoundedCornerShape(50))
             .background(if (accent) Color.White else Color(0x14FFFFFF))
             .border(1.dp, if (accent) Color.White else Color(0x26FFFFFF), RoundedCornerShape(50))
@@ -418,6 +420,7 @@ private fun ConfirmDeleteDialog(title: String, onConfirm: () -> Unit, onDismiss:
                     Modifier
                         .weight(1f)
                         .height(44.dp)
+                        .focusHighlight(RoundedCornerShape(50), scale = 1.03f)
                         .clip(RoundedCornerShape(50))
                         .background(Color(0x14FFFFFF))
                         .border(1.dp, Color(0x26FFFFFF), RoundedCornerShape(50))
@@ -430,6 +433,7 @@ private fun ConfirmDeleteDialog(title: String, onConfirm: () -> Unit, onDismiss:
                     Modifier
                         .weight(1f)
                         .height(44.dp)
+                        .focusHighlight(RoundedCornerShape(50), scale = 1.03f)
                         .clip(RoundedCornerShape(50))
                         .background(Color(0x1AF87171))
                         .border(1.dp, Color(0x66F87171), RoundedCornerShape(50))

@@ -99,6 +99,9 @@ import com.snape.flix.ui.player.StreamPlayerChrome
 import com.snape.flix.ui.player.audioPreferenceRank
 import com.snape.flix.ui.player.rememberStreamExoPlayer
 import com.snape.flix.ui.theme.ChesnaGrotesk
+import com.snape.flix.ui.tv.focusHighlight
+import com.snape.flix.ui.tv.initialTvFocus
+import com.snape.flix.ui.tv.rememberIsTv
 import kotlinx.coroutines.delay
 import java.time.LocalDate
 
@@ -154,6 +157,7 @@ fun DetailScreen(
     val context = LocalContext.current
     val activity = context as? Activity
     val cfg = LocalConfiguration.current
+    val isTv = rememberIsTv()
 
     // Playback state. The Watch button (movies) and episode taps (series) start the
     // in-hero player; the player's fullscreen toggle expands it to a full-screen
@@ -195,10 +199,14 @@ fun DetailScreen(
 
     // Drive activity orientation + system bars from the fullscreen flag.
     LaunchedEffect(fullscreen) {
-        activity?.requestedOrientation = if (fullscreen) {
-            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        } else {
-            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        // A TV is a fixed landscape panel — never drive orientation there (forcing
+        // portrait would letterbox the whole UI). Phones still rotate as before.
+        if (!isTv) {
+            activity?.requestedOrientation = if (fullscreen) {
+                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            } else {
+                ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            }
         }
         activity?.window?.let { w ->
             WindowInsetsControllerCompat(w, w.decorView).apply {
@@ -213,7 +221,16 @@ fun DetailScreen(
         }
     }
 
-    BackHandler(enabled = fullscreen) { fullscreen = false }
+    // TV has no comfortable "inline in the hero" playback — a 10-foot screen wants
+    // the video full-frame — so starting playback goes straight to fullscreen, and
+    // backing out of fullscreen ends playback entirely (no tiny inline player left
+    // behind). On a phone the inline ↔ fullscreen dance is preserved unchanged.
+    LaunchedEffect(playerActive) { if (isTv && playerActive) fullscreen = true }
+
+    BackHandler(enabled = fullscreen) {
+        fullscreen = false
+        if (isTv) playerActive = false
+    }
     BackHandler(enabled = playerActive && !fullscreen) { playerActive = false }
 
     // When the activity goes to the background (user switches apps, screen-off)
@@ -498,6 +515,11 @@ private fun TrailerWebView(
                 setBackgroundColor(android.graphics.Color.BLACK)
                 isVerticalScrollBarEnabled = false
                 isHorizontalScrollBarEnabled = false
+                // TV: the decorative trailer must not trap D-pad focus (a focusable
+                // WebView would swallow the remote and strand the WATCH button).
+                isFocusable = false
+                isFocusableInTouchMode = false
+                descendantFocusability = android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS
                 webChromeClient = WebChromeClient()
                 settings.apply {
                     javaScriptEnabled = true
@@ -583,6 +605,7 @@ private fun MuteButton(muted: Boolean, modifier: Modifier = Modifier, onClick: (
     Box(
         modifier
             .size(32.dp)
+            .focusHighlight(CircleShape)
             .clip(CircleShape)
             .background(Color(0x80000000))
             .border(1.dp, Color(0x66FFFFFF), CircleShape)
@@ -605,6 +628,7 @@ private fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
             .statusBarsPadding()
             .padding(start = 12.dp, top = 8.dp)
             .size(36.dp)
+            .focusHighlight(CircleShape)
             .clip(CircleShape)
             .background(Color(0x99000000))
             .border(1.dp, Color(0x4DFFFFFF), CircleShape)
@@ -633,6 +657,8 @@ private fun HeroStatus(message: String, spinner: Boolean = false, onBack: (() ->
                     fontSize = 12.sp,
                     letterSpacing = 2.sp,
                     modifier = Modifier
+                        .focusHighlight(RoundedCornerShape(50))
+                        .initialTvFocus(rememberIsTv())
                         .clip(RoundedCornerShape(50))
                         .background(Color(0x14FFFFFF))
                         .clickable(onClick = onBack)
@@ -880,6 +906,9 @@ private fun WatchButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
     Row(
         modifier
             .height(40.dp)
+            .focusHighlight(RoundedCornerShape(50), scale = 1.04f)
+            // TV: the detail page lands focus on WATCH — the primary action.
+            .initialTvFocus(rememberIsTv())
             .clip(RoundedCornerShape(50))
             .background(Color.White)
             .clickable(onClick = onClick)
@@ -923,6 +952,7 @@ private fun DownloadActionIcon(
     Box(
         Modifier
             .size(36.dp)
+            .focusHighlight(CircleShape)
             .clip(CircleShape)
             .background(Color(0x99000000))
             .border(1.dp, Color(0x4DFFFFFF), CircleShape)
@@ -949,6 +979,7 @@ private fun WatchlistIcon(item: com.snape.flix.data.SubjectItem) {
     Box(
         Modifier
             .size(36.dp)
+            .focusHighlight(CircleShape)
             .clip(CircleShape)
             .background(if (inList) Color.White else Color(0x99000000))
             .border(1.dp, if (inList) Color.White else Color(0x4DFFFFFF), CircleShape)
@@ -983,7 +1014,9 @@ private fun ExpandableText(text: String) {
             color = Color(0x80FFFFFF),
             fontFamily = ChesnaGrotesk,
             fontSize = 12.sp,
-            modifier = Modifier.clickable { expanded = !expanded },
+            modifier = Modifier
+                .focusHighlight(RoundedCornerShape(4.dp), scale = 1f)
+                .clickable { expanded = !expanded },
         )
     }
 }
@@ -1025,7 +1058,10 @@ private fun StarringRail(cast: List<TmdbCastMember>, onOpenPerson: (Int) -> Unit
     ) {
         visible.forEach { member ->
             Column(
-                Modifier.width(96.dp).clickable { onOpenPerson(member.id) },
+                Modifier
+                    .width(96.dp)
+                    .focusHighlight(RoundedCornerShape(12.dp), scale = 1.04f)
+                    .clickable { onOpenPerson(member.id) },
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Box(
@@ -1125,6 +1161,7 @@ private fun EpisodesCarousel(
                 val selected = season.season_number == selectedSeason
                 Box(
                     Modifier
+                        .focusHighlight(RoundedCornerShape(50))
                         .clip(RoundedCornerShape(50))
                         .background(if (selected) Color.White else Color.Transparent)
                         .border(1.dp, if (selected) Color.White else Color(0x33FFFFFF), RoundedCornerShape(50))
@@ -1176,6 +1213,7 @@ private fun EpisodeCard(ep: TmdbEpisode, onClick: () -> Unit, onLongClick: () ->
     Box(
         Modifier
             .width(180.dp)
+            .focusHighlight(RoundedCornerShape(16.dp))
             .clip(RoundedCornerShape(16.dp))
             .background(Color(0x0DFFFFFF))
             .border(1.dp, Color(0x40FFFFFF), RoundedCornerShape(16.dp))

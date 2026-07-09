@@ -49,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -85,6 +86,9 @@ import com.snape.flix.ui.downloads.DownloadsActivity
 import com.snape.flix.ui.detail.DetailActivity
 import com.snape.flix.ui.home.HomeScreen
 import com.snape.flix.ui.theme.ChesnaGrotesk
+import com.snape.flix.ui.tv.focusHighlight
+import com.snape.flix.ui.tv.initialTvFocus
+import com.snape.flix.ui.tv.rememberIsTv
 import com.snape.flix.ui.watchlist.WatchlistActivity
 
 @Composable
@@ -291,6 +295,7 @@ private fun TopBar(
         Box(
             Modifier
                 .size(40.dp)
+                .focusHighlight(RoundedCornerShape(12.dp))
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color(0x0DFFFFFF))
                 .border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(12.dp))
@@ -321,6 +326,7 @@ private fun DownloadIndicator() {
     Box(
         Modifier
             .size(40.dp)
+            .focusHighlight(CircleShape)
             .clip(CircleShape)
             .clickable { DownloadsActivity.start(context) },
         contentAlignment = Alignment.Center,
@@ -351,7 +357,11 @@ private fun DownloadIndicator() {
 @Composable
 private fun BarIcon(icon: ImageVector, desc: String, onClick: () -> Unit) {
     Box(
-        Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onClick).padding(8.dp),
+        Modifier
+            .focusHighlight(RoundedCornerShape(50))
+            .clip(RoundedCornerShape(50))
+            .clickable(onClick = onClick)
+            .padding(8.dp),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, desc, tint = Color(0xB3FFFFFF), modifier = Modifier.size(22.dp))
@@ -414,6 +424,10 @@ private fun SearchBar(
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         modifier = modifier
             .height(40.dp)
+            .focusHighlight(pill, scale = 1f)
+            // On a TV, opening the bar moves focus into the field so the leanback
+            // on-screen keyboard appears immediately (there is no tap to trigger it).
+            .initialTvFocus(rememberIsTv())
             .clip(pill)
             .background(Color(0x14FFFFFF))
             .border(1.dp, Color(0x26FFFFFF), pill),
@@ -457,6 +471,7 @@ private fun SearchBar(
                 Box(
                     Modifier
                         .size(28.dp)
+                        .focusHighlight(RoundedCornerShape(50))
                         .clip(RoundedCornerShape(50))
                         .clickable(onClick = onClose),
                     contentAlignment = Alignment.Center,
@@ -514,6 +529,9 @@ private fun SideDrawer(
             Modifier
                 .fillMaxSize()
                 .background(Color(0xB3000000))
+                // Not a D-pad focus target — a full-screen invisible focusable would
+                // swallow remote navigation. (Touch tap-to-close is unaffected.)
+                .focusProperties { canFocus = false }
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -530,6 +548,7 @@ private fun SideDrawer(
                 .background(Color(0xFF0F0F10))
                 .border(1.dp, Color(0x1AFFFFFF))
                 // swallow taps so they don't reach the scrim
+                .focusProperties { canFocus = false }
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -565,6 +584,10 @@ private fun SideDrawer(
                 Box(
                     Modifier
                         .size(36.dp)
+                        .focusHighlight(RoundedCornerShape(12.dp))
+                        // TV: opening the drawer parks focus on Close so the D-pad
+                        // has an anchor; Down walks into the menu items.
+                        .initialTvFocus(rememberIsTv())
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0x0DFFFFFF))
                         .border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(12.dp))
@@ -622,6 +645,7 @@ private fun DrawerRow(item: MenuItem, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
+            .focusHighlight(RoundedCornerShape(8.dp), scale = 1f)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,

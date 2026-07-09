@@ -3,6 +3,7 @@ package com.snape.flix.ui.search
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import com.snape.flix.ui.tv.focusHighlight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -117,6 +118,7 @@ private fun SeasonEpisodeChooser(
                     val selected = idx == selectedSeasonIdx
                     Box(
                         Modifier
+                            .focusHighlight(RoundedCornerShape(50))
                             .clip(RoundedCornerShape(50))
                             .background(if (selected) Color.White else Color(0x14FFFFFF))
                             .border(1.dp, Color(0x40FFFFFF), RoundedCornerShape(50))
@@ -146,6 +148,7 @@ private fun SeasonEpisodeChooser(
                 Box(
                     Modifier
                         .size(56.dp)
+                        .focusHighlight(CircleShape)
                         .clip(CircleShape)
                         .background(Color(0x14FFFFFF))
                         .border(1.dp, Color(0x40FFFFFF), CircleShape)

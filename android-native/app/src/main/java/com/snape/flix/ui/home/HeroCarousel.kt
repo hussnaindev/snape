@@ -57,6 +57,9 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.snape.flix.R
+import com.snape.flix.ui.tv.focusHighlight
+import com.snape.flix.ui.tv.initialTvFocus
+import com.snape.flix.ui.tv.rememberIsTv
 import kotlin.math.abs
 import kotlinx.coroutines.delay
 
@@ -134,6 +137,7 @@ fun HeroCarousel(
     scrolling: Boolean = false,
 ) {
     val context = LocalContext.current
+    val isTv = rememberIsTv()
     val screenH = LocalConfiguration.current.screenHeightDp.dp
     val heroH = (screenH * 0.55f).coerceAtLeast(320.dp)
 
@@ -230,6 +234,11 @@ fun HeroCarousel(
                                     .apply {
                                         setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
                                         this.player = player
+                                        // TV: keep the muted hero trailer out of the
+                                        // D-pad focus order (decorative only).
+                                        isFocusable = false
+                                        descendantFocusability =
+                                            android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS
                                     }
                             },
                             // RESIZE_MODE_ZOOM already fills the box; the extra
@@ -318,10 +327,13 @@ fun HeroCarousel(
                     }
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // On a TV the home screen opens with focus on the active
+                        // slide's WATCH button — a deterministic D-pad starting point.
                         PillButton(
                             label = "WATCH",
                             primary = true,
                             onClick = { onOpenTitle(slide.title, true) },
+                            modifier = Modifier.initialTvFocus(isTv && page == pagerState.currentPage),
                         )
                         PillButton(
                             label = "MORE INFO",
@@ -371,12 +383,18 @@ fun HeroCarousel(
 }
 
 @Composable
-private fun PillButton(label: String, primary: Boolean, onClick: () -> Unit) {
+private fun PillButton(
+    label: String,
+    primary: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val shape = RoundedCornerShape(50)
     Box(
-        Modifier
+        modifier
             .height(36.dp)
             .widthIn(min = 112.dp)
+            .focusHighlight(shape)
             .clip(shape)
             .then(
                 if (primary) Modifier.background(Color.White)

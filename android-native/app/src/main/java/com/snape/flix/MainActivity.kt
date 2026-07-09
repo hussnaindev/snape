@@ -29,6 +29,9 @@ import com.snape.flix.ui.detail.DetailActivity
 import com.snape.flix.ui.downloads.DownloadsActivity
 import com.snape.flix.ui.search.SearchScreen
 import com.snape.flix.ui.theme.SnapeTheme
+import com.snape.flix.ui.tv.LocalIsTv
+import com.snape.flix.ui.tv.rememberIsTv
+import androidx.compose.runtime.CompositionLocalProvider
 import kotlinx.coroutines.launch
 
 private val PageBg = Color(0xFF070B08)
@@ -43,6 +46,7 @@ class MainActivity : ComponentActivity() {
         resolveAccess()
         setContent {
             SnapeTheme {
+              CompositionLocalProvider(LocalIsTv provides rememberIsTv()) {
                 Surface(Modifier.fillMaxSize().background(PageBg), color = PageBg) {
                     when (accessState) {
                         // One spinner covers both the flag check and the home fetch
@@ -65,6 +69,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+              }
             }
         }
     }

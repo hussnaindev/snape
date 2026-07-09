@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.snape.flix.ui.theme.ChesnaGrotesk
+import com.snape.flix.ui.tv.focusHighlight
 
 private val noFontPad = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
 
@@ -68,6 +69,7 @@ fun BackChip(onClick: () -> Unit, modifier: Modifier = Modifier) {
             .statusBarsPadding()
             .padding(start = 12.dp, top = 8.dp)
             .size(36.dp)
+            .focusHighlight(CircleShape)
             .clip(CircleShape)
             .background(Color(0x99000000))
             .border(1.dp, Color(0x4DFFFFFF), CircleShape)

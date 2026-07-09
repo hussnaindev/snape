@@ -11,6 +11,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import com.snape.flix.ui.tv.focusHighlight
+import com.snape.flix.ui.tv.initialTvFocus
+import com.snape.flix.ui.tv.rememberIsTv
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -383,6 +386,7 @@ private fun PersonCreditCard(
 ) {
     Box(
         modifier = modifier
+            .focusHighlight(CardShape)
             .clip(CardShape)
             .background(CardSurface)
             .border(1.dp, CardRing, CardShape)
@@ -491,7 +495,9 @@ private fun ExpandableText(text: String) {
             fontFamily = ChesnaGrotesk,
             fontSize = 12.sp,
             style = noFontPad,
-            modifier = Modifier.clickable { expanded = !expanded },
+            modifier = Modifier
+                .focusHighlight(RoundedCornerShape(4.dp), scale = 1f)
+                .clickable { expanded = !expanded },
         )
     }
 }
@@ -607,6 +613,7 @@ private fun MuteButton(muted: Boolean, modifier: Modifier = Modifier, onClick: (
     Box(
         modifier
             .size(32.dp)
+            .focusHighlight(CircleShape)
             .clip(CircleShape)
             .background(Color(0x80000000))
             .border(1.dp, Color(0x66FFFFFF), CircleShape)
@@ -629,6 +636,7 @@ private fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
             .statusBarsPadding()
             .padding(start = 12.dp, top = 8.dp)
             .size(36.dp)
+            .focusHighlight(CircleShape)
             .clip(CircleShape)
             .background(Color(0x99000000))
             .border(1.dp, Color(0x4DFFFFFF), CircleShape)
@@ -657,6 +665,8 @@ private fun PersonError(message: String, onBack: () -> Unit) {
                 letterSpacing = 2.sp,
                 style = noFontPad,
                 modifier = Modifier
+                    .focusHighlight(RoundedCornerShape(50))
+                    .initialTvFocus(rememberIsTv())
                     .clip(RoundedCornerShape(50))
                     .background(Color(0x14FFFFFF))
                     .clickable(onClick = onBack)

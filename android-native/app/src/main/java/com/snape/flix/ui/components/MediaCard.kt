@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.snape.flix.data.SubjectItem
 import com.snape.flix.ui.theme.ChesnaGrotesk
+import com.snape.flix.ui.tv.focusHighlight
 
 // Hoisted so they are not reallocated for every card on every recomposition
 // while the grid scrolls.
@@ -86,6 +87,8 @@ fun PosterCard(
 ) {
     Box(
         modifier = modifier
+            // D-pad focus ring (TV). Invisible on touch — focus is transient there.
+            .focusHighlight(CardShape)
             .clip(CardShape)
             .background(CardSurface)
             .border(1.dp, CardRing, CardShape) // web mobile: ring-1

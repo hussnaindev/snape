@@ -61,6 +61,7 @@ import com.snape.flix.data.MovieBoxRepository
 import com.snape.flix.data.SeasonItem
 import com.snape.flix.data.SubjectGroup
 import com.snape.flix.ui.theme.ChesnaGrotesk
+import com.snape.flix.ui.tv.focusHighlight
 
 /**
  * The web's Download button → options modal, ported to a bottom sheet: Quality /
@@ -148,6 +149,7 @@ fun DownloadSheet(
                 Box(
                     Modifier
                         .size(36.dp)
+                        .focusHighlight(RoundedCornerShape(12.dp))
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0x0DFFFFFF))
                         .clickable(onClick = onDismiss),
@@ -229,6 +231,7 @@ fun DownloadSheet(
                                 Modifier
                                     .fillMaxWidth()
                                     .height(48.dp)
+                                    .focusHighlight(RoundedCornerShape(50), scale = 1.02f)
                                     .clip(RoundedCornerShape(50))
                                     .background(Color.White)
                                     .clickable {
@@ -253,6 +256,7 @@ fun DownloadSheet(
                                 Modifier
                                     .fillMaxWidth()
                                     .height(48.dp)
+                                    .focusHighlight(RoundedCornerShape(50), scale = 1.02f)
                                     .clip(RoundedCornerShape(50))
                                     .background(Color.Black)
                                     .border(1.dp, Color(0x4D34D399), RoundedCornerShape(50))
@@ -278,6 +282,7 @@ fun DownloadSheet(
                                 Modifier
                                     .fillMaxWidth()
                                     .height(48.dp)
+                                    .focusHighlight(RoundedCornerShape(50), scale = 1.02f)
                                     .clip(RoundedCornerShape(50))
                                     .background(Color(0xFF0B0B0C))
                                     .clickable {
@@ -400,6 +405,7 @@ private fun ProgressBorder(
 private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
+            .focusHighlight(RoundedCornerShape(50))
             .clip(RoundedCornerShape(50))
             .background(if (selected) Color.White else Color(0x0DFFFFFF))
             .clickable(onClick = onClick)

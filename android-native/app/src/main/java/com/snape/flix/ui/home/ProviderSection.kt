@@ -36,6 +36,7 @@ import com.snape.flix.data.HomeCard
 import com.snape.flix.data.HomeSection
 import com.snape.flix.ui.components.PosterCard
 import com.snape.flix.ui.theme.ChesnaGrotesk
+import com.snape.flix.ui.tv.focusHighlight
 
 private val PageBg = Color(0xFF070B08)
 
@@ -252,6 +253,7 @@ private fun MetaButton(label: String, primary: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
             .height(32.dp)
+            .focusHighlight(ChipShape)
             .clip(ChipShape)
             .then(
                 if (primary) Modifier.background(Color.White)

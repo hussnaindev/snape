@@ -19,6 +19,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.snape.flix.ui.tv.focusHighlight
+import com.snape.flix.ui.tv.initialTvFocus
+import com.snape.flix.ui.tv.rememberIsTv
 
 /**
  * Shown when the access check could not be completed (offline / request failed) —
@@ -49,6 +52,8 @@ fun NetworkErrorNotice(onRetry: () -> Unit, modifier: Modifier = Modifier) {
         Spacer(Modifier.height(24.dp))
         Box(
             Modifier
+                .focusHighlight(RoundedCornerShape(8.dp))
+                .initialTvFocus(rememberIsTv())
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color(0xFF1E2A22))
                 .clickable(onClick = onRetry)
