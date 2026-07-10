@@ -497,7 +497,7 @@ private data class MenuSection(val title: String, val items: List<MenuItem>)
 
 private val GENRES = listOf(
     "Action", "Adventure", "Animation", "Comedy", "Crime", "Drama", "Family",
-    "Fantasy", "History", "Horror", "Romance", "Sci-Fi", "Thriller",
+    "Fantasy", "History", "Horror", "Romance", "Sci-Fi", "Thriller", "Adult",
 )
 
 // No-signup app: the menu carries no login/sign-out/account links.
