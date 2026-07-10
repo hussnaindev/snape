@@ -1,20 +1,16 @@
-# Dependencies
-node_modules/
-.pnp
-.pnp.js
+# ── Monorepo root .gitignore ──────────────────────────────────────────
+# Cross-cutting patterns only. Each app carries its own .gitignore:
+#   web/.gitignore      (Next.js, Wrangler, PWA, Bun)
+#   mobile/.gitignore   (Gradle, Android Studio)
+#   desktop/.gitignore  (Electron, electron-builder)
 
-# Next.js build output
-.next/
-out/
-dist/
+# Dependencies (any app)
+node_modules/
 
 # Environment variables — never commit secrets
 .env
 .env.local
 .env.*.local
-
-# Bun
-bun.lock
 
 # OS
 .DS_Store
@@ -22,24 +18,15 @@ Thumbs.db
 
 # Editor
 .vscode/*.log
+.idea/
 *.swp
 *.swo
 
-# Debug
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# TypeScript
+# Stray root build artifacts
 *.tsbuildinfo
 next-env.d.ts
-
-# PWA build artifacts
-public/sw.js
-public/workbox-*.js
-
-# Wrangler local state (local D1 data, miniflare cache)
-.wrangler/
-
-# Local SQLite dev database (replaced by wrangler-managed local D1)
-local.db

@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js build output
+.next/
+out/
+dist/
+
+# Environment variables — never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Bun
+bun.lock
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# PWA build artifacts
+public/sw.js
+public/workbox-*.js
+
+# Wrangler local state (local D1 data, miniflare cache)
+.wrangler/
+
+# Local SQLite dev database (replaced by wrangler-managed local D1)
+local.db

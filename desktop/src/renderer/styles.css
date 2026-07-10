@@ -1,0 +1,622 @@
+/* Same display face as the web/mobile apps. */
+@font-face {
+  font-family: "Chesna Grotesk";
+  src: url("fonts/chesnagrotesk-regular-webfont.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --bg: #0a0a0a;
+  --card: #161616;
+  --ring: rgba(255, 255, 255, 0.08);
+  --text: #f5f5f5;
+  --muted: #9a9a9a;
+  --accent: #e50914;
+  --font-display: "Chesna Grotesk", ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* --- two-pane layout: sidebar (search + results) | stage (player) --- */
+
+.app {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 360px;
+  min-width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: #0d0d0d;
+  border-right: 1px solid var(--ring);
+}
+
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--ring);
+}
+
+.logo {
+  flex-shrink: 0;
+  display: inline-flex;
+  color: #fff;
+}
+.logo svg {
+  width: 30px;
+  height: 30px;
+  display: block;
+}
+
+.search {
+  flex: 1;
+  min-width: 0;
+}
+
+.search input {
+  width: 100%;
+  padding: 9px 16px;
+  border-radius: 999px; /* fully rounded */
+  border: 1px solid var(--ring);
+  background: #1c1c1c;
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+}
+
+.search input:focus {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* results — one item per row */
+.results-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.result:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.result.active {
+  background: rgba(229, 9, 20, 0.16);
+}
+
+.result .thumb {
+  position: relative;
+  flex-shrink: 0;
+  width: 54px;
+  height: 81px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.result .thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.result .info {
+  min-width: 0;
+  flex: 1;
+}
+
+.result .r-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* chips — pill style mirroring the mobile/web cards (rating chip is NOT gold) */
+.result .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  white-space: nowrap;
+}
+
+.result-item {
+  border-radius: 10px;
+}
+
+.result {
+  position: relative;
+}
+.chevron {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  transition: transform 0.15s ease;
+}
+.result.open .chevron {
+  transform: rotate(180deg);
+}
+
+/* series expansion: season pills + episode grid */
+.series-panel {
+  padding: 4px 10px 12px 74px; /* align under the metadata column */
+}
+.panel-msg {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 4px 0;
+}
+.season-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.season-pill {
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.season-pill.on {
+  background: #fff;
+  color: #000;
+  border-color: #fff;
+}
+.ep-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ep-tile {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.ep-tile:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.ep-tile.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.status {
+  padding: 4px 16px 16px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* --- stage / player pane --- */
+
+.stage {
+  flex: 1;
+  min-width: 0;
+  background: #000;
+  position: relative;
+}
+
+.player-pane {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  overflow: hidden;
+}
+
+/* hide the mouse cursor when the chrome is hidden during playback */
+.player-pane.cursor-hidden {
+  cursor: none;
+}
+
+.idle {
+  position: absolute;
+  inset: 0;
+  z-index: 18;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--muted);
+  background: #000;
+}
+.idle.hidden {
+  display: none;
+}
+
+.video {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  object-fit: cover;
+}
+
+/* ::cue is suppressed — captions render in our own mono overlay (.cap-overlay). */
+.video::cue {
+  background: transparent;
+  color: transparent;
+}
+
+.idle-logo {
+  display: inline-flex;
+  color: rgba(255, 255, 255, 0.18);
+}
+.idle-logo svg {
+  width: 96px;
+  height: 96px;
+  display: block;
+}
+.idle p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.player-title {
+  position: absolute;
+  top: 20px;
+  left: 22px;
+  z-index: 24;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.player-status {
+  position: absolute;
+  inset: 0;
+  z-index: 23;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+  padding: 0 24px;
+}
+.player-status:empty {
+  display: none;
+}
+
+/* --- custom player chrome (port of StreamPlayerChrome) --- */
+
+.hidden {
+  display: none !important;
+}
+
+/* Captions render in our own monospace overlay (matching the app), not via
+   the browser's native cue rendering. */
+.cap-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 64px;
+  z-index: 12;
+  display: flex;
+  justify-content: center;
+  padding: 0 24px;
+  pointer-events: none;
+  text-align: center;
+}
+.cap-text-band {
+  font-family: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace;
+  font-size: 14px;
+  line-height: 19px;
+  color: #fff;
+  white-space: pre-wrap;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 4px;
+  padding: 4px 12px;
+}
+
+.tap-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+}
+
+.center-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 13;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  padding: 0;
+}
+.center-btn svg {
+  width: 30px;
+  height: 30px;
+}
+
+.buffering {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 13;
+}
+.spinner {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #e50914;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.chrome {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 14;
+  padding: 40px 12px 12px;
+  background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.85));
+}
+
+.scrubber {
+  position: relative;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  touch-action: none;
+}
+.scrub-track {
+  position: relative;
+  width: 100%;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+.scrub-buffered,
+.scrub-played {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 3px;
+}
+.scrub-buffered {
+  background: rgba(255, 255, 255, 0.4);
+}
+.scrub-played {
+  background: #ff0000;
+  width: 0;
+}
+.scrub-knob {
+  position: absolute;
+  left: 0;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #ff0000;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.controls-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 4px;
+}
+.controls-row .spacer {
+  flex: 1;
+}
+.controls-row .time {
+  color: #fff;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ctrl {
+  position: relative;
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+/* `.ctrl` sets display:inline-flex, which would otherwise beat the UA
+   [hidden] rule — so a hidden control (e.g. Episodes when not a series, or CC
+   with no captions) would still show. Re-assert hidden here. */
+.ctrl[hidden] {
+  display: none;
+}
+.ctrl svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+.ctrl.active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 2px;
+  border-radius: 1px;
+  background: #ff0000;
+}
+
+.menu-popup {
+  position: absolute;
+  right: 16px;
+  bottom: 76px;
+  z-index: 15;
+  width: 220px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 6px 0;
+}
+.menu-row,
+.menu-opt {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #fff;
+}
+.menu-row .val {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+}
+.menu-opt {
+  gap: 8px;
+  font-family: ui-monospace, Menlo, monospace;
+  color: rgba(255, 255, 255, 0.7);
+}
+.menu-opt.on {
+  color: #fff;
+}
+.menu-opt .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: transparent;
+}
+.menu-opt.on .dot {
+  background: #e50914;
+}
+.menu-row:hover,
+.menu-opt:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* in-player episode strip (port of EpisodesOverlay) */
+.ep-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 72px;
+  z-index: 15;
+  padding: 16px 12px 12px;
+}
+.ep-strip-label {
+  font-family: var(--font-display);
+  color: #fff;
+  font-size: 11px;
+  letter-spacing: 2px;
+  margin: 0 4px 8px;
+}
+.ep-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.ep-cell {
+  flex: 0 0 auto;
+  min-width: 56px;
+  height: 40px;
+  border-radius: 8px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.ep-cell.on {
+  border: 2px solid #ff0000;
+}
+.ep-cell:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
