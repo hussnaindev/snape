@@ -8,9 +8,12 @@ import { getCuratedProviderMovies, getMovieImages, getSeriesImages } from '@/lib
 import { tmdbImage } from '@/lib/tmdb-image';
 import type { TMDBMovie, TMDBSeries } from '@/types/tmdb';
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
 
-export const runtime = 'edge';
+// NOTE: intentionally NOT `runtime = 'edge'`. This page has no edge-only needs (no D1,
+// no session) — only TMDB fetches. Without the edge runtime Next statically prerenders it
+// to an HTML asset, so the TMDB fan-out below runs at BUILD time, never per request. That
+// is what stops the homepage from exhausting the edge worker's CPU (Error 1102).
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: `${APP_NAME} — Stream Movies Instantly`,
@@ -37,11 +40,10 @@ function extractLogoUrl(images: { logos: { iso_639_1: string | null; file_path: 
 }
 
 export default async function HomePage() {
-  const cookieStore = await cookies();
-  const hasHistory = cookieStore.has('hwh');
-
+  // Guard each fetch: a single TMDB failure (e.g. a 429 under load) must degrade one
+  // row, not reject the whole Promise.all and crash the render ("server-side exception").
   const curatedMovieLists = await Promise.all(
-    CURATED_PROVIDERS.map((c) => getCuratedProviderMovies(c.key)),
+    CURATED_PROVIDERS.map((c) => getCuratedProviderMovies(c.key).catch(() => [])),
   );
 
   const curatedMoviesByKey = Object.fromEntries(
@@ -71,7 +73,7 @@ export default async function HomePage() {
       <div style={{ overflowX: 'clip' }}>
         <HeroSection />
 
-        <ContinueWatchingCarousel hasHistory={hasHistory} />
+        <ContinueWatchingCarousel />
 
         <div className="flex flex-col">
           {CURATED_PROVIDERS.map((curated) => (

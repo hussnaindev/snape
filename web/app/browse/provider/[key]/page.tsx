@@ -49,7 +49,7 @@ export default async function ProviderBrowsePage({ params }: Props) {
   let series: Awaited<ReturnType<typeof getSeriesByProvider>> = [];
 
   if (resolved.kind === 'curated') {
-    const items = await getCuratedProviderMovies(resolved.provider.key);
+    const items = await getCuratedProviderMovies(resolved.provider.key).catch(() => []);
     if (resolved.provider.mediaType === 'series') {
       series = items as typeof series;
     } else {
@@ -57,8 +57,8 @@ export default async function ProviderBrowsePage({ params }: Props) {
     }
   } else {
     [movies, series] = await Promise.all([
-      getMoviesByProvider(resolved.provider.tmdbId),
-      getSeriesByProvider(resolved.provider.tmdbId),
+      getMoviesByProvider(resolved.provider.tmdbId).catch(() => []),
+      getSeriesByProvider(resolved.provider.tmdbId).catch(() => []),
     ]);
   }
 

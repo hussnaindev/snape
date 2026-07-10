@@ -33,8 +33,8 @@ export default async function StreamingProvidersPage() {
   const providersWithData = await Promise.all(
     PREFERRED_PROVIDERS.map(async (p) => {
       const [movies, series] = await Promise.all([
-        getMoviesByProvider(p.tmdbId),
-        getSeriesByProvider(p.tmdbId),
+        getMoviesByProvider(p.tmdbId).catch(() => []),
+        getSeriesByProvider(p.tmdbId).catch(() => []),
       ]);
       return { provider: p, movies, series };
     }),

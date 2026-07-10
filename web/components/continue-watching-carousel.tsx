@@ -145,11 +145,18 @@ function ContinueWatchingCard({
   );
 }
 
-export function ContinueWatchingCarousel({ hasHistory }: { hasHistory: boolean }) {
+export function ContinueWatchingCarousel() {
   // null = not yet read from localStorage; array = loaded (may be empty)
   const [items, setItems] = useState<WatchHistoryEntry[] | null>(null);
+  // Pre-hydration skeleton hint. Read client-side from the `hwh` cookie (set on prior
+  // visits) instead of via server-side cookies() — that kept the homepage statically
+  // cacheable. Starts false so SSR/first client render match (no hydration mismatch).
+  const [hasHistory, setHasHistory] = useState(false);
 
   useEffect(() => {
+    if (typeof document !== 'undefined') {
+      setHasHistory(document.cookie.includes('hwh=1'));
+    }
     const history = getWatchHistory();
     syncWatchHistoryCookie(history); // corrects stale cookies from prior sessions
     setItems(history);
