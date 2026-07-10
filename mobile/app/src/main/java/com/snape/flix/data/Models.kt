@@ -57,6 +57,10 @@ data class SubjectItem(
     // Present on home-feed (`tab-operating`) subjects, empty on search hits.
     val detailUrl: String = "",
     val countryName: String = "",
+    // Adult-content enrichment (populated from adult.json, empty for TMDB-sourced items).
+    val adultCast: List<TmdbCastMember> = emptyList(),
+    val adultRecs: List<TmdbSearchHit> = emptyList(),
+    val adultBackdropUrl: String? = null,
 ) {
     val isSeries: Boolean get() = subjectType == 2
     val year: String get() = releaseDate.take(4)

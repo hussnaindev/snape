@@ -80,9 +80,22 @@ class DetailViewModel : ViewModel() {
     private fun enrich(group: SubjectGroup) {
         val p = group.primary
         viewModelScope.launch {
-            // Resolve the matching TMDB id, then fan out the enrichment calls.
-            val id = TmdbRepository.resolveId(p.isSeries, p.title, p.year) ?: run {
-                _state.update { it?.copy(enriching = false, refreshing = false) }
+            val id = TmdbRepository.resolveId(p.isSeries, p.title, p.year)
+            if (id == null) {
+                // Use embedded adult enrichment data if available, otherwise just clear loading.
+                if (p.adultCast.isNotEmpty() || p.adultBackdropUrl != null) {
+                    _state.update { cur ->
+                        cur?.copy(
+                            cast = cur.cast.ifEmpty { p.adultCast },
+                            recommendations = cur.recommendations.ifEmpty { p.adultRecs },
+                            backdropUrl = cur.backdropUrl ?: p.adultBackdropUrl,
+                            enriching = false,
+                            refreshing = false,
+                        )
+                    }
+                } else {
+                    _state.update { it?.copy(enriching = false, refreshing = false) }
+                }
                 if (p.isSeries) loadPlayableSeasons(group)
                 return@launch
             }
