@@ -9,6 +9,7 @@
     "start": "next start",
     "pages:build": "npx @cloudflare/next-on-pages",
     "preview": "npx wrangler pages dev",
+    "deploy": "npx wrangler pages deploy .vercel/output/static --project-name=snape",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:migrate:local": "wrangler d1 migrations apply snape-db --local",

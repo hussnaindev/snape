@@ -2,6 +2,7 @@
 
 ## Stack
 
+
 - **Runtime** — [Bun](https://bun.sh)
 - **Framework** — [Next.js 15](https://nextjs.org) (App Router)
 - **Styling** — [Tailwind CSS v4](https://tailwindcss.com)
