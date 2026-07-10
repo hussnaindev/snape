@@ -1,5 +1,6 @@
 name = "snape"
 compatibility_date = "2024-09-23"
+account_id = "1f1a4627bf88461816c08edb7277b8b7"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".vercel/output/static"
 
