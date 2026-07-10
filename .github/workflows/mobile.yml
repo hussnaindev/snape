@@ -1,0 +1,50 @@
+name: Build Snape Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mobile/**"
+      - ".github/workflows/mobile.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages
+        run: sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Build release APK
+        # Release (non-debuggable) build — scrolling/animation perf is much
+        # smoother than a debug build. Signed with the debug keystore so it
+        # installs without secrets.
+        run: gradle :app:assembleRelease --no-daemon --stacktrace
+        env:
+          ORG_GRADLE_PROJECT_LAUNCHDARKLY_MOBILE_KEY: ${{ secrets.LAUNCHDARKLY_MOBILE_KEY }}
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: snape-release-apk
+          path: mobile/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error

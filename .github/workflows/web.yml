@@ -1,0 +1,44 @@
+name: Web CI (Cloudflare Pages build gate)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/web.yml"
+  pull_request:
+    paths:
+      - "web/**"
+      - ".github/workflows/web.yml"
+  workflow_dispatch:
+
+# The actual deploy is done by Cloudflare Pages' git integration
+# (Root directory = web/). This workflow is the merge gate: typecheck, lint,
+# and a full next-on-pages build so a broken build never reaches Pages.
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        # Cloudflare Pages builds with `npm ci`; mirror that here so the
+        # committed package-lock.json is what gets validated.
+        run: npm ci
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Build (Cloudflare Pages)
+        run: bun run pages:build

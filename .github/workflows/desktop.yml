@@ -1,0 +1,37 @@
+name: Build Snape macOS app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "desktop/**"
+      - ".github/workflows/desktop.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build universal DMG
+        # electron-builder --mac --universal. Unsigned (MVP) — no notarization.
+        run: npm run dist
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: snape-macos-dmg
+          path: desktop/dist/*.dmg
+          if-no-files-found: error
