@@ -34,6 +34,7 @@ data class AdultItem(
     val backdropUrl: String? = null,
     val cast: List<AdultCastMember>? = null,
     val recommendations: List<String>? = null,
+    val isUpcoming: Boolean = false,
 ) {
     val studioName: String get() = studio ?: title.trim().split(Regex("\\s+")).firstOrNull()?.uppercase() ?: ""
 }
@@ -80,6 +81,7 @@ object AdultRepository {
                 adultCast = adultCast,
                 adultRecs = adultRecs,
                 adultBackdropUrl = item.backdropUrl ?: item.coverUrl,
+                adultIsUpcoming = item.isUpcoming,
             )
             SubjectGroup(primary = subject, variants = listOf(subject))
         }

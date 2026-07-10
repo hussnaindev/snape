@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,14 +19,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -42,7 +40,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.PlatformTextStyle
@@ -197,15 +194,18 @@ fun BrowseScreen(
                             )
                         }
                     } else {
-                        val listState = rememberLazyListState()
-                        LazyColumn(
-                            state = listState,
+                        val gridState = rememberLazyGridState()
+                        LazyVerticalGrid(
+                            state = gridState,
+                            columns = GridCells.Fixed(2),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
                             modifier = Modifier.fillMaxSize(),
                         ) {
                             items(filtered, key = { it.primary.subjectId }) { group ->
                                 AdultCard(item = group.primary, onClick = { onOpenDetail(group) })
                             }
-                            item { Box(Modifier.height(24.dp)) }
                         }
                     }
                 } else {
@@ -336,21 +336,22 @@ private fun AdultCard(
     item: SubjectItem,
     onClick: () -> Unit,
 ) {
-    Box(Modifier.fillMaxWidth().height(1.dp).background(Hairline))
-
+    val cardShape = RoundedCornerShape(12.dp)
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .graphicsLayer { clip = true }
-            .clickable(onClick = onClick)
-            .height(200.dp),
+            .aspectRatio(320f / 362f)
+            .clip(cardShape)
+            .background(CardSurface)
+            .border(0.5.dp, Color(0x30FFFFFF), cardShape)
+            .clickable(onClick = onClick),
     ) {
         if (item.cover != null) {
             AsyncImage(
                 model = item.cover.url,
                 contentDescription = item.title,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = 1.2f; scaleY = 1.2f },
+                modifier = Modifier.fillMaxSize(),
             )
         } else {
             Box(
@@ -358,6 +359,38 @@ private fun AdultCard(
                 contentAlignment = Alignment.Center,
             ) {
                 Text("No Image", color = Color(0x33FFFFFF), fontSize = 11.sp)
+            }
+        }
+
+        StudioLogo(
+            studio = item.title.trim().split(Regex("\\s+")).first().uppercase(),
+            modifier = Modifier.align(Alignment.TopStart).padding(5.dp),
+        )
+
+        item.rating?.takeIf { it > 0 }?.let { r ->
+            Chip(
+                text = "★ ${"%.1f".format(r)}",
+                modifier = Modifier.align(Alignment.TopEnd).padding(5.dp),
+            )
+        }
+
+        if (item.adultIsUpcoming) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .clip(ChipShape)
+                    .background(Color(0xCC000000))
+                    .border(0.5.dp, Color(0xFFFF4444), ChipShape)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    text = "NOT AVAILABLE",
+                    color = Color(0xFFFF4444),
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
+                )
             }
         }
 
@@ -382,21 +415,7 @@ private fun AdultCard(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-
-        StudioLogo(
-            studio = item.title.trim().split(Regex("\\s+")).first().uppercase(),
-            modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
-        )
-
-        item.rating?.takeIf { it > 0 }?.let { r ->
-            Chip(
-                text = "★ ${"%.1f".format(r)}",
-                modifier = Modifier.align(Alignment.TopEnd).padding(5.dp),
-            )
-        }
     }
-
-    Box(Modifier.fillMaxWidth().height(1.dp).background(Hairline))
 }
 
 @Composable

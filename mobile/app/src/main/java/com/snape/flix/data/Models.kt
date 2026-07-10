@@ -61,6 +61,7 @@ data class SubjectItem(
     val adultCast: List<TmdbCastMember> = emptyList(),
     val adultRecs: List<TmdbSearchHit> = emptyList(),
     val adultBackdropUrl: String? = null,
+    val adultIsUpcoming: Boolean = false,
 ) {
     val isSeries: Boolean get() = subjectType == 2
     val year: String get() = releaseDate.take(4)
