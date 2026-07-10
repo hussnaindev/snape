@@ -59,8 +59,8 @@ so the app uses Chromium + Shaka Player. The signed `Cookie` (and mobile
 `User-Agent`) are attached in the main process to every request hitting the
 stream's CDN origin — the desktop equivalent of ExoPlayer's default headers.
 
-> This is the **`mac-desktop-app` branch** of the Snape repo — it contains the
-> desktop app only (no web, no mobile). Other branches hold the web/mobile apps.
+> This is the **`desktop/`** app in the Snape monorepo — Electron only. The
+> sibling `web/` and `mobile/` apps are independent and share no build with it.
 
 ## Run it (dev)
 

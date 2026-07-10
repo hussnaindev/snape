@@ -114,18 +114,19 @@ Anything new that is tappable must get a `.focusHighlight(...)` (before its
 ## Build the APK
 
 ### GitHub Actions (recommended)
-Push to `main` or `feat/android-native` (or run the **Build Snape Android APK**
-workflow manually). The workflow at `.github/workflows/android.yml` builds
+Push a change under `mobile/**` to `main` (or run the **Build Snape Android APK**
+workflow manually). The workflow at `.github/workflows/mobile.yml` builds
 `:app:assembleRelease` (non-debuggable — required for representative scroll perf;
 signed with the debug keystore so it installs without secrets) and uploads the
-`snape-release-apk` artifact. Download it from the run's *Artifacts*.
+`snape-release-apk` artifact. Download it from the run's *Artifacts*. The build
+reads `LAUNCHDARKLY_MOBILE_KEY` from repo secrets (see `docs/DEPLOYMENT.md`).
 
 ### Locally
-Open `android-native/` in **Android Studio** (Koala or newer) and Run, or from a
+Open `mobile/` in **Android Studio** (Koala or newer) and Run, or from a
 shell with a JDK 17 + Android SDK installed:
 
 ```bash
-cd android-native
+cd mobile
 gradle wrapper --gradle-version 8.9   # first time only, generates ./gradlew
 ./gradlew :app:assembleDebug
 # APK -> app/build/outputs/apk/debug/app-debug.apk
@@ -137,6 +138,5 @@ gradle wrapper --gradle-version 8.9   # first time only, generates ./gradlew
 - App icon is the Snape mark (white, padded) on black — an adaptive icon mirroring
   the PWA maskable icon.
 - The MovieBox HMAC key can rotate server-side; if search starts failing, update
-  `SECRET_KEY` in `data/MovieBoxSign.kt` (see `docs/MOVIEBOX.md`).
-- The older `android/` folder is the deprecated Capacitor web-wrapper spike and is
-  unrelated to this native app.
+  `SECRET_KEY` in `data/MovieBoxSign.kt`. The signing details are documented
+  inline in that file.

@@ -10,8 +10,11 @@ and a streaming source but **not** a build — you can work on any one in isolat
 | **Mobile** | [`mobile/`](mobile/) | Kotlin · Jetpack Compose · Media3 · fully client-side | Android APK (GitHub Actions) |
 | **Desktop** | [`desktop/`](desktop/) | Electron · Shaka Player | macOS universal DMG (electron-builder) |
 
-Ads are structurally impossible in every app: none embed a third-party
-iframe/script. Each extracts real stream URLs and plays them in a first-party player.
+The three apps share a product and a streaming source but take different playback
+paths: **mobile** and **desktop** extract real MovieBox stream URLs and play them
+in a fully first-party player (no third-party script — ads are structurally
+impossible). **Web** is the discovery PWA and plays VOD through the Peachify embed
+(`peachify.top`), with first-party `hls.js` for live TV and trailers.
 
 ## Working in this repo
 

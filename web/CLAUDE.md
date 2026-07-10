@@ -1,6 +1,9 @@
-# Heroflix (Snape) — Claude Code Context
+# Heroflix (Snape) — Web app — Claude Code Context
 
-TMDB-powered streaming/discovery app. Deployed to **Cloudflare Pages** (edge) via `@cloudflare/next-on-pages`.
+The **web** app in the Snape monorepo (`web/`). A TMDB-powered streaming/discovery
+PWA. Deployed to **Cloudflare Pages** (edge) via `@cloudflare/next-on-pages`. Sibling
+apps (`mobile/`, `desktop/`) are independent — do not import across folders. All
+paths below are relative to `web/`.
 
 ## Stack
 - Dev runtime: Bun | Framework: Next.js 15 (App Router, React 19) | Styling: Tailwind CSS v4
@@ -22,6 +25,20 @@ middleware.ts     Auth redirect guard for /profile, /settings, /watchlist
 wrangler.toml     Cloudflare Pages + D1 binding config
 drizzle.config.ts Drizzle Kit config
 ```
+
+## Streaming / playback
+- **VOD (movies & series)** plays through the **Peachify embed** — a third-party
+  iframe player at `peachify.top`. `lib/vsembed.ts` builds the embed URLs
+  (`getMovieEmbedUrl`, `getSeriesEmbedUrl`); detail/watch pages under
+  `app/movie/[id]`, `app/series/[id]`, and `app/collection/[id]` render them.
+  See `docs/PEACHIFY.md` for the full embed URL params, `postMessage` control API,
+  and the `PLAYER_EVENT` / `MEDIA_DATA` progress payloads.
+- **Live TV** (`app/channels`, `components/tv-player.tsx`) and homepage trailers
+  (`components/hero-section.tsx`) use first-party **`hls.js`** playback.
+- Provider discovery: `lib/watch-providers.ts` + `lib/curated-providers.ts` power
+  the "where to watch" rows; TMDB metadata via `lib/tmdb.ts`.
+- Note: unlike the mobile/desktop apps (which extract MovieBox streams directly),
+  the web app does **not** do on-device extraction — VOD is delegated to Peachify.
 
 ## Data & Auth
 - Access the DB with `getDb()` from `@/lib/db` — resolves the D1 binding via `@cloudflare/next-on-pages` request context and returns a Drizzle client. Only works in `runtime = 'edge'` handlers.
