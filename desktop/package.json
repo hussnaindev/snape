@@ -19,6 +19,7 @@
   "build": {
     "appId": "com.snape.desktop",
     "productName": "Snape",
+    "icon": "build/icon.png",
     "files": [
       "src/**/*",
       "node_modules/shaka-player/dist/shaka-player.compiled.js"
