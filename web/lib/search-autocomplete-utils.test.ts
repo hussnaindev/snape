@@ -1,14 +1,14 @@
 import { describe, expect, test } from 'bun:test';
+import type { TMDBMovie, TMDBPersonSearchHit, TMDBSeries } from '@/types/tmdb';
 import {
   AUTOCOMPLETE_ITEM_LIMIT,
   AUTOCOMPLETE_MIN_QUERY_LENGTH,
-  flattenAutocompleteItems,
   flatIndexForCategory,
+  flattenAutocompleteItems,
   getNextSelectedIndex,
   isValidSelection,
   shouldFetchAutocomplete,
 } from './search-autocomplete-utils';
-import type { TMDBMovie, TMDBSeries, TMDBPersonSearchHit } from '@/types/tmdb';
 
 function movie(id: number): TMDBMovie {
   return {
@@ -73,12 +73,7 @@ describe('flattenAutocompleteItems', () => {
       series: [series(10)],
       people: [person(100)],
     });
-    expect(flat.map((i) => i.href)).toEqual([
-      '/movie/1',
-      '/movie/2',
-      '/series/10',
-      '/person/100',
-    ]);
+    expect(flat.map((i) => i.href)).toEqual(['/movie/1', '/movie/2', '/series/10', '/person/100']);
   });
 
   test('caps each category at AUTOCOMPLETE_ITEM_LIMIT', () => {
@@ -89,8 +84,8 @@ describe('flattenAutocompleteItems', () => {
       people: [],
     });
     expect(flat).toHaveLength(AUTOCOMPLETE_ITEM_LIMIT);
-    expect(flat[0]!.href).toBe('/movie/1');
-    expect(flat[3]!.href).toBe('/movie/4');
+    expect(flat[0]?.href).toBe('/movie/1');
+    expect(flat[3]?.href).toBe('/movie/4');
   });
 
   test('max flat items when all categories full', () => {
@@ -189,7 +184,7 @@ describe('API vs client limit contract', () => {
     expect(flat).toHaveLength(4);
     expect(flatIndexForCategory(oversized, 'movies', 4)).toBe(4);
     expect(flatIndexForCategory(oversized, 'movies', 5)).toBe(5);
-    expect(flat[3]!.href).toBe('/movie/4');
+    expect(flat[3]?.href).toBe('/movie/4');
     expect(flatIndexForCategory(oversized, 'movies', 4)).not.toBe(flat.length - 1);
   });
 });

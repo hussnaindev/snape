@@ -15,7 +15,10 @@ import { useEffect, useState } from 'react';
 
 const MIN_ENTRIES = WATCH_HISTORY_MIN_ENTRIES;
 
-function ContinueWatchingCard({ entry, prefetch }: { entry: WatchHistoryEntry; prefetch: boolean }) {
+function ContinueWatchingCard({
+  entry,
+  prefetch,
+}: { entry: WatchHistoryEntry; prefetch: boolean }) {
   const backdrop = tmdbImage(entry.backdropPath, 'w780');
   const poster = tmdbImage(entry.posterPath, 'w342');
   const href =
@@ -71,13 +74,16 @@ function ContinueWatchingCard({ entry, prefetch }: { entry: WatchHistoryEntry; p
           <div className="w-full bg-gradient-to-t from-black/85 to-black/50 py-1.5 sm:py-2 rounded-t-md px-3">
             <p className="text-[10px] sm:text-[11px] font-chesna-grotesk uppercase truncate tracking-[0.2em] font-light text-white/90 text-center">
               {entry.title}
-          </p>
+            </p>
           </div>
         </div>
 
         {/* Progress bar */}
         <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/20">
-          <div className="h-full bg-gradient-to-r from-red-900 via-[#E50914] to-red-400" style={{ width: `${entry.progress}%` }} />
+          <div
+            className="h-full bg-gradient-to-r from-red-900 via-[#E50914] to-red-400"
+            style={{ width: `${entry.progress}%` }}
+          />
         </div>
       </div>
 
@@ -123,13 +129,16 @@ function ContinueWatchingCard({ entry, prefetch }: { entry: WatchHistoryEntry; p
           <div className="w-full bg-gradient-to-t from-black/85 to-black/50 py-1.5 sm:py-2 rounded-t-md px-3">
             <p className="text-[11px] sm:text-[12px] font-chesna-grotesk uppercase truncate tracking-[0.2em] font-light text-white/90 text-center">
               {entry.title}
-          </p>
+            </p>
           </div>
         </div>
 
         {/* Progress bar */}
         <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/20">
-          <div className="h-full bg-gradient-to-r from-red-900 via-[#E50914] to-red-400" style={{ width: `${entry.progress}%` }} />
+          <div
+            className="h-full bg-gradient-to-r from-red-900 via-[#E50914] to-red-400"
+            style={{ width: `${entry.progress}%` }}
+          />
         </div>
       </div>
     </Link>

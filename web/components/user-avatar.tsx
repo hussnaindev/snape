@@ -21,8 +21,17 @@ const sizeMap = { sm: 'w-7 h-7', md: 'w-9 h-9', lg: 'w-20 h-20' };
 export function UserAvatar({ name, avatarUrl, size = 'md', className }: Props) {
   if (avatarUrl) {
     return (
-      <div className={cn('relative rounded-full overflow-hidden flex-none', sizeMap[size], className)}>
-        <Image src={avatarUrl} alt={name} fill className="object-cover" sizes="80px" unoptimized={avatarUrl.startsWith('data:')} />
+      <div
+        className={cn('relative rounded-full overflow-hidden flex-none', sizeMap[size], className)}
+      >
+        <Image
+          src={avatarUrl}
+          alt={name}
+          fill
+          className="object-cover"
+          sizes="80px"
+          unoptimized={avatarUrl.startsWith('data:')}
+        />
       </div>
     );
   }
@@ -30,7 +39,11 @@ export function UserAvatar({ name, avatarUrl, size = 'md', className }: Props) {
   const variant = hashName(name) % 8;
   return (
     <div
-      className={cn('rounded-full overflow-hidden flex-none flex-shrink-0', sizeMap[size], className)}
+      className={cn(
+        'rounded-full overflow-hidden flex-none flex-shrink-0',
+        sizeMap[size],
+        className,
+      )}
       aria-label={name}
     >
       <GraphicAvatar variant={variant} />
@@ -129,20 +142,51 @@ function GraphicAvatar({ variant }: { variant: number }) {
           <rect width="40" height="40" fill={`url(#${id}g)`} />
           <circle cx="20" cy="21" r="16" fill={`url(#${id}glow)`} />
           {/* concentric rings — light from below */}
-          <circle cx="20" cy="21" r="12" fill="none" stroke="rgba(125,211,252,0.18)" strokeWidth="1" />
-          <circle cx="20" cy="21" r="8"  fill="none" stroke="rgba(125,211,252,0.22)" strokeWidth="1" />
-          <circle cx="20" cy="21" r="4.5" fill="none" stroke="rgba(125,211,252,0.30)" strokeWidth="1" />
-          <circle cx="20" cy="21" r="2"  fill="rgba(186,230,253,0.6)" />
+          <circle
+            cx="20"
+            cy="21"
+            r="12"
+            fill="none"
+            stroke="rgba(125,211,252,0.18)"
+            strokeWidth="1"
+          />
+          <circle
+            cx="20"
+            cy="21"
+            r="8"
+            fill="none"
+            stroke="rgba(125,211,252,0.22)"
+            strokeWidth="1"
+          />
+          <circle
+            cx="20"
+            cy="21"
+            r="4.5"
+            fill="none"
+            stroke="rgba(125,211,252,0.30)"
+            strokeWidth="1"
+          />
+          <circle cx="20" cy="21" r="2" fill="rgba(186,230,253,0.6)" />
           {/* floating particles */}
           <circle cx="12" cy="14" r="0.8" fill="rgba(186,230,253,0.5)" />
           <circle cx="28" cy="11" r="0.6" fill="rgba(186,230,253,0.4)" />
           <circle cx="31" cy="27" r="0.9" fill="rgba(186,230,253,0.5)" />
-          <circle cx="9"  cy="28" r="0.7" fill="rgba(186,230,253,0.45)" />
+          <circle cx="9" cy="28" r="0.7" fill="rgba(186,230,253,0.45)" />
           <circle cx="16" cy="34" r="0.6" fill="rgba(186,230,253,0.35)" />
           <circle cx="25" cy="32" r="0.8" fill="rgba(186,230,253,0.4)" />
           {/* wave lines */}
-          <path d="M2 30 Q10 27 20 30 Q30 33 38 30" stroke="rgba(125,211,252,0.15)" strokeWidth="1" fill="none" />
-          <path d="M2 35 Q10 32 20 35 Q30 38 38 35" stroke="rgba(125,211,252,0.12)" strokeWidth="1" fill="none" />
+          <path
+            d="M2 30 Q10 27 20 30 Q30 33 38 30"
+            stroke="rgba(125,211,252,0.15)"
+            strokeWidth="1"
+            fill="none"
+          />
+          <path
+            d="M2 35 Q10 32 20 35 Q30 38 38 35"
+            stroke="rgba(125,211,252,0.12)"
+            strokeWidth="1"
+            fill="none"
+          />
         </svg>
       );
 
@@ -230,19 +274,49 @@ function GraphicAvatar({ variant }: { variant: number }) {
           </defs>
           <rect width="40" height="40" fill={`url(#${id}g)`} />
           {/* aurora bands — teal green */}
-          <path d="M-2 2 Q5 18 2 38" stroke="rgba(52,211,153,0.55)" strokeWidth="7" fill="none" strokeLinecap="round" />
-          <path d="M7 0 Q15 16 11 40"  stroke="rgba(16,185,129,0.40)" strokeWidth="6" fill="none" strokeLinecap="round" />
+          <path
+            d="M-2 2 Q5 18 2 38"
+            stroke="rgba(52,211,153,0.55)"
+            strokeWidth="7"
+            fill="none"
+            strokeLinecap="round"
+          />
+          <path
+            d="M7 0 Q15 16 11 40"
+            stroke="rgba(16,185,129,0.40)"
+            strokeWidth="6"
+            fill="none"
+            strokeLinecap="round"
+          />
           {/* aurora bands — purple/indigo */}
-          <path d="M18 0 Q24 18 20 40"  stroke="rgba(139,92,246,0.45)" strokeWidth="7" fill="none" strokeLinecap="round" />
-          <path d="M28 0 Q33 16 30 40"  stroke="rgba(99,102,241,0.35)" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path
+            d="M18 0 Q24 18 20 40"
+            stroke="rgba(139,92,246,0.45)"
+            strokeWidth="7"
+            fill="none"
+            strokeLinecap="round"
+          />
+          <path
+            d="M28 0 Q33 16 30 40"
+            stroke="rgba(99,102,241,0.35)"
+            strokeWidth="5"
+            fill="none"
+            strokeLinecap="round"
+          />
           {/* aurora bands — blue */}
-          <path d="M38 2 Q40 20 38 40"  stroke="rgba(56,189,248,0.3)"  strokeWidth="4" fill="none" strokeLinecap="round" />
+          <path
+            d="M38 2 Q40 20 38 40"
+            stroke="rgba(56,189,248,0.3)"
+            strokeWidth="4"
+            fill="none"
+            strokeLinecap="round"
+          />
           {/* stars */}
-          <circle cx="6"  cy="4"  r="0.9" fill="white" opacity="0.9" />
-          <circle cx="22" cy="3"  r="0.7" fill="white" opacity="0.75" />
-          <circle cx="35" cy="5"  r="1.0" fill="white" opacity="0.8" />
-          <circle cx="14" cy="8"  r="0.6" fill="white" opacity="0.65" />
-          <circle cx="30" cy="9"  r="0.7" fill="white" opacity="0.7" />
+          <circle cx="6" cy="4" r="0.9" fill="white" opacity="0.9" />
+          <circle cx="22" cy="3" r="0.7" fill="white" opacity="0.75" />
+          <circle cx="35" cy="5" r="1.0" fill="white" opacity="0.8" />
+          <circle cx="14" cy="8" r="0.6" fill="white" opacity="0.65" />
+          <circle cx="30" cy="9" r="0.7" fill="white" opacity="0.7" />
         </svg>
       );
 
@@ -264,19 +338,24 @@ function GraphicAvatar({ variant }: { variant: number }) {
           <rect width="40" height="40" fill={`url(#${id}g)`} />
           <rect width="40" height="40" fill={`url(#${id}shine)`} />
           {/* gem outline */}
-          <polygon points="20,3 36,16 32,37 8,37 4,16" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" strokeWidth="0.5" />
+          <polygon
+            points="20,3 36,16 32,37 8,37 4,16"
+            fill="rgba(255,255,255,0.06)"
+            stroke="rgba(255,255,255,0.12)"
+            strokeWidth="0.5"
+          />
           {/* facet lines */}
-          <line x1="20" y1="3"  x2="20" y2="20" stroke="rgba(255,255,255,0.15)" strokeWidth="0.6" />
-          <line x1="4"  y1="16" x2="36" y2="16" stroke="rgba(255,255,255,0.12)" strokeWidth="0.6" />
-          <line x1="4"  y1="16" x2="20" y2="20" stroke="rgba(255,255,255,0.10)" strokeWidth="0.5" />
+          <line x1="20" y1="3" x2="20" y2="20" stroke="rgba(255,255,255,0.15)" strokeWidth="0.6" />
+          <line x1="4" y1="16" x2="36" y2="16" stroke="rgba(255,255,255,0.12)" strokeWidth="0.6" />
+          <line x1="4" y1="16" x2="20" y2="20" stroke="rgba(255,255,255,0.10)" strokeWidth="0.5" />
           <line x1="36" y1="16" x2="20" y2="20" stroke="rgba(255,255,255,0.10)" strokeWidth="0.5" />
-          <line x1="8"  y1="37" x2="20" y2="20" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" />
+          <line x1="8" y1="37" x2="20" y2="20" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" />
           <line x1="32" y1="37" x2="20" y2="20" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" />
           {/* bright top facet */}
           <polygon points="20,3 36,16 20,20" fill="rgba(255,255,255,0.12)" />
           {/* highlight dot */}
           <circle cx="26" cy="10" r="2" fill="rgba(255,255,255,0.4)" />
-          <circle cx="27" cy="9"  r="1" fill="rgba(255,255,255,0.6)" />
+          <circle cx="27" cy="9" r="1" fill="rgba(255,255,255,0.6)" />
         </svg>
       );
 
@@ -323,8 +402,14 @@ function GraphicAvatar({ variant }: { variant: number }) {
             <rect x="0" y="0" width="40" height="28" />
           </clipPath>
           <circle cx="20" cy="28" r="10" fill="rgba(251,191,36,0.7)" clipPath={`url(#${id}clip)`} />
-          <circle cx="20" cy="28" r="7"  fill="rgba(254,240,138,0.75)" clipPath={`url(#${id}clip)`} />
-          <circle cx="20" cy="28" r="4"  fill="rgba(255,251,235,0.8)"  clipPath={`url(#${id}clip)`} />
+          <circle
+            cx="20"
+            cy="28"
+            r="7"
+            fill="rgba(254,240,138,0.75)"
+            clipPath={`url(#${id}clip)`}
+          />
+          <circle cx="20" cy="28" r="4" fill="rgba(255,251,235,0.8)" clipPath={`url(#${id}clip)`} />
         </svg>
       );
   }

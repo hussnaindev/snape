@@ -1,20 +1,25 @@
 import { CollectionCard } from '@/components/collection-card';
 import { InfiniteScrollSentinel } from '@/components/infinite-scroll-sentinel';
 import { MovieCardGrid } from '@/components/movie-card-grid';
-import { SeriesCardGrid } from '@/components/series-card-grid';
 import { ParallaxContent } from '@/components/parallax-content';
 import { SearchActorGrid } from '@/components/search-actor-grid';
 import { SearchHeader, SearchHeaderFallback } from '@/components/search-header';
-import { SectionDivider } from '@/components/ui/section-divider';
 import { parseSearchTab } from '@/components/search-tab-chips';
+import { SeriesCardGrid } from '@/components/series-card-grid';
+import { SectionDivider } from '@/components/ui/section-divider';
 import { APP_NAME } from '@/lib/config';
 import { buildPageHref, mergePaginatedResults, parsePageParam } from '@/lib/paginated-tmdb';
-import { chunk } from '@/lib/utils';
 import { searchCollections, searchMovies, searchPeople, searchTvShows } from '@/lib/tmdb';
 import { filterHasImages } from '@/lib/tmdb-filters';
+import { chunk } from '@/lib/utils';
 
 const ROW_SIZE = 6;
-import type { TMDBCollectionSearchHit, TMDBMovie, TMDBPersonSearchHit, TMDBSeries } from '@/types/tmdb';
+import type {
+  TMDBCollectionSearchHit,
+  TMDBMovie,
+  TMDBPersonSearchHit,
+  TMDBSeries,
+} from '@/types/tmdb';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 
@@ -50,19 +55,19 @@ export default async function SearchPage({ searchParams }: Props) {
         movieSearch = await searchMovies(query, 1, undefined, false);
         moviePage = parsePageParam(pageParam, movieSearch.total_pages);
         if (movieSearch.resolvedQuery) {
+          const resolved = movieSearch.resolvedQuery;
           movies = filterHasImages(
-            await mergePaginatedResults(moviePage, (p) =>
-              searchMovies(query, p, movieSearch!.resolvedQuery!, false),
-            ),
+            await mergePaginatedResults(moviePage, (p) => searchMovies(query, p, resolved, false)),
           );
         }
       } else if (activeTab === 'series') {
         seriesSearch = await searchTvShows(query, 1, undefined, false);
         seriesPage = parsePageParam(pageParam, seriesSearch.total_pages);
         if (seriesSearch.resolvedQuery) {
+          const resolved = seriesSearch.resolvedQuery;
           series = filterHasImages(
             await mergePaginatedResults(seriesPage, (p) =>
-              searchTvShows(query, p, seriesSearch!.resolvedQuery!, false),
+              searchTvShows(query, p, resolved, false),
             ),
           );
         }
@@ -139,7 +144,7 @@ export default async function SearchPage({ searchParams }: Props) {
                 </div>
                 <div className="hidden sm:block">
                   {chunk(collections, ROW_SIZE).map((row, i) => (
-                    <section key={i}>
+                    <section key={row.map((c) => c.id).join('-')}>
                       <ParallaxContent direction={i % 2 === 0 ? 'right' : 'left'} speed={120}>
                         <div className="grid grid-cols-[repeat(auto-fit,minmax(165px,210px))] justify-center gap-3 px-4 md:px-8">
                           {row.map((collection) => (

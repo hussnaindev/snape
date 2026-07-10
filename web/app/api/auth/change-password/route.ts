@@ -8,7 +8,6 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-
 const schema = z.object({
   newPassword: z.string().min(8).max(128),
 });

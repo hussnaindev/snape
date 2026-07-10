@@ -24,7 +24,10 @@ export const CURATED_PROVIDERS: ReadonlyArray<{
   { key: 'anime', label: 'Anime', brandColor: '#A855F7', mediaType: 'movie' },
 ] as const;
 
-export function curatedProviderMeta(key: CuratedProviderKey): { label: string; brandColor: string } {
+export function curatedProviderMeta(key: CuratedProviderKey): {
+  label: string;
+  brandColor: string;
+} {
   const meta = CURATED_PROVIDERS.find((p) => p.key === key);
   if (!meta) return { label: key, brandColor: '#ffffff' };
   return { label: meta.label, brandColor: meta.brandColor };

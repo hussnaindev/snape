@@ -4,9 +4,7 @@ export async function mergePaginatedResults<T extends { id: number }>(
   fetchPage: (page: number) => Promise<{ results: T[] }>,
 ): Promise<T[]> {
   const capped = Math.max(1, maxPage);
-  const pages = await Promise.all(
-    Array.from({ length: capped }, (_, i) => fetchPage(i + 1)),
-  );
+  const pages = await Promise.all(Array.from({ length: capped }, (_, i) => fetchPage(i + 1)));
   const seen = new Set<number>();
   const merged: T[] = [];
   for (const page of pages) {
@@ -19,10 +17,7 @@ export async function mergePaginatedResults<T extends { id: number }>(
   return merged;
 }
 
-export function parsePageParam(
-  raw: string | undefined,
-  totalPages: number,
-): number {
+export function parsePageParam(raw: string | undefined, totalPages: number): number {
   const n = Number(raw ?? 1);
   if (!Number.isFinite(n) || n < 1) return 1;
   return Math.min(Math.floor(n), Math.max(1, totalPages));

@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'bun:test';
+import type { TMDBMovie, TMDBSeries } from '@/types/tmdb';
 import {
   filterReleasedSearchMovies,
   filterReleasedSearchSeries,
   isReleasedOnOrBeforeCutoff,
 } from './search-release-filter';
-import type { TMDBMovie, TMDBSeries } from '@/types/tmdb';
 
 const CUTOFF = '2026-05-26';
 

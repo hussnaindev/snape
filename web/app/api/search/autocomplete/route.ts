@@ -1,4 +1,4 @@
-import { searchMovies, searchTvShows, searchPeople } from '@/lib/tmdb';
+import { searchMovies, searchPeople, searchTvShows } from '@/lib/tmdb';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'edge';

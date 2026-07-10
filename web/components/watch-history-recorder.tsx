@@ -57,7 +57,18 @@ export function WatchHistoryRecorder({
       };
       uploadEntryToServer(serverEntry);
     }
-  }, [id, type, title, posterPath, backdropPath, year, season, episode, vote_average, isAuthenticated]);
+  }, [
+    id,
+    type,
+    title,
+    posterPath,
+    backdropPath,
+    year,
+    season,
+    episode,
+    vote_average,
+    isAuthenticated,
+  ]);
 
   return null;
 }

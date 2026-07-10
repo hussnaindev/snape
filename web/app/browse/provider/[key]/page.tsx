@@ -5,10 +5,10 @@ import { MovieCard } from '@/components/movie-card';
 import { ParallaxContent } from '@/components/parallax-content';
 import { SeriesCard } from '@/components/series-card';
 import { SectionDivider } from '@/components/ui/section-divider';
-import { chunk } from '@/lib/utils';
 import { CURATED_PROVIDERS } from '@/lib/curated-providers';
 import { getCuratedProviderMovies, getMoviesByProvider, getSeriesByProvider } from '@/lib/tmdb';
 import { filterHasImages } from '@/lib/tmdb-filters';
+import { chunk } from '@/lib/utils';
 import { PREFERRED_PROVIDERS } from '@/lib/watch-providers';
 
 const ROW_SIZE = 6;
@@ -31,9 +31,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { key } = await params;
   const resolved = resolveProvider(key);
   if (!resolved) return { title: 'Provider Not Found' };
-  const suffix = resolved.kind === 'curated'
-    ? (resolved.provider.mediaType === 'series' ? 'Series' : 'Movies')
-    : 'Movies & Series';
+  const suffix =
+    resolved.kind === 'curated'
+      ? resolved.provider.mediaType === 'series'
+        ? 'Series'
+        : 'Movies'
+      : 'Movies & Series';
   return { title: `${resolved.provider.label} — Browse ${suffix}` };
 }
 
@@ -83,7 +86,7 @@ export default async function ProviderBrowsePage({ params }: Props) {
             </div>
             <div className="hidden sm:block">
               {chunk(filteredMovies, ROW_SIZE).map((row, i) => (
-                <section key={i}>
+                <section key={row.map((m) => m.id).join('-')}>
                   <ParallaxContent direction={i % 2 === 0 ? 'right' : 'left'} speed={120}>
                     <div className="grid grid-cols-[repeat(auto-fit,minmax(165px,210px))] justify-center gap-3 px-4 md:px-8">
                       {row.map((movie) => (
@@ -111,7 +114,7 @@ export default async function ProviderBrowsePage({ params }: Props) {
             </div>
             <div className="hidden sm:block">
               {chunk(filteredSeries, ROW_SIZE).map((row, i) => (
-                <section key={i}>
+                <section key={row.map((s) => s.id).join('-')}>
                   <ParallaxContent direction={i % 2 === 0 ? 'left' : 'right'} speed={120}>
                     <div className="grid grid-cols-[repeat(auto-fit,minmax(165px,210px))] justify-center gap-3 px-4 md:px-8">
                       {row.map((s) => (

@@ -28,6 +28,6 @@
     }
   },
   "files": {
-    "ignore": [".next", "node_modules", "dist", "*.config.mjs"]
+    "ignore": [".next", ".vercel", "node_modules", "dist", "public", "*.config.mjs"]
   }
 }

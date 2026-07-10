@@ -1,6 +1,6 @@
+import type { Metadata } from 'next';
 // TV Channels page — disabled. Uncomment block below to re-enable.
 import { notFound } from 'next/navigation';
-import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'TV Channels',

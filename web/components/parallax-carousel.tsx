@@ -1,9 +1,12 @@
 'use client';
 
 import { registerParallax } from '@/lib/parallax-controller';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 
-export function ParallaxCarousel({ children, className }: { children: ReactNode; className?: string }) {
+export function ParallaxCarousel({
+  children,
+  className,
+}: { children: ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

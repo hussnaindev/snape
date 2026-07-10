@@ -1,8 +1,8 @@
 'use client';
 
 import { tmdbImage } from '@/lib/tmdb-image';
+import type { TMDBMovie, TMDBPersonSearchHit, TMDBSeries } from '@/types/tmdb';
 import Link from 'next/link';
-import type { TMDBMovie, TMDBSeries, TMDBPersonSearchHit } from '@/types/tmdb';
 
 interface SearchDropdownProps {
   movies: TMDBMovie[];
@@ -34,7 +34,16 @@ export function SearchDropdown({
     <div className="absolute top-full left-0 right-0 mt-2 bg-black/80 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-[70] animate-fade-in">
       {loading && (
         <div className="flex items-center justify-center gap-2 px-4 py-5 text-white/40 text-sm">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
+          <svg
+            aria-hidden="true"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="animate-spin"
+          >
             <path d="M21 12a9 9 0 1 1-6.219-8.56" />
           </svg>
           Searching…
@@ -126,7 +135,17 @@ export function SearchDropdown({
           className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/5 border-t border-white/10 transition-colors"
         >
           View all results
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
             <polyline points="9 18 15 12 9 6" />
           </svg>
         </Link>
@@ -155,20 +174,23 @@ function SuggestionItem({
       href={href}
       onClick={onClose}
       className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-        selected
-          ? 'bg-white/10 text-white'
-          : 'text-white/70 hover:text-white hover:bg-white/5'
+        selected ? 'bg-white/10 text-white' : 'text-white/70 hover:text-white hover:bg-white/5'
       }`}
     >
       {image ? (
-        <img
-          src={image}
-          alt=""
-          className="w-8 h-12 rounded object-cover shrink-0 bg-white/5"
-        />
+        <img src={image} alt="" className="w-8 h-12 rounded object-cover shrink-0 bg-white/5" />
       ) : (
         <div className="w-8 h-12 rounded bg-white/5 shrink-0 flex items-center justify-center ring-1 ring-inset ring-white/10">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white/20">
+          <svg
+            aria-hidden="true"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            className="text-white/20"
+          >
             <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />
             <line x1="7" y1="2" x2="7" y2="22" />
             <line x1="17" y1="2" x2="17" y2="22" />

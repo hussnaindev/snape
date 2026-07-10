@@ -21,7 +21,7 @@ export function SeriesCardGrid({ series, parallaxRows }: Props) {
         </div>
         <div className="hidden sm:block">
           {chunk(series, ROW_SIZE).map((row, i) => (
-            <section key={i} className="relative z-0 hover:z-50">
+            <section key={row.map((s) => s.id).join('-')} className="relative z-0 hover:z-50">
               <ParallaxContent direction={i % 2 === 0 ? 'left' : 'right'} speed={120}>
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(165px,210px))] justify-center gap-3 px-4 md:px-8">
                   {row.map((s) => (

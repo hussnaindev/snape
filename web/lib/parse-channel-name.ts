@@ -72,10 +72,7 @@ export function parseChannelName(rawName: string): ParsedChannelName {
   const tags = extractTags(trimmed);
   const bracketAt = trimmed.search(OPEN_BRACKET);
 
-  let name =
-    bracketAt === -1
-      ? trimmed
-      : trimmed.slice(0, bracketAt).trim();
+  let name = bracketAt === -1 ? trimmed : trimmed.slice(0, bracketAt).trim();
 
   // e.g. "(1080p) ESPN" — no leading name before first bracket
   if (!name) {

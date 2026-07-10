@@ -1,3 +1,7 @@
+const SKELETON_CARDS = Array.from({ length: 12 }, (_, i) => `card-${i}`);
+const SKELETON_ROWS = Array.from({ length: 3 }, (_, i) => `row-${i}`);
+const SKELETON_COLS = Array.from({ length: 6 }, (_, i) => `col-${i}`);
+
 export default function Loading() {
   return (
     <>
@@ -13,17 +17,23 @@ export default function Loading() {
         </section>
         {/* Mobile */}
         <div className="grid grid-cols-2 gap-3 px-4 sm:hidden">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="aspect-[2/3] rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)]" />
+          {SKELETON_CARDS.map((key) => (
+            <div
+              key={key}
+              className="aspect-[2/3] rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)]"
+            />
           ))}
         </div>
         {/* Desktop */}
         <div className="hidden sm:block">
-          {Array.from({ length: 3 }).map((_, row) => (
-            <section key={row}>
+          {SKELETON_ROWS.map((rowKey) => (
+            <section key={rowKey}>
               <div className="grid grid-cols-[repeat(auto-fit,minmax(165px,210px))] justify-center gap-3 px-4 md:px-8">
-                {Array.from({ length: 6 }).map((_, col) => (
-                  <div key={col} className="aspect-[2/3] rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)]" />
+                {SKELETON_COLS.map((colKey) => (
+                  <div
+                    key={colKey}
+                    className="aspect-[2/3] rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)]"
+                  />
                 ))}
               </div>
             </section>

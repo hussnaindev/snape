@@ -1,4 +1,4 @@
- 'use client';
+'use client';
 
 import { tmdbImage, tmdbResponsive } from '@/lib/tmdb-image';
 import Image from 'next/image';
@@ -44,11 +44,15 @@ export function FloatingAuthBg() {
         if (!res.ok) throw new Error('tmdb proxy failed');
         if (!json || typeof json !== 'object') throw new Error('bad payload');
 
-        const data = (json as { ok?: unknown; data?: unknown }).data as { results?: unknown } | undefined;
+        const data = (json as { ok?: unknown; data?: unknown }).data as
+          | { results?: unknown }
+          | undefined;
+        // biome-ignore lint/suspicious/noExplicitAny: TMDB API response shape is dynamic
         const results = (data?.results as any[]) ?? [];
         const mapped: Poster[] = results
           .map((r) => {
-            const posterPath = typeof r?.poster_path === 'string' ? (r.poster_path as string) : null;
+            const posterPath =
+              typeof r?.poster_path === 'string' ? (r.poster_path as string) : null;
             if (!posterPath) return null;
             const title =
               (typeof r?.title === 'string' && r.title) ||
@@ -84,7 +88,10 @@ export function FloatingAuthBg() {
   }, [posters]);
 
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none select-none" aria-hidden="true">
+    <div
+      className="absolute inset-0 overflow-hidden pointer-events-none select-none"
+      aria-hidden="true"
+    >
       <style>{`
         @keyframes authMarqueeLeft {
           0% { transform: translateX(0); }
@@ -107,7 +114,7 @@ export function FloatingAuthBg() {
 
           return (
             <div
-              key={rowIdx}
+              key={row.map((p) => p.posterPath ?? '').join('|')}
               className="relative overflow-hidden"
             >
               <div

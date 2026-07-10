@@ -109,14 +109,14 @@ export function SeriesDetailHero({
         playerContainerRef.current
           ?.requestFullscreen()
           .then(() =>
-            (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock?.(
-              'landscape',
-            )?.catch(() => {}),
+            (screen.orientation as unknown as { lock?: (o: string) => Promise<void> })
+              .lock?.('landscape')
+              ?.catch(() => {}),
           )
           .catch(() => {});
       }, 300);
     }
-  }, [searchParams]);
+  }, [searchParams, seriesId]);
 
   const [showVideo, setShowVideo] = useState(false);
   const [videoVisible, setVideoVisible] = useState(false);
@@ -231,9 +231,9 @@ export function SeriesDetailHero({
       playerContainerRef.current
         ?.requestFullscreen()
         .then(() =>
-          (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock?.(
-            'landscape',
-          )?.catch(() => {}),
+          (screen.orientation as unknown as { lock?: (o: string) => Promise<void> })
+            .lock?.('landscape')
+            ?.catch(() => {}),
         )
         .catch(() => {});
     }
@@ -279,7 +279,16 @@ export function SeriesDetailHero({
       ...(seasons.length > 0 && initialSeason ? { onEpisodes: handleEpisodes } : {}),
     });
     return () => setControls(null);
-  }, [playerActive, playerVisible, isFullscreen, handleFullscreen, handleEpisodes, setControls]);
+  }, [
+    playerActive,
+    playerVisible,
+    isFullscreen,
+    handleFullscreen,
+    handleEpisodes,
+    setControls,
+    initialSeason,
+    seasons.length,
+  ]);
 
   // Parallax: backdrop vertical movement
   useEffect(() => {
@@ -438,7 +447,17 @@ export function SeriesDetailHero({
               className="flex items-center justify-center bg-black/70 text-white p-2 rounded-full border border-white/20 hover:border-white/50 transition-all duration-300 cursor-pointer"
               aria-label="Exit fullscreen"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
                 <path d="M8 3v3a2 2 0 0 1-2 2H3" />
                 <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
                 <path d="M3 16h3a2 2 0 0 1 2 2v3" />
@@ -469,6 +488,7 @@ export function SeriesDetailHero({
             <div
               className="fixed inset-0 z-[59] bg-black/60"
               onClick={() => setEpisodePanelOpen(false)}
+              onKeyDown={() => {}}
               aria-hidden="true"
             />
             <div className="fixed top-0 right-0 bottom-0 z-[60] w-[26rem] max-w-[92vw] bg-[#0f0f10] border-l border-white/10 flex flex-col shadow-2xl animate-slide-in-right">
@@ -480,7 +500,16 @@ export function SeriesDetailHero({
                   aria-label="Close episodes panel"
                   className="text-white/50 hover:text-white transition-colors p-1 cursor-pointer"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    aria-hidden="true"
+                  >
                     <line x1="18" y1="6" x2="6" y2="18" />
                     <line x1="6" y1="6" x2="18" y2="18" />
                   </svg>
@@ -568,7 +597,7 @@ export function SeriesDetailHero({
                 )}
               </div>
 
-                  <div className="flex flex-nowrap items-center gap-1 md:gap-2 mt-2 overflow-x-auto no-scrollbar">
+              <div className="flex flex-nowrap items-center gap-1 md:gap-2 mt-2 overflow-x-auto no-scrollbar">
                 {status && (
                   <span
                     className={cn(

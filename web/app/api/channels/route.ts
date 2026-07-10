@@ -3,10 +3,7 @@
 export const runtime = 'edge';
 
 export async function GET() {
-  return Response.json(
-    { ok: false, error: 'Not found', code: 404 },
-    { status: 404 },
-  );
+  return Response.json({ ok: false, error: 'Not found', code: 404 }, { status: 404 });
 }
 
 /*

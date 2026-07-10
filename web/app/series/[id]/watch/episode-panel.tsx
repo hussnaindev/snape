@@ -36,9 +36,9 @@ export function EpisodePanel({
 
   const mainSeasons = seasons.filter((s) => s.season_number !== 0 && s.episode_count > 0);
   const hasSpecials = seasons.some((s) => s.season_number === 0 && s.episode_count > 0);
-  const allVisibleSeasons = hasSpecials
-    ? [...mainSeasons, seasons.find((s) => s.season_number === 0)!]
-    : mainSeasons;
+  const specialsSeason = seasons.find((s) => s.season_number === 0);
+  const allVisibleSeasons =
+    hasSpecials && specialsSeason ? [...mainSeasons, specialsSeason] : mainSeasons;
 
   useEffect(() => {
     if (selectedSeason === initialSeason.season_number) {
@@ -62,9 +62,8 @@ export function EpisodePanel({
     };
   }, [selectedSeason, seriesId, initialSeason]);
 
-  const airedEpisodes = seasonData?.episodes?.filter(
-    (e) => e.air_date !== null && e.air_date <= TODAY,
-  ) ?? [];
+  const airedEpisodes =
+    seasonData?.episodes?.filter((e) => e.air_date !== null && e.air_date <= TODAY) ?? [];
 
   const currentEp = seasonData?.episodes?.find(
     (e) => e.season_number === currentSeasonNum && e.episode_number === currentEpisodeNum,
@@ -84,6 +83,7 @@ export function EpisodePanel({
         aria-label="Episode list"
       >
         <svg
+          aria-hidden="true"
           width="14"
           height="14"
           viewBox="0 0 24 24"
@@ -103,7 +103,11 @@ export function EpisodePanel({
 
       {/* Panel */}
       {open && (
-        <div className="absolute inset-0 z-30 flex" onClick={() => setOpen(false)}>
+        <div
+          className="absolute inset-0 z-30 flex"
+          onClick={() => setOpen(false)}
+          onKeyDown={() => {}}
+        >
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/60" />
 
@@ -111,13 +115,16 @@ export function EpisodePanel({
           <div
             className="relative ml-auto w-full max-w-sm h-full bg-[#111] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-none">
               <div>
                 <p className="text-white font-semibold text-sm line-clamp-1">{seriesName}</p>
                 <p className="text-white/40 text-xs mt-0.5">
-                  {allVisibleSeasons.length > 1 ? `Season ${selectedSeason}` : seasonData?.name ?? 'Loading...'}
+                  {allVisibleSeasons.length > 1
+                    ? `Season ${selectedSeason}`
+                    : (seasonData?.name ?? 'Loading...')}
                 </p>
               </div>
               <button
@@ -127,6 +134,7 @@ export function EpisodePanel({
                 aria-label="Close"
               >
                 <svg
+                  aria-hidden="true"
                   width="18"
                   height="18"
                   viewBox="0 0 24 24"
@@ -167,8 +175,8 @@ export function EpisodePanel({
             <div className="flex-1 overflow-y-auto">
               {loading ? (
                 <div className="flex flex-col gap-3 p-4">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="flex gap-3 animate-pulse">
+                  {Array.from({ length: 6 }, (_, i) => `panel-skel-${i}`).map((key) => (
+                    <div key={key} className="flex gap-3 animate-pulse">
                       <div className="flex-none w-20 aspect-video rounded bg-white/10" />
                       <div className="flex-1 space-y-1.5 py-0.5">
                         <div className="h-2.5 bg-white/10 rounded w-1/4" />
@@ -209,6 +217,7 @@ export function EpisodePanel({
                           ) : (
                             <div className="absolute inset-0 flex items-center justify-center">
                               <svg
+                                aria-hidden="true"
                                 width="16"
                                 height="16"
                                 viewBox="0 0 24 24"

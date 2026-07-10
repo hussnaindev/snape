@@ -68,18 +68,24 @@ export default function LoginPage() {
                   </div>
                   <div>
                     <p className="text-white font-semibold leading-tight">Continue watching</p>
-                    <p className="text-white/45 text-xs leading-tight">Your next episode is waiting.</p>
+                    <p className="text-white/45 text-xs leading-tight">
+                      Your next episode is waiting.
+                    </p>
                   </div>
                 </div>
 
                 <div className="mt-7 space-y-3">
                   <div className="flex items-start gap-2.5">
                     <DotIcon />
-                    <p className="text-white/55 text-sm leading-snug">Jump back in with one tap—right where you left off.</p>
+                    <p className="text-white/55 text-sm leading-snug">
+                      Jump back in with one tap—right where you left off.
+                    </p>
                   </div>
                   <div className="flex items-start gap-2.5">
                     <DotIcon />
-                    <p className="text-white/55 text-sm leading-snug">Keep your profile, history, and picks in sync.</p>
+                    <p className="text-white/55 text-sm leading-snug">
+                      Keep your profile, history, and picks in sync.
+                    </p>
                   </div>
                   <div className="flex items-start gap-2.5">
                     <DotIcon />
@@ -109,88 +115,94 @@ export default function LoginPage() {
                 </div>
                 <p className="text-white/40 text-sm mb-8">Pick up where you left off.</p>
 
-            {error && (
-              <div className="mb-6 flex items-start gap-2.5 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-                <AlertIcon />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email */}
-              <div>
-                <label htmlFor="email" className="text-white/60 text-xs font-medium mb-1.5 block">
-                  Email
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none">
-                    <MailIcon size={16} />
-                  </span>
-                  <input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:border-white/40 transition-colors"
-                    placeholder="Enter your email"
-                  />
-                </div>
-              </div>
-
-              {/* Password */}
-              <div>
-                <label htmlFor="password" className="text-white/60 text-xs font-medium mb-1.5 block">
-                  Password
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none">
-                    <LockIcon size={16} />
-                  </span>
-                  <input
-                    id="password"
-                    type={showPw ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-10 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:border-white/40 transition-colors"
-                    placeholder="Enter your password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPw(!showPw)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
-                    tabIndex={-1}
-                    aria-label={showPw ? 'Hide password' : 'Show password'}
-                  >
-                    {showPw ? <EyeOffIcon /> : <EyeIcon />}
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-white text-black font-semibold text-sm py-3 rounded-lg hover:bg-white/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2 flex items-center justify-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <SpinnerIcon /> Logging in…
-                  </>
-                ) : (
-                  'Sign in'
+                {error && (
+                  <div className="mb-6 flex items-start gap-2.5 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                    <AlertIcon />
+                    <span>{error}</span>
+                  </div>
                 )}
-              </button>
-            </form>
 
-            <p className="mt-6 text-center text-white/40 text-sm lg:hidden">
-              Don&apos;t have an account?{' '}
-              <Link href="/auth/signup" className="text-white hover:underline font-medium">
-                Sign up
-              </Link>
-            </p>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Email */}
+                  <div>
+                    <label
+                      htmlFor="email"
+                      className="text-white/60 text-xs font-medium mb-1.5 block"
+                    >
+                      Email
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none">
+                        <MailIcon size={16} />
+                      </span>
+                      <input
+                        id="email"
+                        type="email"
+                        autoComplete="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:border-white/40 transition-colors"
+                        placeholder="Enter your email"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Password */}
+                  <div>
+                    <label
+                      htmlFor="password"
+                      className="text-white/60 text-xs font-medium mb-1.5 block"
+                    >
+                      Password
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none">
+                        <LockIcon size={16} />
+                      </span>
+                      <input
+                        id="password"
+                        type={showPw ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-10 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:border-white/40 transition-colors"
+                        placeholder="Enter your password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPw(!showPw)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                        tabIndex={-1}
+                        aria-label={showPw ? 'Hide password' : 'Show password'}
+                      >
+                        {showPw ? <EyeOffIcon /> : <EyeIcon />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-white text-black font-semibold text-sm py-3 rounded-lg hover:bg-white/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2 flex items-center justify-center gap-2"
+                  >
+                    {loading ? (
+                      <>
+                        <SpinnerIcon /> Logging in…
+                      </>
+                    ) : (
+                      'Sign in'
+                    )}
+                  </button>
+                </form>
+
+                <p className="mt-6 text-center text-white/40 text-sm lg:hidden">
+                  Don&apos;t have an account?{' '}
+                  <Link href="/auth/signup" className="text-white hover:underline font-medium">
+                    Sign up
+                  </Link>
+                </p>
               </div>
             </div>
           </div>
@@ -206,7 +218,17 @@ function DotIcon() {
 
 function MailIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <rect x="2" y="4" width="20" height="16" rx="2" />
       <path d="m22 7-10 7L2 7" />
     </svg>
@@ -215,7 +237,17 @@ function MailIcon({ size = 16 }: { size?: number }) {
 
 function LockIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <rect x="3" y="11" width="18" height="11" rx="2" />
       <path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </svg>
@@ -224,7 +256,17 @@ function LockIcon({ size = 16 }: { size?: number }) {
 
 function EyeIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
       <circle cx="12" cy="12" r="3" />
     </svg>
@@ -233,7 +275,17 @@ function EyeIcon() {
 
 function EyeOffIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
       <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
       <line x1="1" y1="1" x2="23" y2="23" />
@@ -243,7 +295,18 @@ function EyeOffIcon() {
 
 function AlertIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-none mt-0.5" aria-hidden="true">
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="flex-none mt-0.5"
+      aria-hidden="true"
+    >
       <circle cx="12" cy="12" r="10" />
       <line x1="12" y1="8" x2="12" y2="12" />
       <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -253,7 +316,17 @@ function AlertIcon() {
 
 function SpinnerIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="animate-spin" aria-hidden="true">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      className="animate-spin"
+      aria-hidden="true"
+    >
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>
   );

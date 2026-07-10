@@ -21,13 +21,20 @@ interface Props {
   variant?: 'carousel' | 'list';
 }
 
-export function EpisodeGuide({ seriesId, seasons, initialSeason, initialSelectedSeason, onSelect, variant = 'carousel' }: Props) {
+export function EpisodeGuide({
+  seriesId,
+  seasons,
+  initialSeason,
+  initialSelectedSeason,
+  onSelect,
+  variant = 'carousel',
+}: Props) {
   // Filter out specials (season 0) unless it's the only season
   const mainSeasons = seasons.filter((s) => s.season_number !== 0 && s.episode_count > 0);
   const hasSpecials = seasons.some((s) => s.season_number === 0 && s.episode_count > 0);
-  const allVisibleSeasons = hasSpecials
-    ? [...mainSeasons, seasons.find((s) => s.season_number === 0)!]
-    : mainSeasons;
+  const specialsSeason = seasons.find((s) => s.season_number === 0);
+  const allVisibleSeasons =
+    hasSpecials && specialsSeason ? [...mainSeasons, specialsSeason] : mainSeasons;
 
   const defaultSeasonNum = initialSelectedSeason ?? initialSeason.season_number;
   const [selectedSeason, setSelectedSeason] = useState(defaultSeasonNum);
@@ -81,7 +88,9 @@ export function EpisodeGuide({ seriesId, seasons, initialSeason, initialSelected
 
       {/* Season tabs */}
       {allVisibleSeasons.length > 1 && (
-        <div className={`flex gap-2 overflow-x-auto no-scrollbar pb-3 ${variant === 'carousel' ? 'px-4 md:px-8' : ''}`}>
+        <div
+          className={`flex gap-2 overflow-x-auto no-scrollbar pb-3 ${variant === 'carousel' ? 'px-4 md:px-8' : ''}`}
+        >
           {allVisibleSeasons.map((s) => (
             <button
               key={s.season_number}
@@ -107,22 +116,22 @@ export function EpisodeGuide({ seriesId, seasons, initialSeason, initialSelected
         variant === 'carousel' ? (
           <div className="overflow-x-auto no-scrollbar">
             <div className="flex gap-2 px-4 md:px-8 pt-1 pb-2">
-              {Array.from({ length: 5 }).map((_, i) => (
+              {Array.from({ length: 5 }, (_, i) => `ep-skel-${i}`).map((key) => (
                 <div
-                  key={i}
+                  key={key}
                   className="flex-none w-[180px] sm:w-[240px] md:w-[260px] lg:w-[280px] xl:w-[300px]"
                 >
-                    <div className="rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 overflow-hidden animate-pulse shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)]">
-                      <div className="aspect-[4/3] bg-white/10" />
-                    </div>
+                  <div className="rounded-2xl sm:rounded-[28px] bg-white/5 ring-1 sm:ring-2 ring-white/25 overflow-hidden animate-pulse shadow-[0_8px_24px_rgba(255,255,255,0.08),_0_2px_6px_rgba(255,255,255,0.05)]">
+                    <div className="aspect-[4/3] bg-white/10" />
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         ) : (
           <div className="flex flex-col gap-2 sm:gap-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex gap-2 sm:gap-3 animate-pulse">
+            {Array.from({ length: 5 }, (_, i) => `ep-row-${i}`).map((key) => (
+              <div key={key} className="flex gap-2 sm:gap-3 animate-pulse">
                 <div className="flex-none w-20 sm:w-[160px] aspect-video rounded bg-white/10" />
                 <div className="flex-1 space-y-1.5 sm:space-y-2 py-0.5 sm:py-1">
                   <div className="h-2.5 sm:h-3 bg-white/10 rounded w-1/3" />
@@ -166,7 +175,9 @@ export function EpisodeGuide({ seriesId, seasons, initialSeason, initialSelected
           </div>
         )
       ) : (
-        <p className={`text-white/40 text-sm py-6 text-center ${variant === 'carousel' ? 'px-4 md:px-8' : ''}`}>
+        <p
+          className={`text-white/40 text-sm py-6 text-center ${variant === 'carousel' ? 'px-4 md:px-8' : ''}`}
+        >
           No episodes available.
         </p>
       )}
@@ -308,11 +319,18 @@ function EpisodeRow({
         {still ? (
           <picture>
             <source srcSet={still.desktop} media="(min-width: 1024px)" />
-            <Image src={still.mobile} alt={episode.name} fill sizes="160px" className="object-cover transition-transform duration-300 ease-out group-hover:scale-110" />
+            <Image
+              src={still.mobile}
+              alt={episode.name}
+              fill
+              sizes="160px"
+              className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
+            />
           </picture>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
             <svg
+              aria-hidden="true"
               width="24"
               height="24"
               viewBox="0 0 24 24"
@@ -327,7 +345,7 @@ function EpisodeRow({
         )}
         {/* Play overlay on hover */}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
+          <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="white">
             <polygon points="5 3 19 12 5 21 5 3" />
           </svg>
         </div>

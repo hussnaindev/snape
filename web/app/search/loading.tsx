@@ -1,3 +1,4 @@
+const SEARCH_SKELETONS = Array.from({ length: 10 }, (_, i) => `search-${i}`);
 
 export default function Loading() {
   return (
@@ -7,8 +8,8 @@ export default function Loading() {
           <div className="h-9 bg-white/10 rounded-lg w-56" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3">
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="rounded-md bg-white/5 aspect-video" />
+          {SEARCH_SKELETONS.map((key) => (
+            <div key={key} className="rounded-md bg-white/5 aspect-video" />
           ))}
         </div>
       </div>

@@ -17,9 +17,6 @@ export function InfiniteScrollSentinel({ hasMore, nextHref }: Props) {
 
   useEffect(() => {
     loadingRef.current = false;
-  }, [nextHref]);
-
-  useEffect(() => {
     const el = sentinelRef.current;
     if (!el || !hasMore || !nextHref) return;
 

@@ -78,9 +78,9 @@ export function MovieDetailHero({
         playerContainerRef.current
           ?.requestFullscreen()
           .then(() =>
-            (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock?.(
-              'landscape',
-            )?.catch(() => {}),
+            (screen.orientation as unknown as { lock?: (o: string) => Promise<void> })
+              .lock?.('landscape')
+              ?.catch(() => {}),
           )
           .catch(() => {});
       }, 300);
@@ -204,9 +204,9 @@ export function MovieDetailHero({
       playerContainerRef.current
         ?.requestFullscreen()
         .then(() =>
-          (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock?.(
-            'landscape',
-          )?.catch(() => {}),
+          (screen.orientation as unknown as { lock?: (o: string) => Promise<void> })
+            .lock?.('landscape')
+            ?.catch(() => {}),
         )
         .catch(() => {});
     }
@@ -375,7 +375,17 @@ export function MovieDetailHero({
             }}
             aria-label="Exit fullscreen"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
               <path d="M8 3v3a2 2 0 0 1-2 2H3" />
               <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
               <path d="M3 16h3a2 2 0 0 1 2 2v3" />

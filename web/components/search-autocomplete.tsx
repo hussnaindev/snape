@@ -1,17 +1,17 @@
 'use client';
 
-import { useDebounce } from '@/lib/use-debounce';
 import { SearchDropdown } from '@/components/search-dropdown';
 import { parseSearchTab } from '@/components/search-tab-chips';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   flattenAutocompleteItems,
-  shouldFetchAutocomplete,
   getNextSelectedIndex,
   isValidSelection,
+  shouldFetchAutocomplete,
 } from '@/lib/search-autocomplete-utils';
-import type { TMDBMovie, TMDBSeries, TMDBPersonSearchHit } from '@/types/tmdb';
+import { useDebounce } from '@/lib/use-debounce';
+import type { TMDBMovie, TMDBPersonSearchHit, TMDBSeries } from '@/types/tmdb';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const initialSuggestions = {
   movies: [] as TMDBMovie[],
@@ -146,7 +146,7 @@ export function SearchAutocomplete() {
 
   useEffect(() => {
     setSelectedIndex(-1);
-  }, [debouncedQuery]);
+  }, []);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -177,7 +177,7 @@ export function SearchAutocomplete() {
       setSelectedIndex((prev) => getNextSelectedIndex('up', prev, total));
     } else if (e.key === 'Enter' && isValidSelection(selectedIndex, total)) {
       e.preventDefault();
-      router.push(items[selectedIndex]!.href);
+      router.push(items[selectedIndex]?.href ?? '');
       setShowDropdown(false);
       if (!isSearchPage) {
         setQuery('');

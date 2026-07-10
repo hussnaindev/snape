@@ -15,10 +15,9 @@ export function SnakeLoader({ size = 64, className }: SnakeLoaderProps) {
   const logoSize = Math.round(size * 0.45);
 
   return (
-    <div
+    <output
       className={cn('relative flex items-center justify-center', className)}
       style={{ width: size, height: size }}
-      role="status"
       aria-label="Loading"
     >
       {/* Spinning arc ring */}
@@ -55,6 +54,6 @@ export function SnakeLoader({ size = 64, className }: SnakeLoaderProps) {
           filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.5))',
         }}
       />
-    </div>
+    </output>
   );
 }

@@ -1,5 +1,5 @@
-import { ParallaxContent } from '@/components/parallax-content';
 import { MovieCard } from '@/components/movie-card';
+import { ParallaxContent } from '@/components/parallax-content';
 import { chunk } from '@/lib/utils';
 import type { TMDBMovie } from '@/types/tmdb';
 
@@ -21,7 +21,7 @@ export function MovieCardGrid({ movies, parallaxRows }: Props) {
         </div>
         <div className="hidden sm:block">
           {chunk(movies, ROW_SIZE).map((row, i) => (
-            <section key={i}>
+            <section key={row.map((m) => m.id).join('-')}>
               <ParallaxContent direction={i % 2 === 0 ? 'left' : 'right'} speed={120}>
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(165px,210px))] justify-center gap-3 px-4 md:px-8">
                   {row.map((movie) => (

@@ -82,7 +82,10 @@ export default function SignupPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4 lg:flex lg:items-start lg:gap-8 lg:space-y-0">
+            <form
+              onSubmit={handleSubmit}
+              className="space-y-4 lg:flex lg:items-start lg:gap-8 lg:space-y-0"
+            >
               {/* Left panel — compact so it stays above the Create button baseline */}
               <div className="pt-1 lg:w-[248px] lg:flex-none lg:self-start">
                 <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-[0_16px_48px_rgba(0,0,0,0.35)]">

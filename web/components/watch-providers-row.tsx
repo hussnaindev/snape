@@ -1,5 +1,5 @@
+import { type PreferredProviderKey, preferredProviderMeta } from '@/lib/watch-providers';
 import Image from 'next/image';
-import { preferredProviderMeta, type PreferredProviderKey } from '@/lib/watch-providers';
 
 interface Props {
   providers: PreferredProviderKey[];
@@ -8,9 +8,7 @@ interface Props {
 
 export function WatchProvidersRow({ providers, reserveSpace = true }: Props) {
   if (providers.length === 0) {
-    return reserveSpace ? (
-      <div className="mt-2 h-8 md:h-16 shrink-0" aria-hidden="true" />
-    ) : null;
+    return reserveSpace ? <div className="mt-2 h-8 md:h-16 shrink-0" aria-hidden="true" /> : null;
   }
 
   return (
@@ -21,9 +19,7 @@ export function WatchProvidersRow({ providers, reserveSpace = true }: Props) {
           if (!assetPath) return null;
 
           const imgSizeClass =
-            key === 'netflix' || key === 'max'
-              ? 'h-[14px] md:h-[24px]'
-              : 'h-6 md:h-11';
+            key === 'netflix' || key === 'max' ? 'h-[14px] md:h-[24px]' : 'h-6 md:h-11';
 
           const imgMaxWidthClass =
             key === 'netflix' || key === 'max'

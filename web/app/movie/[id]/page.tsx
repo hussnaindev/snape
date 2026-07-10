@@ -69,9 +69,8 @@ export default async function MoviePage({ params }: Props) {
   const preferredProviders = pickPreferredProvidersWithFallback(providers?.results, country);
   const embedUrl = getMovieEmbedUrl(movieId);
 
-  const logoPath = images.logos.find((l) => l.iso_639_1 === 'en')?.file_path
-    ?? images.logos[0]?.file_path
-    ?? null;
+  const logoPath =
+    images.logos.find((l) => l.iso_639_1 === 'en')?.file_path ?? images.logos[0]?.file_path ?? null;
   const logoUrl = logoPath ? tmdbImage(logoPath, 'w500') : null;
 
   return (

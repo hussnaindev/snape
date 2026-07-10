@@ -1,4 +1,4 @@
-import type { TMDBMovie, TMDBSeries, TMDBPersonSearchHit } from '@/types/tmdb';
+import type { TMDBMovie, TMDBPersonSearchHit, TMDBSeries } from '@/types/tmdb';
 
 export const AUTOCOMPLETE_MIN_QUERY_LENGTH = 2;
 export const AUTOCOMPLETE_ITEM_LIMIT = 4;

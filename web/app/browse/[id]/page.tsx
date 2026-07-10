@@ -39,9 +39,7 @@ export default async function BrowseGenrePage({ params, searchParams }: Props) {
   );
 
   const hasMore = page < firstPage.total_pages;
-  const nextHref = hasMore
-    ? buildPageHref(`/browse/${genreId}`, { name, page: page + 1 })
-    : null;
+  const nextHref = hasMore ? buildPageHref(`/browse/${genreId}`, { name, page: page + 1 }) : null;
 
   return (
     <>

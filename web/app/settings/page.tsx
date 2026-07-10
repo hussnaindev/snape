@@ -502,7 +502,6 @@ function AccountSettings() {
                     className={`${INPUT_CLASS} pl-10 border-red-500/30 focus:border-red-400/60`}
                     placeholder="Enter your password"
                     autoComplete="current-password"
-                    autoFocus
                   />
                 </div>
               </Field>

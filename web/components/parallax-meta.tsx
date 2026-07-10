@@ -1,7 +1,7 @@
 'use client';
 
 import { registerParallax } from '@/lib/parallax-controller';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 
 export function ParallaxMeta({ children }: { children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);

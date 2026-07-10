@@ -1,18 +1,17 @@
 'use client';
 
+import { SearchAutocomplete, SearchAutocompleteFallback } from '@/components/search-autocomplete';
 import { Logo } from '@/components/ui/logo';
 import { UserMenu } from '@/components/user-menu';
 import { APP_NAME } from '@/lib/config';
+import { usePlayerControls } from '@/lib/player-controls-context';
 import { clearAllWatchHistory } from '@/lib/watch-history';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { usePlayerControls } from '@/lib/player-controls-context';
-import { useAuth } from './auth/auth-provider';
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { SearchAutocomplete, SearchAutocompleteFallback } from '@/components/search-autocomplete';
+import { useAuth } from './auth/auth-provider';
 
-const navLabelClass =
-  'text-[11px] font-chesna-grotesk tracking-[0.2em] uppercase';
+const navLabelClass = 'text-[11px] font-chesna-grotesk tracking-[0.2em] uppercase';
 
 const navLinkClass = `inline-flex items-center ${navLabelClass} px-2 py-1 transition-colors`;
 
@@ -62,7 +61,7 @@ export function Topbar() {
     if (!isSearchPage) {
       setSearchOpen(false);
     }
-  }, [pathname, isSearchPage]);
+  }, [isSearchPage]);
 
   function openSearch() {
     searchKeyRef.current += 1;
@@ -156,14 +155,34 @@ export function Topbar() {
                 className="text-white/70 hover:text-white transition-colors p-1 cursor-pointer"
               >
                 {controls.isFullscreen ? (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
                     <path d="M8 3v3a2 2 0 0 1-2 2H3" />
                     <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
                     <path d="M3 16h3a2 2 0 0 1 2 2v3" />
                     <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
                   </svg>
                 ) : (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
                     <path d="M8 3H5a2 2 0 0 0-2 2v3" />
                     <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
                     <path d="M3 16v3a2 2 0 0 0 2 2h3" />
@@ -190,12 +209,12 @@ export function Topbar() {
               )}
             </div>
           ) : (
-              <button
-                type="button"
-                onClick={openSearch}
-                aria-label="Search"
-                className="text-white/70 hover:text-white transition-colors p-1 cursor-pointer"
-              >
+            <button
+              type="button"
+              onClick={openSearch}
+              aria-label="Search"
+              className="text-white/70 hover:text-white transition-colors p-1 cursor-pointer"
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="20"
@@ -215,12 +234,12 @@ export function Topbar() {
           )}
 
           {/* Mobile-only: hamburger (keep as the rightmost action) */}
-            <button
-              type="button"
-              onClick={() => setMobileOpen(true)}
-              className="md:hidden w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center text-white/80 cursor-pointer"
-              aria-label="Open menu"
-            >
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            className="md:hidden w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center text-white/80 cursor-pointer"
+            aria-label="Open menu"
+          >
             <HamburgerIcon />
           </button>
         </div>
@@ -232,6 +251,7 @@ export function Topbar() {
           <div
             className="md:hidden fixed inset-0 bg-black/70 z-[60]"
             onClick={() => setMobileOpen(false)}
+            onKeyDown={() => {}}
             aria-hidden="true"
           />
           <div className="md:hidden fixed top-0 right-0 bottom-0 w-80 max-w-[85vw] bg-[#0f0f10] z-[61] border-l border-white/10 flex flex-col shadow-2xl animate-slide-in-right">
@@ -248,19 +268,21 @@ export function Topbar() {
                   <p className="text-white/40 text-xs">Browse & account</p>
                 </div>
               </div>
-            <button
-              type="button"
-              onClick={() => setMobileOpen(false)}
-              className="ml-2 flex-none w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-              aria-label="Close menu"
-            >
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                className="ml-2 flex-none w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                aria-label="Close menu"
+              >
                 <CloseIcon />
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto">
               <div className="px-4 pt-4 pb-2">
-                <p className="text-white/40 text-[11px] font-semibold tracking-wider uppercase">Streaming</p>
+                <p className="text-white/40 text-[11px] font-semibold tracking-wider uppercase">
+                  Streaming
+                </p>
               </div>
               <nav className="px-3 pb-1 space-y-0.5">
                 <Link
@@ -295,7 +317,9 @@ export function Topbar() {
               */}
 
               <div className="px-4 pt-3 pb-2 border-t border-white/10">
-                <p className="text-white/40 text-[11px] font-semibold tracking-wider uppercase">Browse</p>
+                <p className="text-white/40 text-[11px] font-semibold tracking-wider uppercase">
+                  Browse
+                </p>
               </div>
               <nav className="px-3 pb-3 space-y-0.5">
                 {GENRES.map((genre) => (
@@ -318,15 +342,15 @@ export function Topbar() {
                 </p>
               </div>
               <div className="px-3 pb-3">
-                   <button
-                      type="button"
-                      onClick={async () => {
-                        await clearAllWatchHistory();
-                        setMobileOpen(false);
-                        router.refresh();
-                      }}
-                      className={`w-full ${mobileNavItemWithIconClass} text-white/45 hover:text-white/75 hover:bg-white/5 text-left cursor-pointer`}
-                    >
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await clearAllWatchHistory();
+                    setMobileOpen(false);
+                    router.refresh();
+                  }}
+                  className={`w-full ${mobileNavItemWithIconClass} text-white/45 hover:text-white/75 hover:bg-white/5 text-left cursor-pointer`}
+                >
                   <ClearHistoryIcon />
                   Clear watch history
                 </button>
@@ -334,62 +358,66 @@ export function Topbar() {
 
               {/* Account */}
               <div className="px-4 pt-2 pb-2 border-t border-white/10">
-                <p className="text-white/40 text-[11px] font-semibold tracking-wider uppercase">Account</p>
+                <p className="text-white/40 text-[11px] font-semibold tracking-wider uppercase">
+                  Account
+                </p>
               </div>
 
               <div className="px-3 pb-4 space-y-0.5">
                 {isLoading ? (
-                  <div className="px-4 py-3 rounded-xl bg-white/5 text-white/40 text-sm">Loading…</div>
+                  <div className="px-4 py-3 rounded-xl bg-white/5 text-white/40 text-sm">
+                    Loading…
+                  </div>
                 ) : user ? (
                   <>
-                     <Link
-                       href="/profile"
-                       onClick={() => setMobileOpen(false)}
-                       className={`${mobileNavItemWithIconClass} text-white/70 hover:text-white hover:bg-white/5 cursor-pointer`}
-                     >
+                    <Link
+                      href="/profile"
+                      onClick={() => setMobileOpen(false)}
+                      className={`${mobileNavItemWithIconClass} text-white/70 hover:text-white hover:bg-white/5 cursor-pointer`}
+                    >
                       <ProfileIcon /> Profile
                     </Link>
-                     <Link
-                       href="/watchlist"
-                       onClick={() => setMobileOpen(false)}
-                       className={`${mobileNavItemWithIconClass} text-white/70 hover:text-white hover:bg-white/5 cursor-pointer`}
-                     >
+                    <Link
+                      href="/watchlist"
+                      onClick={() => setMobileOpen(false)}
+                      className={`${mobileNavItemWithIconClass} text-white/70 hover:text-white hover:bg-white/5 cursor-pointer`}
+                    >
                       <BookmarkIcon /> My Watchlist
                     </Link>
-                     <Link
-                       href="/settings"
-                       onClick={() => setMobileOpen(false)}
-                       className={`${mobileNavItemWithIconClass} text-white/70 hover:text-white hover:bg-white/5 cursor-pointer`}
-                     >
+                    <Link
+                      href="/settings"
+                      onClick={() => setMobileOpen(false)}
+                      className={`${mobileNavItemWithIconClass} text-white/70 hover:text-white hover:bg-white/5 cursor-pointer`}
+                    >
                       <SettingsIcon /> Settings
                     </Link>
-                     <button
-                       type="button"
-                       onClick={async () => {
-                         setMobileOpen(false);
-                         await logout();
-                         router.push('/');
-                         router.refresh();
-                       }}
-                       className={`w-full ${mobileNavItemWithIconClass} text-red-400 hover:bg-red-500/10 text-left mt-1 cursor-pointer`}
-                     >
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setMobileOpen(false);
+                        await logout();
+                        router.push('/');
+                        router.refresh();
+                      }}
+                      className={`w-full ${mobileNavItemWithIconClass} text-red-400 hover:bg-red-500/10 text-left mt-1 cursor-pointer`}
+                    >
                       <SignOutIcon /> Sign out
                     </button>
                   </>
                 ) : (
                   <>
-                     <Link
-                       href="/auth/login"
-                       onClick={() => setMobileOpen(false)}
-                       className={`${mobileNavItemWithIconClass} text-white/70 hover:text-white hover:bg-white/5 cursor-pointer`}
-                     >
+                    <Link
+                      href="/auth/login"
+                      onClick={() => setMobileOpen(false)}
+                      className={`${mobileNavItemWithIconClass} text-white/70 hover:text-white hover:bg-white/5 cursor-pointer`}
+                    >
                       <SignInIcon /> Login
                     </Link>
-                     <Link
-                       href="/auth/signup"
-                       onClick={() => setMobileOpen(false)}
-                       className={`${mobileNavItemWithIconClass} text-white/70 hover:text-white hover:bg-white/5 cursor-pointer`}
-                     >
+                    <Link
+                      href="/auth/signup"
+                      onClick={() => setMobileOpen(false)}
+                      className={`${mobileNavItemWithIconClass} text-white/70 hover:text-white hover:bg-white/5 cursor-pointer`}
+                    >
                       <PlusUserIcon /> Create account
                     </Link>
                   </>
@@ -405,7 +433,17 @@ export function Topbar() {
 
 function ClearHistoryIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M3 6h18" />
       <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
       <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
@@ -417,7 +455,16 @@ function ClearHistoryIcon() {
 
 function HamburgerIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" aria-hidden="true">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.25"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
       <line x1="4" y1="7" x2="20" y2="7" />
       <line x1="4" y1="12" x2="20" y2="12" />
       <line x1="4" y1="17" x2="20" y2="17" />
@@ -427,7 +474,16 @@ function HamburgerIcon() {
 
 function CloseIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
@@ -436,7 +492,18 @@ function CloseIcon() {
 
 function ChevronIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-white/35">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.25"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="text-white/35"
+    >
       <polyline points="9 18 15 12 9 6" />
     </svg>
   );
@@ -444,7 +511,17 @@ function ChevronIcon() {
 
 function ProfileIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <circle cx="12" cy="8" r="4" />
       <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
     </svg>
@@ -453,7 +530,17 @@ function ProfileIcon() {
 
 function BookmarkIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
     </svg>
   );
@@ -461,7 +548,17 @@ function BookmarkIcon() {
 
 function SettingsIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
@@ -470,7 +567,17 @@ function SettingsIcon() {
 
 function SignOutIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
       <polyline points="16 17 21 12 16 7" />
       <line x1="21" y1="12" x2="9" y2="12" />
@@ -480,7 +587,17 @@ function SignOutIcon() {
 
 function SignInIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
       <polyline points="10 17 15 12 10 7" />
       <line x1="15" y1="12" x2="3" y2="12" />
@@ -490,7 +607,17 @@ function SignInIcon() {
 
 function PlusUserIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
       <circle cx="8.5" cy="7" r="4" />
       <line x1="20" y1="8" x2="20" y2="14" />

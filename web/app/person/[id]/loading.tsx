@@ -1,3 +1,7 @@
+const KNOWN_FOR_SKELETONS = Array.from({ length: 6 }, (_, i) => `known-${i}`);
+const FILMOGRAPHY_MOBILE = Array.from({ length: 4 }, (_, i) => `fm-${i}`);
+const FILMOGRAPHY_DESKTOP = Array.from({ length: 10 }, (_, i) => `fd-${i}`);
+
 export default function Loading() {
   return (
     <>
@@ -51,9 +55,9 @@ export default function Loading() {
             <span className="h-px flex-1 bg-white/10" />
           </div>
           <div className="flex gap-3 overflow-x-auto no-scrollbar py-12 px-1">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {KNOWN_FOR_SKELETONS.map((key) => (
               <div
-                key={i}
+                key={key}
                 className="flex-none w-[130px] sm:w-[170px] md:w-[180px] lg:w-[190px] xl:w-[210px] 2xl:w-[240px]"
               >
                 <div className="aspect-[2/3] rounded bg-white/10 mb-2" />
@@ -74,15 +78,15 @@ export default function Loading() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 px-4 py-8 sm:hidden">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-md bg-white/5 aspect-[2/3]" />
+            {FILMOGRAPHY_MOBILE.map((key) => (
+              <div key={key} className="rounded-md bg-white/5 aspect-[2/3]" />
             ))}
           </div>
           <div className="hidden sm:block">
             <div className="px-4 md:px-8">
               <div className="grid grid-cols-[repeat(auto-fit,minmax(165px,210px))] justify-center gap-3 py-8">
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <div key={i} className="rounded-md bg-white/5 aspect-[2/3]" />
+                {FILMOGRAPHY_DESKTOP.map((key) => (
+                  <div key={key} className="rounded-md bg-white/5 aspect-[2/3]" />
                 ))}
               </div>
             </div>

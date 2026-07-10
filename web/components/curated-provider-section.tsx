@@ -1,13 +1,13 @@
-import { tmdbImage } from '@/lib/tmdb-image';
 import type { CuratedProviderKey } from '@/lib/curated-providers';
+import type { MediaItem } from '@/lib/media-item';
+import { tmdbImage } from '@/lib/tmdb-image';
 import type { TMDBMovie, TMDBSeries } from '@/types/tmdb';
 import Image from 'next/image';
+import Link from 'next/link';
 import { ParallaxBackdrop } from './parallax-backdrop';
 import { ParallaxCarousel } from './parallax-carousel';
 import { ParallaxMeta } from './parallax-meta';
-import type { MediaItem } from '@/lib/media-item';
 import { ProviderCard } from './provider-card';
-import Link from 'next/link';
 
 const CAROUSEL_SIZE = 10;
 
@@ -37,7 +37,14 @@ function itemDate(m: TMDBMovie | TMDBSeries): string {
   return 'release_date' in m ? m.release_date : m.first_air_date;
 }
 
-export function CuratedProviderSection({ providerKey, label, brandColor, mediaType, movies, logoUrl }: CuratedProviderSectionProps) {
+export function CuratedProviderSection({
+  providerKey,
+  label,
+  brandColor,
+  mediaType,
+  movies,
+  logoUrl,
+}: CuratedProviderSectionProps) {
   const sorted = [...movies]
     .filter((m) => m.poster_path)
     .sort((a, b) => b.popularity - a.popularity);
@@ -49,10 +56,10 @@ export function CuratedProviderSection({ providerKey, label, brandColor, mediaTy
     movies[0];
 
   const carouselMovies = hero
-    ? [
-        ...(hero.poster_path ? [hero] : []),
-        ...sorted.filter((m) => m.id !== hero.id),
-      ].slice(0, CAROUSEL_SIZE)
+    ? [...(hero.poster_path ? [hero] : []), ...sorted.filter((m) => m.id !== hero.id)].slice(
+        0,
+        CAROUSEL_SIZE,
+      )
     : sorted.slice(0, CAROUSEL_SIZE);
 
   if (!hero || carouselMovies.length === 0) return null;
@@ -163,7 +170,14 @@ export function CuratedProviderSection({ providerKey, label, brandColor, mediaTy
                 </span>
                 {heroRating && (
                   <span className="text-white/70 font-medium" style={{ fontSize: 11 }}>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="inline-block mr-0.5 -mt-0.5">
+                    <svg
+                      width="11"
+                      height="11"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden="true"
+                      className="inline-block mr-0.5 -mt-0.5"
+                    >
                       <polygon points="12,2 15,10 24,10 17,16 19,24 12,19 5,24 7,16 0,10 9,10" />
                     </svg>
                     {heroRating}
@@ -212,7 +226,13 @@ export function CuratedProviderSection({ providerKey, label, brandColor, mediaTy
                   href={`/${mediaType === 'series' ? 'series' : 'movie'}/${hero.id}`}
                   className="relative top-0 inline-flex items-center justify-center gap-1 text-nowrap rounded-full border py-0.5 text-[10px] sm:text-xs font-semibold uppercase tracking-widest transition-all duration-300 ease-out cursor-pointer active:top-0.5 h-8 px-2.5 sm:h-10 sm:px-3 md:h-12 md:px-5 min-w-28 sm:min-w-32 md:min-w-36 border-transparent bg-white text-black lg:hover:bg-white/80 active:bg-white/70"
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
                     <polygon points="6,4 20,12 6,20" />
                   </svg>
                   <span className="px-2">Watch</span>

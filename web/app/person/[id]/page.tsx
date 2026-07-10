@@ -17,9 +17,9 @@ import {
   getSeriesVideos,
   pickTrailerKey,
 } from '@/lib/tmdb';
-import { chunk } from '@/lib/utils';
 import { filterHasImages } from '@/lib/tmdb-filters';
 import { tmdbImage, tmdbResponsive } from '@/lib/tmdb-image';
+import { chunk } from '@/lib/utils';
 
 const ROW_SIZE = 6;
 
@@ -277,7 +277,10 @@ export default async function PersonPage({ params }: Props) {
             </div>
             <div className="hidden sm:block">
               {chunk(filmography, ROW_SIZE).map((row, i) => (
-                <section key={i} className="relative z-0 hover:z-50 px-4 md:px-8">
+                <section
+                  key={row.map((c) => c.id).join('-')}
+                  className="relative z-0 hover:z-50 px-4 md:px-8"
+                >
                   <ParallaxContent direction={i % 2 === 0 ? 'left' : 'right'} speed={120}>
                     <div className="grid grid-cols-[repeat(auto-fit,minmax(165px,210px))] justify-center gap-3 py-8">
                       {row.map((credit) => {

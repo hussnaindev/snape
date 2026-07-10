@@ -1,13 +1,13 @@
 export const runtime = 'edge';
 
-import { eq } from 'drizzle-orm';
-import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { passwords, users } from '@/db/schema';
 import { verifyPassword } from '@/lib/crypto';
 import { getDb } from '@/lib/db';
 import { SESSION_COOKIE, getSession } from '@/lib/session';
+import { eq } from 'drizzle-orm';
+import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 const schema = z.object({
   password: z.string().min(1),

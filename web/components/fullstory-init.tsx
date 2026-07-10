@@ -11,9 +11,7 @@ export function FullStoryInit() {
     // compete with first paint, hero images, and the trailer iframe handshake.
     // Falls back to a 3 s setTimeout when requestIdleCallback isn't available.
     const load = () => {
-      import('@fullstory/browser')
-        .then(({ init }) => init({ orgId }))
-        .catch(() => {});
+      import('@fullstory/browser').then(({ init }) => init({ orgId })).catch(() => {});
     };
     const w = window as Window & typeof globalThis;
     const handle =

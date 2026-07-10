@@ -1,3 +1,9 @@
+const GENRE_SKELETONS = Array.from({ length: 3 }, (_, i) => `genre-${i}`);
+const SEASON_TABS = Array.from({ length: 4 }, (_, i) => `stab-${i}`);
+const EPISODE_SKELETONS = Array.from({ length: 5 }, (_, i) => `ep-${i}`);
+const CAST_SKELETONS = Array.from({ length: 6 }, (_, i) => `cast-${i}`);
+const SIMILAR_SKELETONS = Array.from({ length: 6 }, (_, i) => `similar-${i}`);
+
 export default function Loading() {
   return (
     <>
@@ -33,8 +39,8 @@ export default function Loading() {
                 {/* Status badge + genres */}
                 <div className="flex flex-nowrap items-center gap-1 md:gap-2 mt-2">
                   <div className="h-5 md:h-6 bg-white/10 rounded-full w-20" />
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="h-5 md:h-6 bg-white/10 rounded-full w-16" />
+                  {GENRE_SKELETONS.map((key) => (
+                    <div key={key} className="h-5 md:h-6 bg-white/10 rounded-full w-16" />
                   ))}
                 </div>
                 {/* WatchProvidersRow reserved space */}
@@ -79,13 +85,13 @@ export default function Loading() {
             <span className="h-px flex-1 bg-white/10" />
           </div>
           <div className="flex gap-2 mb-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-7 bg-white/10 rounded-full w-20" />
+            {SEASON_TABS.map((key) => (
+              <div key={key} className="h-7 bg-white/10 rounded-full w-20" />
             ))}
           </div>
           <div className="flex flex-col gap-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex gap-3">
+            {EPISODE_SKELETONS.map((key) => (
+              <div key={key} className="flex gap-3">
                 <div className="flex-none w-20 sm:w-40 aspect-video rounded bg-white/10" />
                 <div className="flex-1 space-y-2 py-1">
                   <div className="h-2.5 bg-white/10 rounded w-1/3" />
@@ -106,8 +112,8 @@ export default function Loading() {
               <span className="h-px flex-1 bg-white/10" />
             </div>
             <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory overscroll-x-contain py-8">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex-none w-24 sm:w-28 group snap-start">
+              {CAST_SKELETONS.map((key) => (
+                <div key={key} className="flex-none w-24 sm:w-28 group snap-start">
                   <div className="aspect-square rounded-full bg-white/10 mb-2 ring-2 ring-white/10" />
                   <div className="bg-gradient-to-t from-black/85 to-black/50 py-1.5 rounded-md px-2 space-y-1">
                     <div className="h-2.5 bg-white/10 rounded w-4/5 mx-auto" />
@@ -130,9 +136,9 @@ export default function Loading() {
           </div>
           <div className="overflow-x-auto no-scrollbar">
             <div className="flex gap-2 px-4 md:px-8 py-8">
-              {Array.from({ length: 6 }).map((_, i) => (
+              {SIMILAR_SKELETONS.map((key) => (
                 <div
-                  key={i}
+                  key={key}
                   className="flex-none w-[130px] sm:w-[170px] md:w-[180px] lg:w-[190px] xl:w-[210px] 2xl:w-[240px] 3xl:w-[260px]"
                 >
                   <div className="aspect-[2/3] rounded bg-white/10 mb-2" />

@@ -28,10 +28,11 @@ function pickCuratedHero(movies: TMDBMovie[] | TMDBSeries[]) {
   );
 }
 
-function extractLogoUrl(images: { logos: { iso_639_1: string | null; file_path: string }[] }): string | null {
-  const path = images.logos.find((l) => l.iso_639_1 === 'en')?.file_path
-    ?? images.logos[0]?.file_path
-    ?? null;
+function extractLogoUrl(images: { logos: { iso_639_1: string | null; file_path: string }[] }):
+  | string
+  | null {
+  const path =
+    images.logos.find((l) => l.iso_639_1 === 'en')?.file_path ?? images.logos[0]?.file_path ?? null;
   return path ? tmdbImage(path, 'w500') : null;
 }
 
@@ -53,9 +54,10 @@ export default async function HomePage() {
       if (!movies?.length) return null;
       const hero = pickCuratedHero(movies);
       if (!hero) return null;
-      const images = curated.mediaType === 'series'
-        ? await getSeriesImages(hero.id).catch(() => null)
-        : await getMovieImages(hero.id).catch(() => null);
+      const images =
+        curated.mediaType === 'series'
+          ? await getSeriesImages(hero.id).catch(() => null)
+          : await getMovieImages(hero.id).catch(() => null);
       return images ? extractLogoUrl(images) : null;
     }),
   );
@@ -90,4 +92,3 @@ export default async function HomePage() {
     </>
   );
 }
-

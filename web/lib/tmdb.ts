@@ -1,3 +1,8 @@
+import type { CuratedProviderKey } from '@/lib/curated-providers';
+import {
+  filterReleasedSearchMovies,
+  filterReleasedSearchSeries,
+} from '@/lib/search-release-filter';
 /**
  * Server-only TMDB API helpers.
  * Never import this file from client components.
@@ -20,11 +25,6 @@ import type {
   TMDBVideosResult,
   TMDBWatchProvidersResult,
 } from '@/types/tmdb';
-import type { CuratedProviderKey } from '@/lib/curated-providers';
-import {
-  filterReleasedSearchMovies,
-  filterReleasedSearchSeries,
-} from '@/lib/search-release-filter';
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 
@@ -125,7 +125,10 @@ export async function getMovieVideos(id: number): Promise<TMDBVideosResult> {
 }
 
 /** Uses discover + release-date filters when genre IDs are available (recommendations endpoint has no date filter). */
-export async function getMovieRecommendations(id: number, genreIds: number[] = []): Promise<TMDBMovie[]> {
+export async function getMovieRecommendations(
+  id: number,
+  genreIds: number[] = [],
+): Promise<TMDBMovie[]> {
   if (genreIds.length > 0) {
     const data = await tmdbFetch<TMDBListResult<TMDBMovie>>(
       '/discover/movie',
@@ -182,7 +185,10 @@ export async function getMoviesByProvider(providerId: number, region = 'US'): Pr
   return data.results;
 }
 
-export async function getSeriesByProvider(providerId: number, region = 'US'): Promise<TMDBSeries[]> {
+export async function getSeriesByProvider(
+  providerId: number,
+  region = 'US',
+): Promise<TMDBSeries[]> {
   const data = await tmdbFetch<TMDBListResult<TMDBSeries>>(
     '/discover/tv',
     releasedTvDiscoverParams({
@@ -307,7 +313,10 @@ const CURATED_FETCHERS: Record<
   anime: getAnimeMovies,
 };
 
-export async function getCuratedProviderMovies(key: CuratedProviderKey, page = 1): Promise<TMDBMovie[] | TMDBSeries[]> {
+export async function getCuratedProviderMovies(
+  key: CuratedProviderKey,
+  page = 1,
+): Promise<TMDBMovie[] | TMDBSeries[]> {
   return CURATED_FETCHERS[key](page);
 }
 
@@ -344,9 +353,17 @@ function buildSearchQueryVariants(query: string): string[] {
   return variants;
 }
 
-async function searchTmdbListWithFallback<T>(endpoint: string, query: string, includeAdult = false): Promise<T[]> {
+async function searchTmdbListWithFallback<T>(
+  endpoint: string,
+  query: string,
+  includeAdult = false,
+): Promise<T[]> {
   for (const q of buildSearchQueryVariants(query)) {
-    const data = await tmdbFetch<TMDBListResult<T>>(endpoint, { query: q, page: '1', include_adult: String(includeAdult) }, 600);
+    const data = await tmdbFetch<TMDBListResult<T>>(
+      endpoint,
+      { query: q, page: '1', include_adult: String(includeAdult) },
+      600,
+    );
     if (data.results.length > 0) return data.results;
   }
   return [];
@@ -418,7 +435,10 @@ export async function searchTvShows(
   return { page: 1, results: [], total_pages: 0, total_results: 0, resolvedQuery: null };
 }
 
-export async function searchPeople(query: string, includeAdult = false): Promise<TMDBPersonSearchHit[]> {
+export async function searchPeople(
+  query: string,
+  includeAdult = false,
+): Promise<TMDBPersonSearchHit[]> {
   return searchTmdbListWithFallback<TMDBPersonSearchHit>('/search/person', query, includeAdult);
 }
 
@@ -463,7 +483,10 @@ export async function getSeriesVideos(id: number): Promise<TMDBVideosResult> {
 }
 
 /** Uses discover + air-date filters when genre IDs are available (recommendations endpoint has no date filter). */
-export async function getSeriesRecommendations(id: number, genreIds: number[] = []): Promise<TMDBSeries[]> {
+export async function getSeriesRecommendations(
+  id: number,
+  genreIds: number[] = [],
+): Promise<TMDBSeries[]> {
   if (genreIds.length > 0) {
     const data = await tmdbFetch<TMDBListResult<TMDBSeries>>(
       '/discover/tv',
@@ -543,6 +566,13 @@ export async function getCollection(id: number): Promise<TMDBCollection> {
   return tmdbFetch<TMDBCollection>(`/collection/${id}`);
 }
 
-export async function searchCollections(query: string, includeAdult = false): Promise<TMDBCollectionSearchHit[]> {
-  return searchTmdbListWithFallback<TMDBCollectionSearchHit>('/search/collection', query, includeAdult);
+export async function searchCollections(
+  query: string,
+  includeAdult = false,
+): Promise<TMDBCollectionSearchHit[]> {
+  return searchTmdbListWithFallback<TMDBCollectionSearchHit>(
+    '/search/collection',
+    query,
+    includeAdult,
+  );
 }
