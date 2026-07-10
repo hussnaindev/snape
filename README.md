@@ -1,4 +1,4 @@
-# Snape (Heroflix)
+# Snape
 
 Ad-free movie/TV streaming. This is a **monorepo** holding three standalone apps,
 each with its own toolchain, config, docs, and CI workflow. They share a product
