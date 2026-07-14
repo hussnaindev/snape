@@ -6,6 +6,7 @@ import { APP_NAME } from '@/lib/config';
 import { PlayerControlsProvider } from '@/lib/player-controls-context';
 import type { Metadata, Viewport } from 'next';
 import { DM_Sans } from 'next/font/google';
+import Script from 'next/script';
 import NextTopLoader from 'nextjs-toploader';
 import { Suspense } from 'react';
 import './globals.css';
@@ -59,6 +60,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </AuthProvider>
         </PlayerControlsProvider>
       </body>
+      <Script
+        id="cloudflare-web-analytics"
+        src="https://static.cloudflareinsights.com/beacon.min.js"
+        strategy="afterInteractive"
+        data-cf-beacon='{"token": "0e5b999dd1f147608d692f247ce8bd6a"}'
+      />
       <GoogleAnalytics gaId="G-J9LY8F7YKQ" />
     </html>
   );
