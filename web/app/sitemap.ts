@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { APP_NAME } from '@/lib/config';
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://snape.pages.dev';
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://snape.hussnainraza.cv';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes = [

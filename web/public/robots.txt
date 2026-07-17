@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /api/
 
-Sitemap: https://snape.pages.dev/sitemap.xml
+Sitemap: https://snape.hussnainraza.cv/sitemap.xml
