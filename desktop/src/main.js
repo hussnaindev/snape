@@ -63,6 +63,8 @@ ipcMain.handle('moviebox:search', async (_e, keyword) => {
   return moviebox.search(keyword);
 });
 
+ipcMain.handle('moviebox:home', async () => moviebox.home());
+
 ipcMain.handle('moviebox:seasons', async (_e, subjectId) => moviebox.seasons(subjectId));
 
 ipcMain.handle('moviebox:play', async (_e, { subjectId, se, ep }) => {

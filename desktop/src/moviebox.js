@@ -218,6 +218,93 @@ function toCard({ primary, variants }) {
   };
 }
 
+// --- home feed (tab-operating verticals) -------------------------------------
+//
+// The mobile app's home screen is the `tab-operating` feed. `tabId` selects a
+// vertical: tab 0 = main home (Trending / Hollywood / Bollywood / Cinema),
+// tab 2 = Movies (New Release …), tab 8 = Anime (plus an "Animated Film" row).
+// We map the desktop's six categories onto those rows — 100% MovieBox, no TMDB.
+// The feed doesn't paginate, so each category returns its whole (deduped) pool
+// and the renderer reveals it progressively (carousel → see-all grid on scroll).
+
+const HOME_CATEGORIES = [
+  { key: 'latest', label: 'Latest', tab: '2', match: ['New Release', 'Trending in Cinema', 'Top 20 Movies'] },
+  { key: 'trending', label: 'Trending', tab: '0', match: ['Trending', 'Cinema'] },
+  // tab 5 = the TV-series vertical; take every row (all series) but drop the
+  // anime one so it stays distinct from the Anime category below.
+  { key: 'series', label: 'Top Series', tab: '5', match: ['*'], exclude: ['Anime'] },
+  { key: 'hollywood', label: 'Hollywood', tab: '0', match: ['Hollywood'] },
+  { key: 'bollywood', label: 'Bollywood', tab: '0', match: ['Bollywood'] },
+  { key: 'anime', label: 'Anime', tab: '8', match: ['*'], exclude: ['Animated'] },
+  { key: 'animated', label: 'Animated', tab: '8', match: ['Animated'] },
+];
+
+/** Home subjects carry `seconds`, not the `duration` string search hits use. */
+function secToDuration(sec) {
+  const n = Number(sec);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  const h = Math.floor(n / 3600);
+  const m = Math.round((n % 3600) / 60);
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
+
+const includesCI = (hay, needle) => hay.toLowerCase().includes(needle.toLowerCase());
+
+/** SUBJECTS_MOVIE rows of one vertical tab; subjects filtered to playable + normalized. */
+async function homeRows(tabId) {
+  const data =
+    (await signedGet(P_HOME, [
+      ['tabId', tabId],
+      ['page', '1'],
+      ['version', APP_VERSION],
+    ])).data || {};
+  return (data.items || [])
+    .filter((r) => r.type === 'SUBJECTS_MOVIE' && (r.subjects || []).length)
+    .map((r) => ({
+      title: r.title || '',
+      subjects: (r.subjects || [])
+        .filter(
+          (s) =>
+            (s.subjectType === 1 || s.subjectType === 2) &&
+            s.subjectId &&
+            s.subjectId.trim() &&
+            s.hasResource &&
+            s.cover?.url,
+        )
+        // Normalize so the shared groupVariants()/toCard() (built for search
+        // hits) read the same fields — home subjects lack `duration`.
+        .map((s) => ({ ...s, duration: s.duration || secToDuration(s.seconds) })),
+    }));
+}
+
+/**
+ * Build the desktop home screen: the mobile app's curated sections minus the
+ * hero, sourced purely from MovieBox. Returns one entry per category with its
+ * full deduped card pool. Cards are identical in shape to search cards, so the
+ * player/detail path is unchanged.
+ */
+async function home() {
+  await ensureToken();
+  const tabs = [...new Set(HOME_CATEGORIES.map((c) => c.tab))];
+  const rowsByTab = {};
+  await Promise.all(
+    tabs.map(async (t) => {
+      rowsByTab[t] = await homeRows(t).catch(() => []);
+    }),
+  );
+  return HOME_CATEGORIES.map((spec) => {
+    const rows = rowsByTab[spec.tab] || [];
+    const matched = rows.filter((r) => {
+      if (spec.exclude?.some((x) => includesCI(r.title, x))) return false;
+      return spec.match.includes('*') || spec.match.some((x) => includesCI(r.title, x));
+    });
+    const subjects = matched.flatMap((r) => r.subjects);
+    // Fold audio variants + dedupe across rows, then shape like a search card.
+    const cards = groupVariants(subjects).map(toCard);
+    return { key: spec.key, label: spec.label, cards };
+  }).filter((c) => c.cards.length);
+}
+
 /** Seasons (with episode counts) for a series — `[{ se, maxEp }]`. */
 async function seasons(subjectId) {
   const data =
@@ -309,4 +396,4 @@ async function captionVtt(url) {
   );
 }
 
-module.exports = { search, seasons, playInfo, captions, captionVtt, USER_AGENT };
+module.exports = { search, home, seasons, playInfo, captions, captionVtt, USER_AGENT };
