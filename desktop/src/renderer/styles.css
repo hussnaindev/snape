@@ -129,6 +129,7 @@ body {
   height: 22px;
   flex-shrink: 0;
   color: #fff;
+  cursor: pointer; /* clicking the glyph focuses/expands the field */
 }
 .search input {
   width: 0;
@@ -172,6 +173,11 @@ body {
 
 .section {
   margin-bottom: 34px;
+  /* Skip layout/paint for rows scrolled off-screen — keeps the home feed
+     smooth even with every category's carousel populated. The intrinsic size
+     reserves the row's height so the scrollbar stays stable. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 320px;
 }
 
 .section-head {
@@ -274,7 +280,7 @@ body {
   background: linear-gradient(to bottom, var(--bg) 78%, transparent);
 }
 
-/* grid for search + see-all views */
+/* grid for search + see-all views — posters flow to fill the row width */
 .poster-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -296,6 +302,10 @@ body {
 .poster-grid .card {
   flex: none;
   width: 100%;
+  /* The full pool renders at once, so skip layout/paint for off-screen posters.
+     The intrinsic size reserves each cell's height to keep scrolling stable. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 280px;
 }
 
 .card-art {
@@ -441,6 +451,15 @@ body {
   z-index: 24;
   background: rgba(0, 0, 0, 0.5);
   border-color: rgba(255, 255, 255, 0.2);
+  transition: opacity 0.25s ease;
+}
+/* The back button rides with the rest of the chrome: it fades out with the
+   player bar while the video is playing and the pointer is idle, and comes
+   back on pause or any pointer movement (the player toggles `.cursor-hidden`
+   on the pane in exactly that state). */
+.player-pane.cursor-hidden .player-back {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .player-pane {

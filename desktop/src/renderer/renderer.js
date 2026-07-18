@@ -8,6 +8,7 @@
 
 const form = document.getElementById('search-form');
 const input = document.getElementById('search-input');
+const searchIco = document.getElementById('search-ico');
 const topbar = document.getElementById('topbar');
 const brand = document.getElementById('brand');
 const navLinks = document.getElementById('nav-links');
@@ -81,7 +82,6 @@ async function goHome() {
   searchSeq++; // discard any in-flight search
   searchGrid.innerHTML = '';
   status.textContent = '';
-  seeAll = null;
   seeallGrid.innerHTML = '';
   showView('home');
   activeBrowseView()?.scrollTo({ top: 0 });
@@ -108,7 +108,7 @@ async function loadHome() {
   }
 }
 
-const CAROUSEL_MAX = 20;
+const CAROUSEL_MAX = 12;
 
 function renderSection(cat) {
   const section = document.createElement('section');
@@ -142,12 +142,23 @@ function renderSection(cat) {
   wrap.append(prev, row, next);
   section.appendChild(wrap);
 
-  // Toggle arrow visibility at the ends of the scroll range.
+  // Toggle arrow visibility at the ends of the scroll range. The layout reads
+  // are batched into a rAF so a fast scroll doesn't force reflow on every event.
+  let syncQueued = false;
   const sync = () => {
+    syncQueued = false;
     prev.disabled = row.scrollLeft <= 4;
     next.disabled = row.scrollLeft + row.clientWidth >= row.scrollWidth - 4;
   };
-  row.addEventListener('scroll', sync);
+  row.addEventListener(
+    'scroll',
+    () => {
+      if (syncQueued) return;
+      syncQueued = true;
+      requestAnimationFrame(sync);
+    },
+    { passive: true },
+  );
   requestAnimationFrame(sync);
   return section;
 }
@@ -180,7 +191,7 @@ function posterCard(card) {
     .join('<span class="dot">•</span>');
   btn.innerHTML = `
     <div class="card-art">
-      ${card.posterUrl ? `<img loading="lazy" src="${card.posterUrl}" alt="">` : ''}
+      ${card.posterUrl ? `<img loading="lazy" decoding="async" src="${card.posterUrl}" alt="">` : ''}
       ${card.isSeries ? '<span class="tag">SERIES</span>' : ''}
       <div class="card-hover">
         <span class="play">${PLAY_SVG}</span>
@@ -221,33 +232,19 @@ async function jumpToSection(key) {
   document.getElementById(`sec-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// --- see all (per-category grid with infinite scroll) ------------------------
+// --- see all (per-category grid) ---------------------------------------------
 
-let seeAll = null; // { cards, shown }
-const SEEALL_BATCH = 24;
-
+// "See all" shows the category's entire pool at once. The grid items each carry
+// content-visibility so the offscreen rows still skip layout/paint work.
 function openSeeAll(cat) {
-  seeAll = { cards: cat.cards, shown: 0 };
   seeallTitle.textContent = cat.label;
   seeallGrid.innerHTML = '';
   seeallView.scrollTop = 0;
-  revealMore();
+  const frag = document.createDocumentFragment();
+  for (const card of cat.cards) frag.appendChild(posterCard(card));
+  seeallGrid.appendChild(frag);
   showView('seeall');
 }
-
-function revealMore() {
-  if (!seeAll || seeAll.shown >= seeAll.cards.length) return;
-  const next = seeAll.cards.slice(seeAll.shown, seeAll.shown + SEEALL_BATCH);
-  const frag = document.createDocumentFragment();
-  for (const card of next) frag.appendChild(posterCard(card));
-  seeallGrid.appendChild(frag);
-  seeAll.shown += next.length;
-}
-
-// Reveal the next batch as the grid nears the bottom.
-seeallView.addEventListener('scroll', () => {
-  if (seeallView.scrollTop + seeallView.clientHeight >= seeallView.scrollHeight - 600) revealMore();
-});
 
 // --- top-bar scroll state ----------------------------------------------------
 
@@ -259,10 +256,20 @@ function activeBrowseView() {
   return null;
 }
 for (const v of [homeView, searchView, seeallView]) {
-  v.addEventListener('scroll', () => topbar.classList.toggle('scrolled', v.scrollTop > 10));
+  v.addEventListener('scroll', () => topbar.classList.toggle('scrolled', v.scrollTop > 10), {
+    passive: true,
+  });
 }
 
 // --- search ------------------------------------------------------------------
+
+// The magnifier glyph isn't a real submit control, so clicking it did nothing
+// while the field was collapsed. Focus the input so the field expands and the
+// user can type (and re-run the current search on click when text is present).
+searchIco?.addEventListener('click', () => {
+  input.focus();
+  if (input.value.trim()) runSearch();
+});
 
 let debounce;
 input.addEventListener('input', () => {
