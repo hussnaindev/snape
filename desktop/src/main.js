@@ -27,6 +27,7 @@ function createWindow() {
     minHeight: 480,
     backgroundColor: '#000000',
     title: 'Snape',
+    icon: path.join(__dirname, '..', 'build', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
