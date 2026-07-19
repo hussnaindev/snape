@@ -240,8 +240,8 @@ body {
 }
 
 .sidebar {
-  width: 360px;
-  min-width: 300px;
+  width: 320px;
+  min-width: 260px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -252,8 +252,8 @@ body {
 .sidebar-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 10px;
+  padding: 12px 12px;
   border-bottom: 1px solid var(--ring);
 }
 
@@ -263,8 +263,8 @@ body {
   color: #fff;
 }
 .logo svg {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   display: block;
 }
 
@@ -275,12 +275,12 @@ body {
 
 .search input {
   width: 100%;
-  padding: 9px 16px;
-  border-radius: 999px; /* fully rounded */
+  padding: 7px 14px;
+  border-radius: 999px;
   border: 1px solid var(--ring);
   background: #1c1c1c;
   color: var(--text);
-  font-size: 14px;
+  font-size: 13px;
   outline: none;
 }
 
@@ -292,17 +292,17 @@ body {
 .results-list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 6px;
 }
 
 .result {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  padding: 8px;
+  padding: 6px 8px;
   border: none;
-  border-radius: 10px;
+  border-radius: 8px;
   background: transparent;
   color: inherit;
   text-align: left;
@@ -320,8 +320,8 @@ body {
 .result .thumb {
   position: relative;
   flex-shrink: 0;
-  width: 54px;
-  height: 81px;
+  width: 44px;
+  height: 66px;
   border-radius: 6px;
   overflow: hidden;
   background: var(--card);
@@ -342,9 +342,9 @@ body {
 
 .result .r-title {
   font-family: var(--font-display);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  line-height: 1.25;
+  line-height: 1.2;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -395,7 +395,7 @@ body {
 
 /* series expansion: season pills + episode grid */
 .series-panel {
-  padding: 4px 10px 12px 74px; /* align under the metadata column */
+  padding: 4px 8px 10px 62px; /* align under the metadata column */
 }
 .panel-msg {
   color: var(--muted);
@@ -842,7 +842,7 @@ body {
 /* --- now-playing info in sidebar --- */
 
 .now-playing {
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--ring);
   background: rgba(229, 9, 20, 0.08);
 }

@@ -43,6 +43,20 @@ function continueWatching() {
   return cwLoad().filter(e => !(e.durationMs > 0 && e.positionMs >= e.durationMs * FINISHED_FRAC));
 }
 
+// Normalize stored item → card-like object for rendering
+function cwItemToCard(item) {
+  return {
+    subjectId: item.subjectId,
+    subjectType: item.subjectType,
+    isSeries: item.isSeries !== undefined ? item.isSeries : item.subjectType === 2,
+    title: item.cleanTitle || item.title,
+    year: (item.releaseDate || '').slice(0, 4),
+    posterUrl: item.posterUrl || item.cover?.url || null,
+    rating: item.rating != null ? item.rating : (item.imdbRatingValue ? Number.parseFloat(item.imdbRatingValue) : null),
+    duration: item.duration || '',
+  };
+}
+
 function recordProgress(item, se, ep, positionMs, durationMs) {
   if (positionMs <= 0) return;
   const now = Date.now();
@@ -57,6 +71,9 @@ function recordProgress(item, se, ep, positionMs, durationMs) {
     .concat(eps.filter(p => !(p.subjectId === item.subjectId && p.se === se && p.ep === ep)));
   eps = eps.slice(0, 500);
   epSave(eps);
+
+  // Refresh continue watching carousel in real-time
+  refreshCWCarousel();
 }
 
 function progressFor(subjectId, se, ep) {
@@ -92,16 +109,25 @@ async function loadHomeFeed() {
     const trendingMovies = findRow('Trending').filter(s => s.subjectType === 1).slice(0, 10);
     const trendingSeries = findRow('Top Series').filter(s => s.subjectType === 2).slice(0, 10);
 
-    let animatedMovies = [];
-    let anime = [];
-    try {
-      const animRes = await window.api.searchByType('animated', 1, 1);
-      animatedMovies = (animRes || []).slice(0, 10);
-    } catch {}
-    try {
-      const animeRes = await window.api.searchByType('anime', 1, 1);
-      anime = (animeRes || []).slice(0, 10);
-    } catch {}
+    // For animated movies: search MovieBox with subjectType=1 (movies)
+    // For anime: search MovieBox with subjectType=2 (series) since most anime are series
+    // Try home feed first, fallback to keyword search
+    let animatedMovies = findRow('Animation').filter(s => s.subjectType === 1).slice(0, 10);
+    let anime = findRow('Anime').filter(s => s.subjectType === 2).slice(0, 10);
+
+    // Fallback to keyword search if home feed has no matching row
+    if (animatedMovies.length === 0) {
+      try {
+        const res = await window.api.searchByType('animated', 1, 1);
+        animatedMovies = (res || []).slice(0, 10);
+      } catch {}
+    }
+    if (anime.length === 0) {
+      try {
+        const res = await window.api.searchByType('anime', 2, 1);
+        anime = (res || []).slice(0, 10);
+      } catch {}
+    }
 
     const sections = [
       { key: 'continue', label: 'Continue Watching', cards: continueEntries, feedSubjects: null },
@@ -117,11 +143,63 @@ async function loadHomeFeed() {
   }
 }
 
+// Refresh only the Continue Watching carousel in-place (real-time updates)
+function refreshCWCarousel() {
+  const cwSection = carouselsEl.querySelector('.section[data-key="continue"]');
+  if (!cwSection) return; // not rendered yet, skip
+  const carousel = cwSection.querySelector('.carousel');
+  if (!carousel) return;
+  const entries = continueWatching();
+  carousel.innerHTML = '';
+  if (entries.length === 0) {
+    cwSection.classList.add('hidden');
+    return;
+  }
+  cwSection.classList.remove('hidden');
+  for (const entry of entries) {
+    const card = cwEntryToCard(entry);
+    const cardEl = createPosterCard(
+      card.posterUrl,
+      card.isSeries,
+      card.rating,
+      card.title,
+      card.subjectId,
+      card.subjectType,
+      card.duration,
+      entry.fraction,
+    );
+    cardEl.addEventListener('click', () => {
+      const c = { ...card, _resumeSe: entry.se, _resumeEp: entry.ep, _positionMs: entry.positionMs };
+      onCarouselCardClick(c);
+    });
+    carousel.appendChild(cardEl);
+  }
+}
+
+function cwEntryToCard(entry) {
+  return {
+    subjectId: entry.item.subjectId,
+    subjectType: entry.item.subjectType,
+    isSeries: entry.item.isSeries !== undefined ? entry.item.isSeries : entry.item.subjectType === 2,
+    title: entry.item.cleanTitle || entry.item.title,
+    year: (entry.item.releaseDate || '').slice(0, 4),
+    posterUrl: entry.item.posterUrl || entry.item.cover?.url || null,
+    rating: entry.item.rating != null ? entry.item.rating : (entry.item.imdbRatingValue ? Number.parseFloat(entry.item.imdbRatingValue) : null),
+    duration: entry.item.duration || '',
+  };
+}
+
 function renderCarousels(sections) {
   carouselsEl.innerHTML = '';
   for (const sec of sections) {
+    // Skip continue watching section entirely if empty
+    if (sec.key === 'continue' && (!sec.cards || sec.cards.length === 0)) {
+      continue;
+    }
+
     const sectionDiv = document.createElement('div');
     sectionDiv.className = 'section';
+    sectionDiv.dataset.key = sec.key;
 
     const header = document.createElement('div');
     header.className = 'section-header';
@@ -132,42 +210,23 @@ function renderCarousels(sections) {
     carousel.className = 'carousel';
 
     if (sec.key === 'continue') {
-      const entries = sec.cards;
-      if (entries.length === 0) {
-        const empty = document.createElement('div');
-        empty.style.cssText = 'color:var(--muted);font-size:13px;padding:8px 0;';
-        empty.textContent = 'No titles in progress.';
-        carousel.appendChild(empty);
-      } else {
-        for (const entry of entries) {
-          const card = createPosterCard(
-            entry.item.posterUrl,
-            entry.item.isSeries,
-            entry.item.rating,
-            entry.item.cleanTitle,
-            entry.item.subjectId,
-            entry.item.subjectType,
-            entry.item.duration,
-            entry.fraction,
-          );
-          card.addEventListener('click', () => {
-            const c = {
-              subjectId: entry.item.subjectId,
-              isSeries: entry.item.isSeries,
-              subjectType: entry.item.subjectType,
-              title: entry.item.cleanTitle,
-              year: (entry.item.releaseDate || '').slice(0, 4),
-              posterUrl: entry.item.posterUrl,
-              rating: entry.item.rating,
-              duration: entry.item.duration || '',
-              _resumeSe: entry.se,
-              _resumeEp: entry.ep,
-              _positionMs: entry.positionMs,
-            };
-            onCarouselCardClick(c);
-          });
-          carousel.appendChild(card);
-        }
+      for (const entry of sec.cards) {
+        const card = cwEntryToCard(entry);
+        const cardEl = createPosterCard(
+          card.posterUrl,
+          card.isSeries,
+          card.rating,
+          card.title,
+          card.subjectId,
+          card.subjectType,
+          card.duration,
+          entry.fraction,
+        );
+        cardEl.addEventListener('click', () => {
+          const c = { ...card, _resumeSe: entry.se, _resumeEp: entry.ep, _positionMs: entry.positionMs };
+          onCarouselCardClick(c);
+        });
+        carousel.appendChild(cardEl);
       }
     } else {
       const subjects = sec.feedSubjects || sec.cards || [];
