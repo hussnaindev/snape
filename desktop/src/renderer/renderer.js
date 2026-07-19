@@ -99,6 +99,7 @@ const CAROUSEL_SPECS = [
 ];
 
 async function loadHomeFeed() {
+  carouselsEl.innerHTML = '<div class="section" style="color:var(--muted);padding:40px;text-align:center;font-size:14px;">Loading…</div>';
   try {
     const feed = await window.api.homeFeed();
     const rows = (feed.items || []).filter(r => r.type === 'SUBJECTS_MOVIE' && r.subjects && r.subjects.length > 0);
@@ -637,7 +638,6 @@ let progressInterval = null;
 async function loadCurrent(startTime) {
   const token = ++playToken;
   const { card, variantId, se, ep, isSeries } = current;
-  playerStatus.textContent = 'Loading stream…';
   try {
     const stream = await window.api.play(variantId, se, ep);
     if (token !== playToken) return;
