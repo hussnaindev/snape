@@ -99,7 +99,7 @@ const CAROUSEL_SPECS = [
 ];
 
 async function loadHomeFeed() {
-  carouselsEl.innerHTML = '<div class="section" style="color:var(--muted);padding:40px;text-align:center;font-size:14px;">Loading…</div>';
+  carouselsEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;"><div class="spinner"></div></div>';
   try {
     const feed = await window.api.homeFeed();
     const rows = (feed.items || []).filter(r => r.type === 'SUBJECTS_MOVIE' && r.subjects && r.subjects.length > 0);
