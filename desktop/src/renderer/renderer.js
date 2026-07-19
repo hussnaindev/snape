@@ -43,6 +43,10 @@ function continueWatching() {
   return cwLoad().filter(e => !(e.durationMs > 0 && e.positionMs >= e.durationMs * FINISHED_FRAC));
 }
 
+function entryFraction(entry) {
+  return entry.durationMs > 0 ? Math.min(1, entry.positionMs / entry.durationMs) : 0;
+}
+
 // Normalize stored item → card-like object for rendering
 function cwItemToCard(item) {
   return {
@@ -166,7 +170,7 @@ function refreshCWCarousel() {
       card.subjectId,
       card.subjectType,
       card.duration,
-      entry.fraction,
+      entryFraction(entry),
     );
     cardEl.addEventListener('click', () => {
       const c = { ...card, _resumeSe: entry.se, _resumeEp: entry.ep, _positionMs: entry.positionMs };
@@ -192,11 +196,6 @@ function cwEntryToCard(entry) {
 function renderCarousels(sections) {
   carouselsEl.innerHTML = '';
   for (const sec of sections) {
-    // Skip continue watching section entirely if empty
-    if (sec.key === 'continue' && (!sec.cards || sec.cards.length === 0)) {
-      continue;
-    }
-
     const sectionDiv = document.createElement('div');
     sectionDiv.className = 'section';
     sectionDiv.dataset.key = sec.key;
@@ -210,7 +209,10 @@ function renderCarousels(sections) {
     carousel.className = 'carousel';
 
     if (sec.key === 'continue') {
-      for (const entry of sec.cards) {
+      if (!sec.cards || sec.cards.length === 0) {
+        sectionDiv.classList.add('hidden');
+      }
+      for (const entry of (sec.cards || [])) {
         const card = cwEntryToCard(entry);
         const cardEl = createPosterCard(
           card.posterUrl,
@@ -220,7 +222,7 @@ function renderCarousels(sections) {
           card.subjectId,
           card.subjectType,
           card.duration,
-          entry.fraction,
+          entryFraction(entry),
         );
         cardEl.addEventListener('click', () => {
           const c = { ...card, _resumeSe: entry.se, _resumeEp: entry.ep, _positionMs: entry.positionMs };
@@ -320,18 +322,20 @@ function enableDragScroll(el) {
   let isDown = false, startX, scrollLeft;
   el.addEventListener('pointerdown', (e) => {
     isDown = true;
-    el.setPointerCapture(e.pointerId);
     startX = e.clientX - el.offsetLeft;
     scrollLeft = el.scrollLeft;
+    el.style.cursor = 'grabbing';
   });
   el.addEventListener('pointermove', (e) => {
     if (!isDown) return;
-    e.preventDefault();
     const x = e.clientX - el.offsetLeft;
-    el.scrollLeft = scrollLeft - (x - startX);
+    const dx = x - startX;
+    if (Math.abs(dx) > 3) {
+      el.scrollLeft = scrollLeft - dx;
+    }
   });
-  el.addEventListener('pointerup', () => { isDown = false; });
-  el.addEventListener('pointerleave', () => { isDown = false; });
+  el.addEventListener('pointerup', () => { isDown = false; el.style.cursor = ''; });
+  el.addEventListener('pointerleave', () => { isDown = false; el.style.cursor = ''; });
 }
 
 // Observe carousels created dynamically
