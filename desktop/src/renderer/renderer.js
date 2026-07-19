@@ -9,7 +9,6 @@ const status = document.getElementById('status');
 
 const overlay = document.getElementById('player-overlay');
 const video = document.getElementById('video');
-const playerTitle = document.getElementById('player-title');
 const playerStatus = document.getElementById('player-status');
 const idle = document.getElementById('idle');
 
@@ -156,7 +155,6 @@ function renderPanel(card, panel, seasons, seasonIdx) {
 
 function startMovie(card) {
   idle.classList.add('hidden');
-  playerTitle.textContent = card.title;
   current = {
     card,
     variantId: card.variants?.[0]?.id || card.subjectId,
@@ -169,7 +167,6 @@ function startMovie(card) {
 
 function startEpisode(card, panel, seasons, seasonIdx, se, ep) {
   idle.classList.add('hidden');
-  playerTitle.textContent = `${card.title}  ·  S${se}E${ep}`;
   current = {
     card,
     panel,
@@ -243,7 +240,6 @@ function onPlayerEpisode(se, ep) {
   if (!current?.isSeries) return;
   current.se = se;
   current.ep = ep;
-  playerTitle.textContent = `${current.card.title}  ·  S${se}E${ep}`;
   highlightEpisode();
   loadCurrent(0);
 }
