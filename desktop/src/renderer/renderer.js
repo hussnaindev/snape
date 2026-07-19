@@ -312,6 +312,8 @@ function hideNowPlaying() {
   if (np) np.remove();
 }
 
+let carouselResultItem = null; // tracks the one result item added from carousel
+
 // --- carousel card click -----------------------------------------------------
 
 async function onCarouselCardClick(card) {
@@ -319,32 +321,53 @@ async function onCarouselCardClick(card) {
   showPlayer(true);
   idle.classList.add('hidden');
 
-  // Create a synthetic result item in the sidebar (like a search result)
-  const item = document.createElement('div');
-  item.className = 'result-item';
   const chips = [
     `<span class="chip">${card.isSeries ? 'SERIES' : 'FILM'}</span>`,
     card.year ? `<span class="chip">${card.year}</span>` : '',
     card.rating ? `<span class="chip">★ ${card.rating.toFixed(1)}</span>` : '',
     !card.isSeries && card.duration ? `<span class="chip">${card.duration}</span>` : '',
   ].filter(Boolean).join('');
-  item.innerHTML = `
-    <button class="result active">
-      <div class="thumb">${card.posterUrl ? `<img loading="lazy" src="${card.posterUrl}" alt="">` : ''}</div>
-      <div class="info">
-        <div class="r-title">${card.title}</div>
-        <div class="chips">${chips}</div>
-      </div>
-      ${card.isSeries ? '<span class="chevron">▾</span>' : ''}
-    </button>
-    ${card.isSeries ? '<div class="series-panel hidden"></div>' : ''}`;
-  
-  // Prepend to results, or replace existing first result if it's the now-playing
-  const existing = results.querySelector('.result-item');
-  if (existing) {
-    results.insertBefore(item, existing);
+
+  // Reuse the existing carousel result item if it exists, otherwise create one
+  let item = carouselResultItem;
+  if (item) {
+    // Update existing item
+    item.querySelector('.thumb').innerHTML = card.posterUrl ? `<img loading="lazy" src="${card.posterUrl}" alt="">` : '';
+    item.querySelector('.r-title').textContent = card.title;
+    item.querySelector('.chips').innerHTML = chips;
+    if (card.isSeries) {
+      let panel = item.querySelector('.series-panel');
+      if (!panel) {
+        const btn = item.querySelector('.result');
+        item.insertAdjacentHTML('beforeend', '<div class="series-panel hidden"></div>');
+        const chevron = document.createElement('span');
+        chevron.className = 'chevron';
+        chevron.textContent = '▾';
+        btn.appendChild(chevron);
+        panel = item.querySelector('.series-panel');
+      }
+      panel.classList.add('hidden');
+    } else {
+      const panel = item.querySelector('.series-panel');
+      if (panel) panel.remove();
+      const chevron = item.querySelector('.chevron');
+      if (chevron) chevron.remove();
+    }
   } else {
-    results.appendChild(item);
+    item = document.createElement('div');
+    item.className = 'result-item';
+    item.innerHTML = `
+      <button class="result active">
+        <div class="thumb">${card.posterUrl ? `<img loading="lazy" src="${card.posterUrl}" alt="">` : ''}</div>
+        <div class="info">
+          <div class="r-title">${card.title}</div>
+          <div class="chips">${chips}</div>
+        </div>
+        ${card.isSeries ? '<span class="chevron">▾</span>' : ''}
+      </button>
+      ${card.isSeries ? '<div class="series-panel hidden"></div>' : ''}`;
+    results.insertBefore(item, results.firstChild);
+    carouselResultItem = item;
   }
 
   const rowEl = item.querySelector('.result');
@@ -417,10 +440,9 @@ async function runSearch() {
 }
 
 function renderResults(cards) {
-  // Preserve now-playing item if it exists
-  const npItem = results.querySelector('.result-item');
+  // Preserve the carousel-added now-playing item across search re-renders
   results.innerHTML = '';
-  if (npItem) results.appendChild(npItem);
+  if (carouselResultItem) results.appendChild(carouselResultItem);
   
   for (const c of cards) {
     const item = document.createElement('div');
@@ -699,6 +721,11 @@ function onBack() {
   current = null;
   status.textContent = '';
   playToken++;
+  // Remove carousel-added result item from sidebar
+  if (carouselResultItem) {
+    carouselResultItem.remove();
+    carouselResultItem = null;
+  }
 }
 
 // Save progress before closing
