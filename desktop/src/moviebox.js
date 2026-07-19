@@ -309,4 +309,57 @@ async function captionVtt(url) {
   );
 }
 
-module.exports = { search, seasons, playInfo, captions, captionVtt, USER_AGENT };
+/**
+ * Search with a subjectType filter (0=all, 1=movies, 2=series).
+ * Returns raw items (not grouped) so the caller can use them for carousels.
+ */
+async function searchByType(keyword, subjectType = 0, page = 1) {
+  await ensureToken();
+  const body = JSON.stringify({ keyword: keyword.trim(), page, perPage: PER_PAGE, subjectType });
+  const ts = Date.now();
+  const sig = signature('POST', P_SEARCH, '', body, ts);
+  const res = await fetch(`${BASE}${P_SEARCH}`, {
+    method: 'POST',
+    headers: commonHeaders(ts, sig),
+    body: Buffer.from(body, 'utf8'),
+  });
+  absorbToken(res);
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${await safeText(res)}`);
+  const data = (await res.json()).data || {};
+  const items = (data.items || []).filter(
+    (it) =>
+      (it.subjectType === 1 || it.subjectType === 2) &&
+      it.subjectId && it.subjectId.trim() &&
+      it.hasResource,
+  );
+  return items.map(toRawCard);
+}
+
+function toRawCard(it) {
+  return {
+    subjectId: it.subjectId,
+    subjectType: it.subjectType,
+    isSeries: it.subjectType === 2,
+    title: cleanTitle(it.title),
+    year: (it.releaseDate || '').slice(0, 4),
+    posterUrl: it.cover?.url || null,
+    rating: it.imdbRatingValue ? Number.parseFloat(it.imdbRatingValue) || null : null,
+    duration: it.duration || '',
+  };
+}
+
+/**
+ * Fetch the MovieBox home feed (tab-operating) for curated sections.
+ * Returns the raw API response data.
+ */
+async function homeFeed() {
+  await ensureToken();
+  const data = await signedGet(P_HOME, [
+    ['tabId', '0'],
+    ['page', '1'],
+    ['version', APP_VERSION],
+  ]);
+  return data.data || {};
+}
+
+module.exports = { search, searchByType, homeFeed, seasons, playInfo, captions, captionVtt, toRawCard, USER_AGENT };

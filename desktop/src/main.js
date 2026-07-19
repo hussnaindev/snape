@@ -83,6 +83,12 @@ ipcMain.handle('moviebox:captions', async (_e, { subjectId, se, ep }) =>
 
 ipcMain.handle('moviebox:captionVtt', async (_e, url) => moviebox.captionVtt(url));
 
+ipcMain.handle('moviebox:searchByType', async (_e, { keyword, subjectType, page }) =>
+  moviebox.searchByType(keyword, subjectType, page),
+);
+
+ipcMain.handle('moviebox:homeFeed', async () => moviebox.homeFeed());
+
 app.whenReady().then(() => {
   installHeaderInjector();
   createWindow();
