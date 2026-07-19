@@ -49,24 +49,7 @@ body {
 .home-scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 20px 24px 40px;
-}
-
-.home-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.home-logo {
-  display: inline-flex;
-  color: #fff;
-}
-.home-logo svg {
-  width: 36px;
-  height: 36px;
-  display: block;
+  padding: 16px 24px 40px;
 }
 
 /* --- carousel sections --- */
@@ -100,20 +83,23 @@ body {
   display: flex;
   gap: 10px;
   overflow-x: auto;
-  padding-bottom: 6px;
+  overflow-y: visible;
+  padding: 8px 0 12px;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.carousel:active {
+  cursor: grabbing;
 }
 
 .carousel::-webkit-scrollbar {
-  height: 4px;
-}
-.carousel::-webkit-scrollbar-track {
-  background: transparent;
-}
-.carousel::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 2px;
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 /* --- poster card (matching mobile PosterCard) --- */
@@ -122,7 +108,6 @@ body {
   flex: 0 0 auto;
   width: 140px;
   border-radius: 12px;
-  overflow: hidden;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.25);
   cursor: pointer;
@@ -141,6 +126,8 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .pcard-img {

@@ -314,6 +314,35 @@ function hideNowPlaying() {
 
 let carouselResultItem = null; // tracks the one result item added from carousel
 
+// --- drag-to-scroll for carousels --------------------------------------------
+
+function enableDragScroll(el) {
+  let isDown = false, startX, scrollLeft;
+  el.addEventListener('pointerdown', (e) => {
+    isDown = true;
+    el.setPointerCapture(e.pointerId);
+    startX = e.clientX - el.offsetLeft;
+    scrollLeft = el.scrollLeft;
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.clientX - el.offsetLeft;
+    el.scrollLeft = scrollLeft - (x - startX);
+  });
+  el.addEventListener('pointerup', () => { isDown = false; });
+  el.addEventListener('pointerleave', () => { isDown = false; });
+}
+
+// Observe carousels created dynamically
+const carouselObserver = new MutationObserver(() => {
+  document.querySelectorAll('.carousel:not([data-drag])').forEach((c) => {
+    c.dataset.drag = '1';
+    enableDragScroll(c);
+  });
+});
+carouselObserver.observe(document.getElementById('carousels'), { childList: true, subtree: true });
+
 // --- carousel card click -----------------------------------------------------
 
 async function onCarouselCardClick(card) {
