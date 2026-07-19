@@ -203,8 +203,20 @@ function renderCarousels(sections) {
 
     const header = document.createElement('div');
     header.className = 'section-header';
-    header.innerHTML = `<span class="section-title">${sec.label}</span><span class="section-bar"></span>`;
+    header.innerHTML = `<span class="section-title">${sec.label}</span><span class="section-bar"></span>${sec.key === 'continue' ? '<button class="clear-cw" title="Clear watch history">Clear history</button>' : ''}`;
     sectionDiv.appendChild(header);
+
+    if (sec.key === 'continue') {
+      header.querySelector('.clear-cw')?.addEventListener('click', () => {
+        cwSave([]);
+        epSave([]);
+        const cwSection = document.querySelector('.section[data-key="continue"]');
+        if (cwSection) {
+          cwSection.querySelector('.carousel').innerHTML = '';
+          cwSection.classList.add('hidden');
+        }
+      });
+    }
 
     const carousel = document.createElement('div');
     carousel.className = 'carousel';
