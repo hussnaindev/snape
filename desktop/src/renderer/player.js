@@ -119,7 +119,7 @@ function createStreamPlayer(video, overlay) {
   let hideTimer = null;
   let controlsShown = true;
   let menu = 'none'; // none | settings | quality | speed | subtitles | audio
-  let fillScreen = true; // RESIZE_MODE_ZOOM default
+  let fillScreen = false; // RESIZE_MODE_FIT default (contain, not zoom)
   let qualityHeight = null; // null = Auto
   let speed = 1;
   let muted = false;
@@ -135,9 +135,10 @@ function createStreamPlayer(video, overlay) {
   let onSelectEpisode = null;
   let episodesShown = false;
   let loaded = false;
+  let loading = false;
   const loadedTracks = new Map(); // captionId -> <track>
 
-  video.style.objectFit = 'cover';
+  video.style.objectFit = 'contain';
 
   // Render an active cue inside a 55%-black band (matching the app's overlay).
   function setCue(text) {
@@ -488,7 +489,7 @@ function createStreamPlayer(video, overlay) {
 
   function render() {
     const playing = !video.paused;
-    const buffering = video.readyState < 3 && playing;
+    const buffering = loading || (video.readyState < 3 && playing);
     const chromeVisible = controlsShown || video.paused;
 
     el.chrome.classList.toggle('hidden', !chromeVisible);
@@ -596,12 +597,16 @@ function createStreamPlayer(video, overlay) {
     setCue('');
 
     shakaPlayer.configure({ abr: { enabled: true } });
+    // Start the render loop and show spinner during load
+    loading = true;
+    if (!raf) raf = requestAnimationFrame(tick);
+    render();
     await shakaPlayer.load(stream.url, opts.startTime || 0);
+    loading = false;
     video.muted = muted;
     video.play().catch(() => {});
     loaded = true;
     controlsShown = true;
-    if (!raf) raf = requestAnimationFrame(tick);
     render();
     scheduleHide();
   }

@@ -353,6 +353,11 @@ async function onCarouselCardClick(card) {
   showHomeContent(false);
   showPlayer(true);
   idle.classList.add('hidden');
+  // Clear search
+  input.value = '';
+  results.innerHTML = '';
+  if (carouselResultItem) results.appendChild(carouselResultItem);
+  status.textContent = '';
 
   const chips = [
     `<span class="chip">${card.isSeries ? 'SERIES' : 'FILM'}</span>`,
