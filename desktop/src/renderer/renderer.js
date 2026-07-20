@@ -191,6 +191,8 @@ function cwEntryToCard(entry) {
     posterUrl: entry.item.posterUrl || entry.item.cover?.url || null,
     rating: entry.item.rating != null ? entry.item.rating : (entry.item.imdbRatingValue ? Number.parseFloat(entry.item.imdbRatingValue) : null),
     duration: entry.item.duration || '',
+    variants: entry.item.variants,
+    _variantId: entry.item.variantId,
   };
 }
 
@@ -602,7 +604,7 @@ function startMovie(card, startTime) {
   idle.classList.add('hidden');
   current = {
     card,
-    variantId: card.variants?.[0]?.id || card.subjectId,
+    variantId: card._variantId || card.variants?.[0]?.id || card.subjectId,
     isSeries: false,
     se: 0,
     ep: 0,
@@ -619,7 +621,7 @@ function startEpisode(card, panel, seasons, seasonIdx, se, ep, startTime) {
     panel,
     seasons,
     seasonIdx,
-    variantId: card.variants?.[0]?.id || card.subjectId,
+    variantId: card._variantId || card.variants?.[0]?.id || card.subjectId,
     isSeries: true,
     se,
     ep,
@@ -680,24 +682,25 @@ async function loadCurrent(startTime) {
       const pos = video.currentTime || 0;
       if (dur > 0 && pos > 0 && current) {
         const subjectId = current.card.subjectId;
-        recordProgress(
-          {
-            subjectId: current.card.subjectId,
-            subjectType: current.card.subjectType || (current.isSeries ? 2 : 1),
-            title: current.card.title,
-            cover: { url: current.card.posterUrl },
-            releaseDate: current.card.year ? `${current.card.year}-01-01` : '',
-            duration: current.card.duration || '',
-            imdbRatingValue: current.card.rating ? String(current.card.rating) : '',
-            hasResource: true,
-          },
-          current.se,
-          current.ep,
-          Math.round(pos * 1000),
-          Math.round(dur * 1000),
-        );
-      }
-    }, 5000);
+    recordProgress(
+      {
+        subjectId: current.card.subjectId,
+        subjectType: current.card.subjectType || (current.isSeries ? 2 : 1),
+        title: current.card.title,
+        cover: { url: current.card.posterUrl },
+        releaseDate: current.card.year ? `${current.card.year}-01-01` : '',
+        duration: current.card.duration || '',
+        imdbRatingValue: current.card.rating ? String(current.card.rating) : '',
+        hasResource: true,
+        variants: current.card.variants,
+        variantId: current.variantId,
+      },
+      current.se,
+      current.ep,
+      Math.round(pos * 1000),
+      Math.round(dur * 1000),
+    );
+  }, 5000);
 
     window.api
       .captions(variantId, stream.se, stream.ep)
@@ -748,6 +751,8 @@ function saveFinalProgress() {
         duration: current.card.duration || '',
         imdbRatingValue: current.card.rating ? String(current.card.rating) : '',
         hasResource: true,
+        variants: current.card.variants,
+        variantId: current.variantId,
       },
       current.se,
       current.ep,
