@@ -682,25 +682,26 @@ async function loadCurrent(startTime) {
       const pos = video.currentTime || 0;
       if (dur > 0 && pos > 0 && current) {
         const subjectId = current.card.subjectId;
-    recordProgress(
-      {
-        subjectId: current.card.subjectId,
-        subjectType: current.card.subjectType || (current.isSeries ? 2 : 1),
-        title: current.card.title,
-        cover: { url: current.card.posterUrl },
-        releaseDate: current.card.year ? `${current.card.year}-01-01` : '',
-        duration: current.card.duration || '',
-        imdbRatingValue: current.card.rating ? String(current.card.rating) : '',
-        hasResource: true,
-        variants: current.card.variants,
-        variantId: current.variantId,
-      },
-      current.se,
-      current.ep,
-      Math.round(pos * 1000),
-      Math.round(dur * 1000),
-    );
-  }, 5000);
+        recordProgress(
+          {
+            subjectId: current.card.subjectId,
+            subjectType: current.card.subjectType || (current.isSeries ? 2 : 1),
+            title: current.card.title,
+            cover: { url: current.card.posterUrl },
+            releaseDate: current.card.year ? `${current.card.year}-01-01` : '',
+            duration: current.card.duration || '',
+            imdbRatingValue: current.card.rating ? String(current.card.rating) : '',
+            hasResource: true,
+            variants: current.card.variants,
+            variantId: current.variantId,
+          },
+          current.se,
+          current.ep,
+          Math.round(pos * 1000),
+          Math.round(dur * 1000),
+        );
+      }
+    }, 5000);
 
     window.api
       .captions(variantId, stream.se, stream.ep)
