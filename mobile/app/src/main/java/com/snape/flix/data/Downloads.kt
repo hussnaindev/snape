@@ -40,6 +40,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.IOException
+import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
@@ -69,6 +70,9 @@ data class DownloadMeta(
     // Language of the saved subtitle, so the offline player can label/select it.
     val subtitleLan: String = "",
     val subtitleLanName: String = "",
+    // Mime of the saved sidecar (SubRip vs WebVTT) — a .vtt parsed as SubRip
+    // yields an empty track, so we persist what we actually fetched.
+    val subtitleMime: String = "",
 )
 
 /** A flattened, UI-facing view of one Media3 download (rebuilt on every change). */
@@ -118,6 +122,9 @@ object Downloads {
     private const val KEY_COOKIES = "cookies_v1"
     // Any non-zero stop reason marks a download as user-paused.
     private const val STOP_REASON_PAUSE = 1
+    private const val MAX_SUBTITLE_REDIRECTS = 5
+    // Backoffs before each retry that follows the first subtitle fetch attempt.
+    private val SUBTITLE_RETRY_DELAYS = listOf(1_000L, 3_000L)
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
@@ -223,8 +230,13 @@ object Downloads {
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
     }
 
-    /** A saved subtitle sidecar for an offline download (local .srt + its language). */
-    data class OfflineSubtitle(val path: String, val lan: String, val lanName: String)
+    /** A saved subtitle sidecar for an offline download (local file + language + mime). */
+    data class OfflineSubtitle(
+        val path: String,
+        val lan: String,
+        val lanName: String,
+        val mime: String = MimeTypes.APPLICATION_SUBRIP,
+    )
 
     /**
      * The saved subtitle for a download, if one was fetched at download time and the
@@ -235,7 +247,12 @@ object Downloads {
         val meta = runCatching { json.decodeFromString(DownloadMeta.serializer(), String(download.request.data)) }.getOrNull() ?: return null
         val path = meta.subtitleLocalPath?.takeIf { it.isNotBlank() } ?: return null
         if (!File(path).exists()) return null
-        return OfflineSubtitle(path, meta.subtitleLan.ifBlank { "und" }, meta.subtitleLanName.ifBlank { "Subtitle" })
+        return OfflineSubtitle(
+            path = path,
+            lan = meta.subtitleLan.ifBlank { "und" },
+            lanName = meta.subtitleLanName.ifBlank { "Subtitle" },
+            mime = meta.subtitleMime.ifBlank { mimeForPath(path) },
+        )
     }
 
     /**
@@ -247,7 +264,7 @@ object Downloads {
         val base = downloadById(id)?.request?.toMediaItem() ?: return null
         val sub = offlineSubtitle(id) ?: return base
         val config = MediaItem.SubtitleConfiguration.Builder(Uri.fromFile(File(sub.path)))
-            .setMimeType(MimeTypes.APPLICATION_SUBRIP)
+            .setMimeType(sub.mime)
             .setLanguage(sub.lan)
             .setLabel(sub.lanName)
             .build()
@@ -292,14 +309,8 @@ object Downloads {
         // Fetch subtitle blob BEFORE video download — the signed URL may expire
         // during the multi-minute manifest probe and segment download.
         scope.launch {
-            val subtitleLocalPath = subtitleUrl?.takeUnless { it.isBlank() }?.let { subUrl ->
-                runCatching {
-                    val bytes = URL(subUrl).readBytes()
-                    val subFile = File(downloadDir(ctx), "${id}_sub.srt")
-                    subFile.writeBytes(bytes)
-                    subFile.absolutePath
-                }.getOrNull()
-            }
+            val saved = subtitleUrl?.takeUnless { it.isBlank() }?.let { saveSubtitleWithRetry(ctx, id, it) }
+            val subtitleLocalPath = saved?.path
 
             withContext(Dispatchers.Main) {
                 val mime = when (format.uppercase()) {
@@ -311,8 +322,9 @@ object Downloads {
                 val meta = DownloadMeta(
                     subjectId, se, ep, title, isSeries, posterUrl, logoUrl, year, rating, quality,
                     subtitleLocalPath = subtitleLocalPath,
-                    subtitleLan = if (subtitleLocalPath != null) subtitleLan else "",
-                    subtitleLanName = if (subtitleLocalPath != null) subtitleLanName else "",
+                    subtitleLan = if (saved != null) subtitleLan else "",
+                    subtitleLanName = if (saved != null) subtitleLanName else "",
+                    subtitleMime = saved?.mime ?: "",
                 )
                 val data = json.encodeToString(DownloadMeta.serializer(), meta).toByteArray()
                 val mediaItem = MediaItem.Builder().setUri(url)
@@ -386,6 +398,9 @@ object Downloads {
         // Immediately mark as removing so the UI shows "Deleting…" + spinner.
         _removingIds.value = _removingIds.value + id
         refresh()
+        // The subtitle sidecar lives outside Media3's cache, so removing the
+        // download doesn't take it with it — delete it here or it's orphaned.
+        offlineSubtitle(id)?.let { runCatching { File(it.path).delete() } }
         // After the remove completes (onDownloadRemoved → refresh) the item will
         // disappear from the list, which is how the UI knows to stop rendering it.
         DownloadService.sendRemoveDownload(appContext, SnapeDownloadService::class.java, id, false)
@@ -436,6 +451,110 @@ object Downloads {
 
     private fun downloadDir(context: Context): File =
         File(context.getExternalFilesDir(null), "downloads").apply { mkdirs() }
+
+    /**
+     * Where subtitle sidecars live. Deliberately a **sibling** of [downloadDir],
+     * never inside it: that folder belongs to Media3's [SimpleCache], which deletes
+     * every file it can't parse as one of its own cache spans when it scans the
+     * directory on startup — a sidecar written there would not survive a restart.
+     */
+    private fun subtitleDir(context: Context): File =
+        File(context.getExternalFilesDir(null), "subtitles").apply { mkdirs() }
+
+    /**
+     * A flat, filesystem-safe sidecar file for a download. Download ids are
+     * "subjectId/se/ep", so using one verbatim as a file name asks for a write into
+     * directories that don't exist — which threw, was swallowed, and left every
+     * download with no saved subtitle. Flatten the separators instead.
+     */
+    private fun subtitleFile(context: Context, id: String, ext: String): File =
+        File(subtitleDir(context), id.replace(Regex("[^A-Za-z0-9._-]"), "_") + "_sub." + ext)
+
+    /** A subtitle sidecar we just wrote to disk. */
+    private data class SavedSubtitle(val path: String, val mime: String)
+
+    /**
+     * [saveSubtitle] with a couple of short retries. The sidecar is the user's only
+     * copy — once the download is queued its caption URL is gone — so a transient
+     * network blip shouldn't silently cost them the subtitle they picked.
+     */
+    private suspend fun saveSubtitleWithRetry(context: Context, id: String, url: String): SavedSubtitle? =
+        withContext(Dispatchers.IO) {
+            saveSubtitle(context, id, url)?.let { return@withContext it }
+            SUBTITLE_RETRY_DELAYS.forEach { backoff ->
+                delay(backoff)
+                saveSubtitle(context, id, url)?.let { return@withContext it }
+            }
+            null
+        }
+
+    /**
+     * Fetch a caption blob and store it next to (not in) the download cache.
+     * Best-effort: a failure just means the download carries no subtitle, so the
+     * video still saves.
+     */
+    private fun saveSubtitle(context: Context, id: String, url: String): SavedSubtitle? {
+        val (bytes, resolvedUrl) = runCatching { fetchSubtitle(url) }.getOrNull() ?: return null
+        val mime = sniffSubtitleMime(bytes, resolvedUrl)
+        return runCatching {
+            val file = subtitleFile(context, id, if (mime == MimeTypes.TEXT_VTT) "vtt" else "srt")
+            file.parentFile?.mkdirs()
+            file.writeBytes(bytes)
+            SavedSubtitle(file.absolutePath, mime)
+        }.getOrNull()
+    }
+
+    /**
+     * GET a caption URL, returning its bytes and the URL they finally came from.
+     * Redirects are followed by hand because the BFF's caption links can bounce
+     * between http and https, which [HttpURLConnection] refuses to follow itself.
+     */
+    private fun fetchSubtitle(url: String): Pair<ByteArray, String>? {
+        var current = url
+        repeat(MAX_SUBTITLE_REDIRECTS + 1) {
+            val conn = (URL(current).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                instanceFollowRedirects = false
+                connectTimeout = 15_000
+                readTimeout = 20_000
+                setRequestProperty("User-Agent", MovieBoxSign.USER_AGENT)
+            }
+            try {
+                val code = conn.responseCode
+                if (code in 300..399) {
+                    val location = conn.getHeaderField("Location") ?: return null
+                    current = URL(URL(current), location).toString()
+                    return@repeat
+                }
+                if (code !in 200..299) return null
+                val bytes = conn.inputStream.use { it.readBytes() }
+                return if (bytes.isEmpty()) null else bytes to current
+            } finally {
+                conn.disconnect()
+            }
+        }
+        return null
+    }
+
+    /**
+     * SubRip or WebVTT? Sniff the payload first (a WebVTT file always opens with the
+     * "WEBVTT" magic), then fall back to the URL's extension. Handing Media3 the
+     * wrong mime gives a track that selects but renders nothing.
+     */
+    private fun sniffSubtitleMime(bytes: ByteArray, url: String): String {
+        val head = String(bytes.copyOf(minOf(bytes.size, 32)), Charsets.UTF_8)
+            .trimStart('\uFEFF', ' ', '\n', '\r', '\t')
+        if (head.startsWith("WEBVTT", ignoreCase = true)) return MimeTypes.TEXT_VTT
+        return mimeForPath(url)
+    }
+
+    /** Mime implied by a path/URL's extension, defaulting to SubRip. */
+    private fun mimeForPath(path: String): String =
+        if (path.substringBefore('?').substringAfterLast('.', "").equals("vtt", ignoreCase = true)) {
+            MimeTypes.TEXT_VTT
+        } else {
+            MimeTypes.APPLICATION_SUBRIP
+        }
 
     private fun downloadById(id: String): Download? =
         runCatching { manager?.downloadIndex?.getDownload(id) }.getOrNull()
