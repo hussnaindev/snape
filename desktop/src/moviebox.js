@@ -23,9 +23,18 @@ const SECRET_KEY =
 const BODY_MAX_BYTES = 102_400;
 const PER_PAGE = 20; // BFF caps perPage at 20 (400 LIMIT_EXCEED "Up to 20" above it)
 
+// Impersonated MovieBox Android client version. The BFF version-gates playback:
+// a stale APP_VERSION_CODE makes play-info return a "please update" promo clip as
+// the stream instead of the real one (search and the home feed keep working, so it
+// looks like playback, not an error). When every title suddenly plays an "update
+// MovieBox" promo, bump these to the current shipping build (version_name /
+// versionCode from the live APK — e.g. via apkcombo/uptodown/platinmods listings).
+// Keep in sync with the Android app's MovieBoxSign.kt.
+const APP_VERSION = '3.0.16.0721.03';
+const APP_VERSION_CODE = 50020116;
+
 const USER_AGENT =
-  'com.community.oneroom/50020044 (Linux; U; Android 13; en_US; 23078RKD5C; Build/TQ2A.230405.003; Cronet/135.0.7012.3)';
-const APP_VERSION = '3.0.03.0529.03';
+  `com.community.oneroom/${APP_VERSION_CODE} (Linux; U; Android 13; en_US; 23078RKD5C; Build/TQ2A.230405.003; Cronet/135.0.7012.3)`;
 
 let runtimeToken = null;
 
@@ -76,7 +85,7 @@ function clientInfo() {
   const gaid = randomUUID();
   return (
     `{"package_name":"com.community.oneroom","version_name":"${APP_VERSION}",` +
-    `"version_code":50020044,"os":"android","os_version":"13","install_ch":"ps",` +
+    `"version_code":${APP_VERSION_CODE},"os":"android","os_version":"13","install_ch":"ps",` +
     `"device_id":"${deviceId}","install_store":"ps","gaid":"${gaid}","brand":"Redmi",` +
     `"model":"23078RKD5C","system_language":"en","net":"NETWORK_WIFI","region":"US",` +
     `"timezone":"America/New_York","sp_code":"40401","X-Play-Mode":"2"}`
