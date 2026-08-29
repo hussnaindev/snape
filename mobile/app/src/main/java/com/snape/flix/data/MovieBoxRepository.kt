@@ -68,7 +68,7 @@ object MovieBoxRepository {
     /** Acquire a runtime bearer token from a GET endpoint before POST requests. */
     private fun ensureToken() {
         if (MovieBoxSign.authBearerToken != null) return
-        val req = signedGet(P_HOME, listOf("tabId" to "0", "page" to "1", "version" to "3.0.03.0529.03"))
+        val req = signedGet(P_HOME, listOf("tabId" to "0", "page" to "1", "version" to MovieBoxSign.APP_VERSION))
         client.newCall(req).execute().use { resp ->
             MovieBoxSign.absorbToken(resp.headers.toMultimap())
             resp.body?.close()
@@ -109,7 +109,7 @@ object MovieBoxRepository {
         ensureToken()
         val req = signedGet(
             P_HOME,
-            listOf("tabId" to "0", "page" to "1", "version" to "3.0.03.0529.03"),
+            listOf("tabId" to "0", "page" to "1", "version" to MovieBoxSign.APP_VERSION),
         )
         json.decodeFromString(TabOperatingResponse.serializer(), bodyString(req)).data?.items.orEmpty()
     }

@@ -27,6 +27,19 @@ object MovieBoxSign {
     private const val SECRET_KEY = "76iRl07s0xSN9jqmEWAt79EBJZulIQIsV64FZr2O"
     private const val BODY_MAX_BYTES = 102_400
 
+    /**
+     * Impersonated MovieBox Android client version. The BFF **version-gates
+     * playback**: a stale [APP_VERSION_CODE] makes `play-info` hand back a
+     * "please update" promo clip as the stream instead of the real one (search
+     * and the home feed keep working, so it looks like playback, not an error).
+     * When every title suddenly plays an "update MovieBox" promo, bump these to
+     * the current shipping build (`version_name` / `versionCode` from the live
+     * APK — e.g. via apkcombo/uptodown/platinmods listings) and update
+     * [USER_AGENT] to match.
+     */
+    const val APP_VERSION = "3.0.16.0721.03"
+    const val APP_VERSION_CODE = 50020116L
+
     private val rng = SecureRandom()
 
     @Volatile private var runtimeToken: String? = null
@@ -92,13 +105,13 @@ object MovieBoxSign {
         val deviceBytes = ByteArray(16).also { rng.nextBytes(it) }
         val deviceId = deviceBytes.joinToString("") { "%02x".format(it) }
         val gaid = UUID.randomUUID().toString()
-        return """{"package_name":"com.community.oneroom","version_name":"3.0.03.0529.03",""" +
-            """"version_code":50020044,"os":"android","os_version":"13","install_ch":"ps",""" +
+        return """{"package_name":"com.community.oneroom","version_name":"$APP_VERSION",""" +
+            """"version_code":$APP_VERSION_CODE,"os":"android","os_version":"13","install_ch":"ps",""" +
             """"device_id":"$deviceId","install_store":"ps","gaid":"$gaid","brand":"Redmi",""" +
             """"model":"23078RKD5C","system_language":"en","net":"NETWORK_WIFI","region":"US",""" +
             """"timezone":"America/New_York","sp_code":"40401","X-Play-Mode":"2"}"""
     }
 
     const val USER_AGENT =
-        "com.community.oneroom/50020044 (Linux; U; Android 13; en_US; 23078RKD5C; Build/TQ2A.230405.003; Cronet/135.0.7012.3)"
+        "com.community.oneroom/$APP_VERSION_CODE (Linux; U; Android 13; en_US; 23078RKD5C; Build/TQ2A.230405.003; Cronet/135.0.7012.3)"
 }
