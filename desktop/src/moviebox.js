@@ -30,8 +30,8 @@ const PER_PAGE = 20; // BFF caps perPage at 20 (400 LIMIT_EXCEED "Up to 20" abov
 // MovieBox" promo, bump these to the current shipping build (version_name /
 // versionCode from the live APK — e.g. via apkcombo/uptodown/platinmods listings).
 // Keep in sync with the Android app's MovieBoxSign.kt.
-const APP_VERSION = '3.0.16.0721.03';
-const APP_VERSION_CODE = 50020116;
+const APP_VERSION = '4.0.02.0828.03';
+const APP_VERSION_CODE = 50020125;
 
 const USER_AGENT =
   `com.community.oneroom/${APP_VERSION_CODE} (Linux; U; Android 13; en_US; 23078RKD5C; Build/TQ2A.230405.003; Cronet/135.0.7012.3)`;
