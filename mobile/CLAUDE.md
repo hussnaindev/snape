@@ -38,11 +38,13 @@ starts failing, update `SECRET_KEY` there.
 ## MovieBox version gate (recurring — quick fix)
 MovieBox **version-gates playback**: when the spoofed client version goes stale,
 every title plays a "please update / MovieBox is updated" promo instead of the real
-stream (search and the home feed still work). Every few weeks MovieBox ships a new
-build and re-gates the old one. **Fix:** bump `APP_VERSION` / `APP_VERSION_CODE` in
-`data/MovieBoxSign.kt` to the current shipping build (`version_name` / `versionCode`
-from a live-APK listing — uptodown/platinmods). Mirror the same values in
-`desktop/src/moviebox.js`. Last bump: `4.0.02.0828.03` / `50020125`.
+stream (search and the home feed still work). MovieBox re-gates the old client every
+few weeks. **Fix (no app release):** edit the root `config/moviebox-client.json`
+(`version` / `versionCode`) to the current shipping build (`version_name` /
+`versionCode` from a live-APK listing — uptodown/platinmods). Both apps fetch that
+JSON at startup (`MovieBoxRepository.ensureClientConfig`), so a push is enough — no
+rebuild. The `DEFAULT_APP_VERSION*` values in `data/MovieBoxSign.kt` are only the
+offline fallback (keep them roughly current, in sync with `desktop/src/moviebox.js`).
 
 ## Feature flags
 LaunchDarkly gates access (`data/AccessGate.kt`, `SnapeApp.kt`, `HomePrefetch.kt`,

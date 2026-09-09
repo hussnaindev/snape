@@ -33,10 +33,13 @@ relative to `desktop/`. `README.md` here is the authoritative deep-dive.
   `SECRET_KEY` in `src/moviebox.js` (or set `MOVIEBOX_SECRET_KEY`).
 - If every title plays a "please update / MovieBox is updated" promo instead of the
   real video, MovieBox **version-gated** the stale spoofed client (search still
-  works). This recurs every few weeks. Fix: bump `APP_VERSION` / `APP_VERSION_CODE`
-  in `src/moviebox.js` to the current shipping build (`version_name` / `versionCode`
-  from a live-APK listing — uptodown/platinmods), keeping them in sync with the
-  Android app's `MovieBoxSign.kt`. Last bump: `4.0.02.0828.03` / `50020125`.
+  works). This recurs every few weeks. **Fix (no app release):** edit the root
+  `config/moviebox-client.json` (`version` / `versionCode`) to the current shipping
+  build (from a live-APK listing — uptodown/platinmods); both apps fetch it at
+  startup (`ensureClientConfig`), so a push is enough — no rebuild/redistribute.
+  `DEFAULT_APP_VERSION*` in `src/moviebox.js` is only the offline fallback (keep it
+  roughly current, in sync with the Android `MovieBoxSign.kt`). For a one-off local
+  test without touching the config, set `MOVIEBOX_APP_VERSION` / `MOVIEBOX_APP_VERSION_CODE`.
 
 ## Commands
 ```bash

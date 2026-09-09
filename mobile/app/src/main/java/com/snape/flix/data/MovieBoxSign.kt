@@ -29,16 +29,31 @@ object MovieBoxSign {
 
     /**
      * Impersonated MovieBox Android client version. The BFF **version-gates
-     * playback**: a stale [APP_VERSION_CODE] makes `play-info` hand back a
-     * "please update" promo clip as the stream instead of the real one (search
-     * and the home feed keep working, so it looks like playback, not an error).
-     * When every title suddenly plays an "update MovieBox" promo, bump these to
-     * the current shipping build (`version_name` / `versionCode` from the live
-     * APK — e.g. via apkcombo/uptodown/platinmods listings) and update
-     * [USER_AGENT] to match.
+     * playback**: a stale version code makes `play-info` hand back a "please
+     * update" promo clip as the stream instead of the real one (search and the
+     * home feed keep working, so it looks like playback, not an error). MovieBox
+     * re-gates the old client every few weeks, so the live values are resolved at
+     * runtime from a small JSON we control (fetched in [MovieBoxRepository]) —
+     * updating them needs no app release. [appVersion] / [appVersionCode] hold the
+     * live values; these defaults are the last-known-good fallback when the config
+     * is unreachable. Keep them (and the JSON) in sync with the desktop app.
      */
-    const val APP_VERSION = "4.0.02.0828.03"
-    const val APP_VERSION_CODE = 50020125L
+    private const val DEFAULT_APP_VERSION = "4.0.02.0903.02"
+    private const val DEFAULT_APP_VERSION_CODE = 50020127L
+
+    @Volatile
+    var appVersion: String = DEFAULT_APP_VERSION
+        private set
+
+    @Volatile
+    var appVersionCode: Long = DEFAULT_APP_VERSION_CODE
+        private set
+
+    /** Apply remote client config (best-effort; blanks/non-positive values ignored). */
+    fun applyClientConfig(version: String?, code: Long?) {
+        version?.trim()?.takeIf { it.isNotEmpty() }?.let { appVersion = it }
+        code?.takeIf { it > 0 }?.let { appVersionCode = it }
+    }
 
     private val rng = SecureRandom()
 
@@ -105,13 +120,22 @@ object MovieBoxSign {
         val deviceBytes = ByteArray(16).also { rng.nextBytes(it) }
         val deviceId = deviceBytes.joinToString("") { "%02x".format(it) }
         val gaid = UUID.randomUUID().toString()
-        return """{"package_name":"com.community.oneroom","version_name":"$APP_VERSION",""" +
-            """"version_code":$APP_VERSION_CODE,"os":"android","os_version":"13","install_ch":"ps",""" +
+        return """{"package_name":"com.community.oneroom","version_name":"$appVersion",""" +
+            """"version_code":$appVersionCode,"os":"android","os_version":"13","install_ch":"ps",""" +
             """"device_id":"$deviceId","install_store":"ps","gaid":"$gaid","brand":"Redmi",""" +
             """"model":"23078RKD5C","system_language":"en","net":"NETWORK_WIFI","region":"US",""" +
             """"timezone":"America/New_York","sp_code":"40401","X-Play-Mode":"2"}"""
     }
 
+    /**
+     * Stable UA for CDN/stream/download requests (StreamPlayer, Downloads). The
+     * CloudFront edge authorizes by signed cookie, not version, so this keeps the
+     * compiled default. BFF requests use [userAgent] so they carry the live code.
+     */
     const val USER_AGENT =
-        "com.community.oneroom/$APP_VERSION_CODE (Linux; U; Android 13; en_US; 23078RKD5C; Build/TQ2A.230405.003; Cronet/135.0.7012.3)"
+        "com.community.oneroom/$DEFAULT_APP_VERSION_CODE (Linux; U; Android 13; en_US; 23078RKD5C; Build/TQ2A.230405.003; Cronet/135.0.7012.3)"
+
+    /** UA carrying the live [appVersionCode], for signed BFF requests. */
+    fun userAgent(): String =
+        "com.community.oneroom/$appVersionCode (Linux; U; Android 13; en_US; 23078RKD5C; Build/TQ2A.230405.003; Cronet/135.0.7012.3)"
 }

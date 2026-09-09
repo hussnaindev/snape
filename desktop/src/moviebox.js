@@ -23,18 +23,59 @@ const SECRET_KEY =
 const BODY_MAX_BYTES = 102_400;
 const PER_PAGE = 20; // BFF caps perPage at 20 (400 LIMIT_EXCEED "Up to 20" above it)
 
-// Impersonated MovieBox Android client version. The BFF version-gates playback:
-// a stale APP_VERSION_CODE makes play-info return a "please update" promo clip as
-// the stream instead of the real one (search and the home feed keep working, so it
-// looks like playback, not an error). When every title suddenly plays an "update
-// MovieBox" promo, bump these to the current shipping build (version_name /
-// versionCode from the live APK — e.g. via apkcombo/uptodown/platinmods listings).
-// Keep in sync with the Android app's MovieBoxSign.kt.
-const APP_VERSION = '4.0.02.0828.03';
-const APP_VERSION_CODE = 50020125;
+// Impersonated MovieBox Android client version. The BFF **version-gates playback**:
+// a stale versionCode makes play-info return a "please update" promo clip as the
+// stream instead of the real one (search and the home feed keep working, so it looks
+// like playback, not an error). MovieBox re-gates the old client every few weeks, so
+// the live values are resolved at runtime — updating them needs NO app rebuild:
+//   env `MOVIEBOX_APP_VERSION` / `MOVIEBOX_APP_VERSION_CODE`  (highest priority)
+//   > remote config JSON (below)  > the compiled defaults (last-known-good).
+// Keep the defaults and the JSON in sync with the Android app's MovieBoxSign.kt.
+const DEFAULT_APP_VERSION = '4.0.02.0903.02';
+const DEFAULT_APP_VERSION_CODE = 50020127;
+const REMOTE_CONFIG_URL =
+  process.env.MOVIEBOX_CONFIG_URL?.trim() ||
+  'https://raw.githubusercontent.com/hussnaindev/snape/main/config/moviebox-client.json';
 
-const USER_AGENT =
-  `com.community.oneroom/${APP_VERSION_CODE} (Linux; U; Android 13; en_US; 23078RKD5C; Build/TQ2A.230405.003; Cronet/135.0.7012.3)`;
+// Live identity, seeded from env override or the compiled default; a successful
+// remote-config fetch (see ensureClientConfig) may replace it before the first call.
+let appVersion = process.env.MOVIEBOX_APP_VERSION?.trim() || DEFAULT_APP_VERSION;
+let appVersionCode =
+  Number.parseInt(process.env.MOVIEBOX_APP_VERSION_CODE, 10) || DEFAULT_APP_VERSION_CODE;
+
+function userAgent() {
+  return `com.community.oneroom/${appVersionCode} (Linux; U; Android 13; en_US; 23078RKD5C; Build/TQ2A.230405.003; Cronet/135.0.7012.3)`;
+}
+
+// Exported for the main process's CDN request UA injection + subtitle fetch. The CDN
+// authorizes by signed cookie, not by version, so this stays at the startup value.
+const USER_AGENT = userAgent();
+
+let configLoaded = false;
+/**
+ * Fetch the current MovieBox client version from the remote config once, before the
+ * first BFF request. Best-effort: any failure (offline, unreachable) keeps the
+ * seeded values. An explicit env override wins and skips the network entirely.
+ */
+async function ensureClientConfig() {
+  if (configLoaded) return;
+  configLoaded = true;
+  if (process.env.MOVIEBOX_APP_VERSION || process.env.MOVIEBOX_APP_VERSION_CODE) return;
+  try {
+    const res = await fetch(`${REMOTE_CONFIG_URL}?t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
+    });
+    if (!res.ok) return;
+    const cfg = await res.json();
+    if (typeof cfg.version === 'string' && cfg.version.trim()) appVersion = cfg.version.trim();
+    const code = Number.parseInt(cfg.versionCode, 10);
+    if (Number.isFinite(code) && code > 0) appVersionCode = code;
+  } catch {
+    /* keep the seeded values — offline or config unreachable */
+  }
+}
 
 let runtimeToken = null;
 
@@ -84,8 +125,8 @@ function clientInfo() {
   const deviceId = randomBytes(16).toString('hex');
   const gaid = randomUUID();
   return (
-    `{"package_name":"com.community.oneroom","version_name":"${APP_VERSION}",` +
-    `"version_code":${APP_VERSION_CODE},"os":"android","os_version":"13","install_ch":"ps",` +
+    `{"package_name":"com.community.oneroom","version_name":"${appVersion}",` +
+    `"version_code":${appVersionCode},"os":"android","os_version":"13","install_ch":"ps",` +
     `"device_id":"${deviceId}","install_store":"ps","gaid":"${gaid}","brand":"Redmi",` +
     `"model":"23078RKD5C","system_language":"en","net":"NETWORK_WIFI","region":"US",` +
     `"timezone":"America/New_York","sp_code":"40401","X-Play-Mode":"2"}`
@@ -97,7 +138,7 @@ function commonHeaders(ts, sig) {
     Accept: 'application/json',
     'Content-Type': 'application/json',
     Connection: 'keep-alive',
-    'User-Agent': USER_AGENT,
+    'User-Agent': userAgent(),
     'X-Client-Info': clientInfo(),
     'X-Client-Status': '0',
     'X-Client-Token': clientToken(ts),
@@ -125,6 +166,7 @@ function absorbToken(res) {
 // --- requests ---------------------------------------------------------------
 
 async function signedGet(path, params) {
+  await ensureClientConfig();
   const ts = Date.now();
   const sortedQuery = [...params]
     .sort((a, b) => a[0].localeCompare(b[0]))
@@ -152,7 +194,7 @@ async function ensureToken() {
   await signedGet(P_HOME, [
     ['tabId', '0'],
     ['page', '1'],
-    ['version', APP_VERSION],
+    ['version', appVersion],
   ]);
 }
 
@@ -366,7 +408,7 @@ async function homeFeed() {
   const data = await signedGet(P_HOME, [
     ['tabId', '0'],
     ['page', '1'],
-    ['version', APP_VERSION],
+    ['version', appVersion],
   ]);
   return data.data || {};
 }

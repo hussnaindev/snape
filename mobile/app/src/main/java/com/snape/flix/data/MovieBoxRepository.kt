@@ -7,6 +7,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 /**
@@ -24,6 +25,13 @@ object MovieBoxRepository {
     private const val P_PLAY = "/wefeed-mobile-bff/subject-api/play-info"
     private const val P_RESOURCE = "/wefeed-mobile-bff/subject-api/resource"
     private const val P_CAPTIONS = "/wefeed-mobile-bff/subject-api/get-ext-captions"
+
+    // Remote client-version config (see MovieBoxSign): a small JSON we control, so a
+    // MovieBox re-gate is a one-line push, not an app release.
+    private const val CONFIG_URL =
+        "https://raw.githubusercontent.com/hussnaindev/snape/main/config/moviebox-client.json"
+
+    @Volatile private var configLoaded = false
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -65,10 +73,40 @@ object MovieBoxRepository {
             .build()
     }
 
+    /**
+     * Fetch the live MovieBox client version from the remote config once, before the
+     * first BFF request. Best-effort: any failure keeps [MovieBoxSign]'s compiled
+     * defaults, so playback still works offline / if the config is unreachable.
+     */
+    private fun ensureClientConfig() {
+        if (configLoaded) return
+        synchronized(this) {
+            if (configLoaded) return
+            configLoaded = true
+        }
+        runCatching {
+            val req = Request.Builder()
+                .url("$CONFIG_URL?t=${System.currentTimeMillis()}")
+                .get()
+                .header("Accept", "application/json")
+                .header("Cache-Control", "no-cache")
+                .build()
+            client.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@use
+                val obj = JSONObject(resp.body?.string().orEmpty())
+                MovieBoxSign.applyClientConfig(
+                    obj.optString("version").ifBlank { null },
+                    obj.optLong("versionCode", 0L).takeIf { it > 0 },
+                )
+            }
+        }
+    }
+
     /** Acquire a runtime bearer token from a GET endpoint before POST requests. */
     private fun ensureToken() {
+        ensureClientConfig()
         if (MovieBoxSign.authBearerToken != null) return
-        val req = signedGet(P_HOME, listOf("tabId" to "0", "page" to "1", "version" to MovieBoxSign.APP_VERSION))
+        val req = signedGet(P_HOME, listOf("tabId" to "0", "page" to "1", "version" to MovieBoxSign.appVersion))
         client.newCall(req).execute().use { resp ->
             MovieBoxSign.absorbToken(resp.headers.toMultimap())
             resp.body?.close()
@@ -80,7 +118,7 @@ object MovieBoxRepository {
         .header("Accept", "application/json")
         .header("Content-Type", "application/json")
         .header("Connection", "keep-alive")
-        .header("User-Agent", MovieBoxSign.USER_AGENT)
+        .header("User-Agent", MovieBoxSign.userAgent())
         .header("X-Client-Info", MovieBoxSign.clientInfo())
         .header("X-Client-Status", "0")
         .header("X-Client-Token", MovieBoxSign.clientToken(ts))
@@ -109,7 +147,7 @@ object MovieBoxRepository {
         ensureToken()
         val req = signedGet(
             P_HOME,
-            listOf("tabId" to "0", "page" to "1", "version" to MovieBoxSign.APP_VERSION),
+            listOf("tabId" to "0", "page" to "1", "version" to MovieBoxSign.appVersion),
         )
         json.decodeFromString(TabOperatingResponse.serializer(), bodyString(req)).data?.items.orEmpty()
     }
