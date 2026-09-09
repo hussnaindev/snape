@@ -31,6 +31,12 @@ relative to `desktop/`. `README.md` here is the authoritative deep-dive.
   UX is the mobile app's job.
 - If search returns `407 Signature invalid`, the MovieBox HMAC key rotated — update
   `SECRET_KEY` in `src/moviebox.js` (or set `MOVIEBOX_SECRET_KEY`).
+- If every title plays a "please update / MovieBox is updated" promo instead of the
+  real video, MovieBox **version-gated** the stale spoofed client (search still
+  works). This recurs every few weeks. Fix: bump `APP_VERSION` / `APP_VERSION_CODE`
+  in `src/moviebox.js` to the current shipping build (`version_name` / `versionCode`
+  from a live-APK listing — uptodown/platinmods), keeping them in sync with the
+  Android app's `MovieBoxSign.kt`. Last bump: `4.0.02.0828.03` / `50020125`.
 
 ## Commands
 ```bash

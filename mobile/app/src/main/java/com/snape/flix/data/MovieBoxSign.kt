@@ -37,8 +37,8 @@ object MovieBoxSign {
      * APK — e.g. via apkcombo/uptodown/platinmods listings) and update
      * [USER_AGENT] to match.
      */
-    const val APP_VERSION = "3.0.16.0721.03"
-    const val APP_VERSION_CODE = 50020116L
+    const val APP_VERSION = "4.0.02.0828.03"
+    const val APP_VERSION_CODE = 50020125L
 
     private val rng = SecureRandom()
 

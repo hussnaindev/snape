@@ -35,6 +35,15 @@ All signing (`x-tr-signature` HMAC-MD5, `X-Client-Token`, device `X-Client-Info`
 lives in `data/MovieBoxSign.kt`. The server-side HMAC key **rotates**; if search
 starts failing, update `SECRET_KEY` there.
 
+## MovieBox version gate (recurring — quick fix)
+MovieBox **version-gates playback**: when the spoofed client version goes stale,
+every title plays a "please update / MovieBox is updated" promo instead of the real
+stream (search and the home feed still work). Every few weeks MovieBox ships a new
+build and re-gates the old one. **Fix:** bump `APP_VERSION` / `APP_VERSION_CODE` in
+`data/MovieBoxSign.kt` to the current shipping build (`version_name` / `versionCode`
+from a live-APK listing — uptodown/platinmods). Mirror the same values in
+`desktop/src/moviebox.js`. Last bump: `4.0.02.0828.03` / `50020125`.
+
 ## Feature flags
 LaunchDarkly gates access (`data/AccessGate.kt`, `SnapeApp.kt`, `HomePrefetch.kt`,
 `app/build.gradle.kts`). The mobile SDK key is injected at build time via the Gradle
